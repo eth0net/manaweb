@@ -193,6 +193,10 @@ pasted list, with no OAuth flow to get through first.
 someone imports ten thousand cards without signing in, clears site data, and
 loses all of it having never chosen to.
 
+Until the third choice exists, import refuses outright while signed out: there
+is nothing to write to, and a tab's storage is not an answer anyone chose.
+Marked `todo(local)` at the gate.
+
 So **import is where you ask**, which is where the sharing warning has to go
 anyway. Search and scratch freely; the moment data arrives in volume, ask
 where it lives.

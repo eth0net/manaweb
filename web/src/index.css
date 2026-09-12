@@ -646,3 +646,11 @@ dialog.wide {
     grid-row: 3;
   }
 }
+
+/* What a file gave up on, which is a short list or the import is wrong. */
+.skipped {
+  color: var(--quiet);
+  font-size: 0.8125rem;
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+}

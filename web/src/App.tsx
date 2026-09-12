@@ -8,6 +8,7 @@ import { Owning } from "./collection/context";
 import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
 import { Footer } from "./Footer";
+import { IMPORT, Import } from "./import/Import";
 import { Nav } from "./Nav";
 import { useSession } from "./oauth/useSession";
 import { HOME, known, replace, tab, usePath } from "./router";
@@ -75,7 +76,9 @@ export function App() {
               ))}
 
             {here === "/collection" &&
-              (signedIn ? (
+              (path === IMPORT ? (
+                <Import signedIn={signedIn !== null} />
+              ) : signedIn ? (
                 <Collection
                   catalog={load.status === "ready" ? load.catalog : null}
                   containers={containers}

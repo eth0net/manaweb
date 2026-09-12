@@ -1,4 +1,5 @@
 import { type Catalog, words } from "../catalog";
+import { IMPORT } from "../import/Import";
 import { rkey } from "../oauth/repo";
 import { Link } from "../router";
 import type { Holdings } from "./cards";
@@ -43,6 +44,12 @@ export function Collection({
     <>
       <p className="tally">
         {owning.total.toLocaleString()} card{owning.total === 1 ? "" : "s"}
+      </p>
+
+      <p className="quiet">
+        <Link className="link" to={IMPORT}>
+          Import a CSV
+        </Link>
       </p>
 
       {empty ? (
