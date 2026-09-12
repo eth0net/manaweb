@@ -12,7 +12,14 @@ import { Modal } from "../Modal";
 import { describe, hasArt, Language } from "../Printing";
 import { Printings } from "../Printings";
 import { Link } from "../router";
-import { CONDITIONS, type Holdings, type Stack } from "./cards";
+import {
+  CONDITIONS,
+  type Holdings,
+  NOTE,
+  type Stack,
+  TAG,
+  TAGS,
+} from "./cards";
 import { type Containers, UNFILED } from "./containers";
 
 const APP = appLanguage();
@@ -198,12 +205,6 @@ function Row({
     </li>
   );
 }
-
-// What the lexicon allows on a stack: tags, characters in one tag, and
-// graphemes in a note.
-const TAGS = 32;
-const TAG = 64;
-const NOTE = 300;
 
 function Edit({
   one,

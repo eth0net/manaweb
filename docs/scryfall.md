@@ -124,6 +124,23 @@ nothing guarantees a line ending or rules out a leading BOM across five tools
 and the browsers and systems they run on. The fixtures are stored LF, and a
 test varies the ending rather than a second file carrying it.
 
+### A format is a binding, not a reader of its own
+
+Every supported format is a table of field against column name, and one reader
+is driven by it. A custom mapping is then the same table built in the browser
+from whatever headers a file turns out to have, rather than a second
+implementation, and an export is the table read backwards.
+
+It also puts the price decision somewhere a user can overrule it. ManaBox binds
+its `Purchase price` column to `marketValue`; anyone who really did type their
+own figures rebinds that one field to `price`, and the opt-in needs no setting
+of its own.
+
+Values get the same treatment. Where vendors spell a finish or a grade
+differently, the spellings are gathered per field and grow as formats land,
+because inventing a vendor's vocabulary before holding one of its exports is
+how an import silently mangles a collection.
+
 ### What you paid is not what it was worth
 
 ManaBox's `Purchase price` holds two different things. Left alone it fills in

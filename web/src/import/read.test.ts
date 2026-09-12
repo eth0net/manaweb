@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { read } from "./manabox";
+import { MANABOX } from "./formats";
+import { read } from "./read";
 
 const NOW = "2026-09-13T00:00:00.000Z";
 
@@ -40,7 +41,7 @@ function row({
 }
 
 function one(...rows: string[]) {
-  const { stacks, skipped } = read([HEAD, ...rows].join("\n"), NOW);
+  const { stacks, skipped } = read([HEAD, ...rows].join("\n"), MANABOX, NOW);
   return { stack: stacks[0], stacks, skipped };
 }
 
@@ -50,21 +51,27 @@ async function fixture(name: string): Promise<string> {
 }
 
 test("a binder export reads every row", async () => {
-  const { stacks, skipped } = read(await fixture("manabox-binder"), NOW);
+  const { stacks, skipped } = read(
+    await fixture("manabox-binder"),
+    MANABOX,
+    NOW,
+  );
   expect(skipped).toEqual([]);
   expect(stacks).toHaveLength(25);
   expect(stacks.reduce((sum, held) => sum + held.quantity, 0)).toBe(43);
 });
 
 test("a name carrying a comma survives the row it sits in", async () => {
-  const { stacks } = read(await fixture("manabox-binder"), NOW);
+  const { stacks } = read(await fixture("manabox-binder"), MANABOX, NOW);
   const etched = stacks.filter((held) => held.finish === "etched");
   expect(etched).toHaveLength(2);
 });
 
 test("every line ending reads the same collection", async () => {
   const text = await fixture("manabox-binder");
-  expect(read(text.replaceAll("\n", "\r\n"), NOW)).toEqual(read(text, NOW));
+  expect(read(text.replaceAll("\n", "\r\n"), MANABOX, NOW)).toEqual(
+    read(text, MANABOX, NOW),
+  );
 });
 
 test("a finish is what the record calls it", () => {
@@ -157,17 +164,72 @@ test("a finish nothing recognizes is skipped rather than guessed", () => {
 });
 
 test("a file missing a column it is read by yields nothing", () => {
-  const { stacks, skipped } = read("Name,Set code\nInfestation Sage,FDN", NOW);
+  const { stacks, skipped } = read(
+    "Name,Set code\nInfestation Sage,FDN",
+    MANABOX,
+    NOW,
+  );
   expect(stacks).toEqual([]);
   expect(skipped).toEqual([
-    { line: 1, reason: "no scryfall id, foil, quantity column" },
+    { line: 1, reason: "no Scryfall ID, Foil, Quantity column" },
   ]);
 });
 
 test("an empty file is not an error", () => {
-  expect(read("", NOW)).toEqual({ stacks: [], skipped: [] });
+  expect(read("", MANABOX, NOW)).toEqual({ stacks: [], skipped: [] });
 });
 
 test("a blank line is not a row", () => {
   expect(one(row(), "").stacks).toHaveLength(1);
+});
+
+test("a blank finish is how an export writes nonfoil", () => {
+  expect(one(row({ foil: "" })).stack?.finish).toBe("nonfoil");
+});
+
+// The same file read against a binding that says the figures were typed.
+const PAID = {
+  name: "Custom",
+  binding: {
+    ...MANABOX.binding,
+    price: "Purchase price",
+    currency: "Purchase price currency",
+    marketValue: undefined,
+    marketCurrency: undefined,
+  },
+};
+
+test("a binding decides whether a sum was paid or was worth", () => {
+  const { stacks } = read([HEAD, row()].join("\n"), PAID, NOW);
+  expect(stacks[0]?.acquisitions).toEqual([
+    { quantity: 1, price: "0.18", currency: "GBP" },
+  ]);
+});
+
+test("a column the binding does not name is not read", () => {
+  const bare = {
+    name: "Bare",
+    binding: {
+      scryfallId: "Scryfall ID",
+      finish: "Foil",
+      quantity: "Quantity",
+    },
+  };
+  const { stacks } = read([HEAD, row()].join("\n"), bare, NOW);
+  expect(stacks[0]?.condition).toBeUndefined();
+  expect(stacks[0]?.acquisitions).toBeUndefined();
+  expect(stacks[0]?.createdAt).toBe(NOW);
+});
+
+test("a tags column joins the flags that have their own", () => {
+  const tagged = {
+    name: "Tagged",
+    binding: { ...MANABOX.binding, tags: "Name" },
+  };
+  const { stacks } = read(
+    [HEAD, row({ altered: "true" })].join("\n"),
+    tagged,
+    NOW,
+  );
+  expect(stacks[0]?.tags).toEqual(["altered", "Infestation Sage"]);
 });

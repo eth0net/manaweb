@@ -60,9 +60,13 @@ export type Holdings = {
   unfile: (container: string) => Promise<void>;
 };
 
-// The lexicon's ceilings on one stack: lots recorded, and copies held.
+// The lexicon's ceilings on one stack: lots recorded, copies held, tags, the
+// characters in one tag, and the graphemes in a note.
 export const LOTS = 64;
 export const COPIES = 10000;
+export const TAGS = 32;
+export const TAG = 64;
+export const NOTE = 300;
 
 // Everything said about these copies in particular, which is what makes two
 // stacks of one printing different things rather than one count split in two.
