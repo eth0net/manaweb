@@ -61,8 +61,8 @@ export type Holdings = {
 };
 
 // The lexicon's ceilings on one stack: lots recorded, and copies held.
-const LOTS = 64;
-const COPIES = 10000;
+export const LOTS = 64;
+export const COPIES = 10000;
 
 // Everything said about these copies in particular, which is what makes two
 // stacks of one printing different things rather than one count split in two.
@@ -327,7 +327,7 @@ export function useCollection(
 }
 
 // Timestamps carry whatever offset wrote them, so they compare as instants.
-function earlier(one: string, other: string): string {
+export function earlier(one: string, other: string): string {
   return Date.parse(one) <= Date.parse(other) ? one : other;
 }
 
