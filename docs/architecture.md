@@ -197,6 +197,39 @@ loses portability and everything social, so it's a lifeboat, not a goal — wort
 launching only if atproto turns sharply for the worse. Browser-writes raises
 the transfer cost slightly, since the write path would move back to the server.
 
+## A long job only runs while a tab is open
+
+No web API lets a page schedule its own code for a time of its choosing. The
+four ways anything runs without one are all scheduled by the browser instead:
+background sync fires on connectivity, periodic sync on a cadence it picks
+behind an install requirement, background fetch starts everything at once, and
+push needs a server to send it. Three are Chrome-only, and on iOS the content
+process is suspended outright when Safari goes to the background, so there is
+nothing to schedule into. A service worker is no help either: its longest
+documented budget for a single event is five minutes, shorter than one gap
+between two write batches.
+
+So an import is not kept alive. It is made cheap to lose:
+
+- **Deadlines are instants, not delays.** Every wait is stored as the moment it
+  ends, so a tab that was throttled, frozen, discarded or asleep reads the same
+  deadline on waking. Timer throttling and machine sleep stop being correctness
+  problems and become lateness, which the pacing already tolerates.
+- **A short tick reads the clock**, rather than one long timer being trusted to
+  fire. Chrome floors a hidden tab's wake-ups at one a minute, which costs a
+  minute; a seven-minute timer fires whenever it likes after a sleep.
+- **The stored job is the truth and memory is only what gets rendered**, so the
+  runner reads it, writes one batch, and writes it back, inside a lock held for
+  that step alone. Two tabs then interleave safely rather than needing one of
+  them to win.
+- **Resumption is a consequence of opening the app**, not of finding the page
+  that started it. Which also means the runner cannot live in a component: a
+  route change would end the import.
+
+The daily ceiling makes this the normal case rather than the exception. At
+11,666 creates a day a large collection spans days, so an import surviving a
+browser restart is the ordinary path through the feature.
+
 ## Open questions
 
 **Jetstream is unauthenticated.** It doesn't verify signatures. Fine for our

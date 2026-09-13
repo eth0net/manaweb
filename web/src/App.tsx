@@ -8,7 +8,8 @@ import { Owning } from "./collection/context";
 import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
 import { Footer } from "./Footer";
-import { IMPORT, Import } from "./import/Import";
+import { IMPORT, Import, ImportStatus } from "./import/Import";
+import { attach } from "./import/runner";
 import { Nav } from "./Nav";
 import { useSession } from "./oauth/useSession";
 import { HOME, known, replace, tab, usePath } from "./router";
@@ -28,6 +29,12 @@ export function App() {
   const path = usePath();
   const here = tab(path);
 
+  // An import outlives the page that started it, so what picks it back up is
+  // the app opening rather than that page being visited.
+  useEffect(() => {
+    void attach(signedIn);
+  }, [signedIn]);
+
   // A bare `/` and the OAuth callback both land somewhere the bar can't mark,
   // and the callback has to be read out of the address before it is rewritten.
   useEffect(() => {
@@ -46,6 +53,7 @@ export function App() {
 
       <div className="column">
         <CatalogUpdate status={status} />
+        <ImportStatus path={path} />
 
         {signedIn && here === "/cards" && (
           <p className="destination">

@@ -1,15 +1,39 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useMemo, useState } from "react";
 import type { Holdings } from "../collection/cards";
-import { BATCH } from "../oauth/repo";
+import { Link } from "../router";
 import { detect, FORMATS, type Format } from "./formats";
-import { SPACING, type State, useImport } from "./job";
 import { cards, plan, type Step } from "./plan";
 import { header, type Read, read } from "./read";
+import {
+  begin,
+  carryOn,
+  drop,
+  HOURLY,
+  halt,
+  type State,
+  useImport,
+} from "./runner";
 
 export const IMPORT = "/collection/import";
 
 const NAMES = FORMATS.map((one) => one.name).join(", ");
+
+// An import carries on wherever you are in the app, so it says so wherever you
+// are, and every other view is a way back to the one that can stop it.
+export function ImportStatus({ path }: { path: string }) {
+  const state = useImport();
+  if (state.at !== "running" || path === IMPORT) return null;
+
+  return (
+    <p className="destination">
+      <Link className="link" to={IMPORT}>
+        Importing {state.done.toLocaleString()} of{" "}
+        {state.total.toLocaleString()} records
+      </Link>
+    </p>
+  );
+}
 
 // A collection arriving from somewhere else, and the one point at which the
 // app asks where it is all going to live.
@@ -24,10 +48,7 @@ export function Import({
     null,
   );
   const [problem, setProblem] = useState("");
-  const { state, start, resume, stop, discard } = useImport(
-    session,
-    owning.reload,
-  );
+  const state = useImport();
 
   const steps = useMemo(
     () =>
@@ -51,10 +72,18 @@ export function Import({
     setFound({ format, got: read(text, format) });
   }
 
+  // The file goes with the job. Planned against a collection that now holds
+  // everything just written, the same rows would merge into themselves.
+  function forget() {
+    setFound(null);
+    setProblem("");
+    void drop();
+  }
+
   if (!session) return <Gate />;
 
   if (state.at !== "none") {
-    return <Job state={state} onward={{ resume, stop, discard }} />;
+    return <Job state={state} forget={forget} owning={owning} />;
   }
 
   return (
@@ -93,7 +122,7 @@ export function Import({
             </ul>
           )}
 
-          <button type="button" onClick={() => start(steps)}>
+          <button type="button" onClick={() => void begin(steps)}>
             Write {steps.length.toLocaleString()} records
           </button>
         </>
@@ -105,10 +134,12 @@ export function Import({
 // An import under way, or one waiting to be picked back up.
 function Job({
   state,
-  onward,
+  forget,
+  owning,
 }: {
   state: Exclude<State, { at: "none" }>;
-  onward: { resume: () => void; stop: () => void; discard: () => void };
+  forget: () => void;
+  owning: Holdings;
 }) {
   if (state.at === "done") {
     return (
@@ -116,14 +147,18 @@ function Job({
         <p className="tally">
           {state.total.toLocaleString()} records written.
         </p>
-        <button type="button" onClick={onward.discard}>
+        <button
+          type="button"
+          onClick={() => {
+            owning.reload();
+            forget();
+          }}
+        >
           Import another
         </button>
       </>
     );
   }
-
-  const left = state.total - state.done;
 
   return (
     <>
@@ -133,28 +168,24 @@ function Job({
 
       {state.at === "running" && (
         <p className="quiet">
-          {state.until > Date.now()
-            ? `Waiting for the write budget, ${about(left)} left.`
+          {state.due > Date.now()
+            ? `Waiting on the write budget until ${clock(state.due)}. Leaving this tab open is what keeps it going.`
             : "Writing."}
         </p>
       )}
 
       {state.at === "failed" && <p className="warn">{state.why}</p>}
 
-      {state.at === "held" && (
-        <p className="quiet">An import from an earlier visit stopped here.</p>
-      )}
-
       {state.at === "running" ? (
-        <button type="button" onClick={onward.stop}>
+        <button type="button" onClick={() => void halt()}>
           Stop
         </button>
       ) : (
-        <button type="button" onClick={onward.resume}>
+        <button type="button" onClick={() => void carryOn()}>
           Carry on
         </button>
       )}
-      <button type="button" onClick={onward.discard}>
+      <button type="button" onClick={forget}>
         Discard
       </button>
     </>
@@ -189,11 +220,17 @@ function counts(steps: Step[]): string {
   return `${made.toLocaleString()} new stacks and ${held.toLocaleString()} joining ones you have`;
 }
 
-// Batches are spaced to the budget, so what an import costs is arithmetic.
-function about(steps: number): string {
-  const minutes = Math.round(
-    (Math.max(Math.ceil(steps / BATCH) - 1, 0) * SPACING) / 60_000,
-  );
+function clock(at: number): string {
+  return new Date(at).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// What an import is quoted at before one has run. What it takes is whatever the
+// PDS turns out to allow.
+function about(records: number): string {
+  const minutes = Math.round((records / HOURLY) * 60);
   if (minutes < 1) return "under a minute";
   if (minutes < 90) return `about ${minutes} minutes`;
   return `about ${Math.round(minutes / 60)} hours`;

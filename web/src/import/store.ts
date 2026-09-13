@@ -8,7 +8,18 @@ const STORE = "job";
 const KEY = "current";
 
 // Whose repo it is writing to, what it planned, and how much of it landed.
-export type Job = { did: string; steps: Step[]; done: number };
+// `dueAt` is the instant a wait ends rather than its length, for the reason in
+// `docs/architecture.md`; `pending` marks a call whose answer was never seen,
+// which is the only thing a resume has to investigate.
+export type Job = {
+  did: string;
+  steps: Step[];
+  done: number;
+  dueAt: number;
+  pending: boolean;
+  misses: number;
+  paused: boolean;
+};
 
 function settle<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -52,9 +63,13 @@ export async function load(): Promise<Job | null> {
 }
 
 export async function clear(): Promise<void> {
-  try {
-    await settle(indexedDB.deleteDatabase(DATABASE));
-  } catch {
-    // Nothing saved, or nothing that can be.
-  }
+  const request = indexedDB.deleteDatabase(DATABASE);
+  await new Promise<void>((resolve) => {
+    request.onsuccess = () => resolve();
+    // Another tab holding the database open blocks the delete, which reports
+    // neither success nor failure. The job it holds is the one being dropped,
+    // so waiting on it is waiting forever.
+    request.onblocked = () => resolve();
+    request.onerror = () => resolve();
+  });
 }

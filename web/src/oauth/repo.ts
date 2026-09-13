@@ -12,9 +12,15 @@ export type Held<T> = { uri: string; cid: string; value: T };
 type Page<T> = { records: Held<T>[]; cursor?: string };
 type Written = { uri: string; cid: string };
 
-// `applyWrites` takes 200 at a time inside a 1MB body, and the call is one
-// transaction: all of them land or none does.
+// What one `applyWrites` call takes, and the call is one transaction: all of
+// them land or none does. Exceeding either is charged before it is refused.
 export const BATCH = 200;
+export const BYTES = 1_000_000;
+
+// What each write costs against the account's hourly and daily budgets. The
+// call is charged the sum over its writes, so a batch buys round-trips and
+// atomicity rather than headroom.
+export const POINTS = { create: 3, update: 2 };
 
 export type Write = {
   action: "create" | "update";
@@ -44,29 +50,50 @@ async function query<T>(
   return unwrap(await session.fetchHandler(`/xrpc/${nsid}?${search}`), nsid);
 }
 
+function send(
+  session: OAuthSession,
+  nsid: string,
+  body: unknown,
+): Promise<Response> {
+  return session.fetchHandler(`/xrpc/${nsid}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 async function procedure<T>(
   session: OAuthSession,
   nsid: string,
   body: unknown,
 ): Promise<T> {
-  const response = await session.fetchHandler(`/xrpc/${nsid}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return unwrap(response, nsid);
+  return unwrap(await send(session, nsid, body), nsid);
 }
 
-// A status alone says nothing useful: the reason is in the body's `message`.
+// A status alone says nothing useful: the reason is in the body's `message`,
+// and its `error` names the kind, which is what tells a verdict from a blip.
 async function unwrap<T>(response: Response, nsid: string): Promise<T> {
   const body: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const said = (body as { message?: string } | null)?.message;
-    const message = `${nsid}: ${said ?? response.status}`;
-    if (response.status !== 429) throw new Error(message);
-    throw new Refused(message, after(response));
-  }
-  return body as T;
+  if (response.ok) return body as T;
+
+  const said = body as { error?: string; message?: string } | null;
+  const message = `${nsid}: ${said?.message ?? response.status}`;
+  if (response.status === 429) throw new Refused(message, after(response));
+
+  const failure = new Error(message);
+  if (said?.error) failure.name = said.error;
+  throw failure;
+}
+
+// What the PDS will still take, reported on every answer. Which of its buckets
+// the figure belongs to is not said and does not matter — see `docs/atproto.md`.
+export type Budget = { remaining: number; reset: number } | null;
+
+function budget(response: Response): Budget {
+  const remaining = Number(response.headers.get("ratelimit-remaining"));
+  const reset = Number(response.headers.get("ratelimit-reset"));
+  if (!(reset > 0) || !Number.isFinite(remaining)) return null;
+  return { remaining, reset: reset * 1000 };
 }
 
 // `retry-after` counts seconds from now, `ratelimit-reset` names the second the
@@ -135,12 +162,13 @@ export function put<T extends object>(
 
 // Creates and updates together, which is what makes an import one call per
 // two hundred stacks rather than one per stack.
-export function applyWrites(
+export async function applyWrites(
   session: OAuthSession,
   collection: string,
   writes: Write[],
-): Promise<unknown> {
-  return procedure(session, "com.atproto.repo.applyWrites", {
+): Promise<Budget> {
+  const nsid = "com.atproto.repo.applyWrites";
+  const response = await send(session, nsid, {
     repo: session.did,
     writes: writes.map(({ action, rkey, value }) => ({
       $type: `com.atproto.repo.applyWrites#${action}`,
@@ -149,6 +177,9 @@ export function applyWrites(
       value: { $type: collection, ...value },
     })),
   });
+
+  await unwrap(response, nsid);
+  return budget(response);
 }
 
 export function remove(

@@ -57,8 +57,30 @@ doubt.
 with `repo:manage`, and a signed CAR file a browser client can't produce
 because the PDS holds the signing key.
 
-These are the shipped defaults. A self-hoster can raise them; other people's
-PDSes can't be assumed to have.
+**A self-hoster cannot raise them, only switch them off.** The budgets and
+windows are hardcoded; `PDS_RATE_LIMITS_ENABLED`, `PDS_RATE_LIMIT_BYPASS_KEY`
+and `PDS_RATE_LIMIT_BYPASS_IPS` are the whole surface. The default is *off*,
+which matters more than it sounds: a self-hosted PDS that never set the
+variable enforces nothing, so an import against one runs flat out and proves
+nothing about what a limited one does. Set it deliberately to test the pacing.
+
+**Batching buys round-trips, not headroom.** `applyWrites` sums points over its
+writes rather than charging per call, so 200 creates cost the same 600 points
+either way. What the batch buys is one atomic commit and one round-trip, and
+the body limit is 1,000,000 bytes — a stack carrying a full note, tags and
+history approaches 8KB, so 200 of those would not fit and a batch has to be cut
+by size as well as by count. Exceeding either limit is charged before it is
+refused, with no refund.
+
+**Pace from the answer, not from the table above.** Every response carries
+`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` and
+`RateLimit-Policy`, on success as much as on a 429, and all four are named in
+`Access-Control-Expose-Headers` so a browser can actually read them — which is
+a separate permission from sending them. The figure is whichever bucket has
+least left, including a per-IP one, which is exactly the bucket that would
+refuse the next call, so pacing off it needs no guess about which it is. A PDS
+reporting nothing is enforcing nothing, and can be written to as fast as the
+answers come back.
 
 ## Localhost OAuth works, but only by default
 
