@@ -230,6 +230,15 @@ The daily ceiling makes this the normal case rather than the exception. At
 11,666 creates a day a large collection spans days, so an import surviving a
 browser restart is the ordinary path through the feature.
 
+Which means the collection has to show the truth while that is going on. The
+runner hands each landed batch to the collection rather than letting it re-read
+the repo, so what has been written appears as it is written and a half-finished
+import looks half-finished. A read started before a batch landed would answer
+with a view from before it, so anything written since is laid back over the
+answer. And a stopped import says so from every page: it is the one state
+nothing else would ever mention again, which is how someone ends up believing a
+collection synced when it stopped at a third.
+
 ## Open questions
 
 **Jetstream is unauthenticated.** It doesn't verify signatures. Fine for our

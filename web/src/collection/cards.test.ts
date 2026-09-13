@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
   apply,
   type Change,
+  fold,
   type Owned,
   type Stack,
   stack,
@@ -263,4 +264,24 @@ test("a record written then dropped is only dropped", () => {
 
   expect(change.writes).toEqual([]);
   expect(change.drops).toEqual([one.uri]);
+});
+
+test("a read carries what landed while it was in flight", () => {
+  const [first, second] = stacks(copy, { ...copy, finish: "foil" });
+  const written = { ...(second as Stack), value: { ...copy, quantity: 9 } };
+  const since = new Map([[written.uri, written]]);
+
+  // The read answers with the repo as it was before that write.
+  const folded = fold([first as Stack], since);
+  expect(folded).toHaveLength(2);
+  expect(folded[1]?.value.quantity).toBe(9);
+});
+
+test("a read that already has the record keeps the newer one", () => {
+  const [one] = stacks(copy);
+  const newer = { ...(one as Stack), value: { ...copy, quantity: 4 } };
+
+  const folded = fold([one as Stack], new Map([[newer.uri, newer]]));
+  expect(folded).toHaveLength(1);
+  expect(folded[0]?.value.quantity).toBe(4);
 });

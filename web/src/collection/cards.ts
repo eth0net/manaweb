@@ -60,6 +60,9 @@ export type Holdings = {
   unfile: (container: string) => Promise<void>;
   // Reads the collection again, for a write this view did not make.
   reload: () => void;
+  // Folds in records another part of the app wrote, so a long import fills the
+  // collection in as it lands rather than at the end.
+  landed: (stacks: Stack[]) => void;
 };
 
 // The lexicon's ceilings on one stack: lots recorded, copies held, tags, the
@@ -173,6 +176,10 @@ export function useCollection(
   // Which read is the current one, so a slow answer to a stale session or an
   // unmounted view lands nowhere.
   const read = useRef(0);
+  // Records written while a read was in flight. A full read is many round
+  // trips, so an import can land a batch before it answers, and the answer
+  // would otherwise be a view of the repo from before that batch.
+  const since = useRef(new Map<string, Stack>());
 
   const reload = useCallback(() => {
     if (!session) {
@@ -184,7 +191,8 @@ export function useCollection(
     list<Owned>(session, CARD).then(
       (found) => {
         if (mine !== read.current) return;
-        setHeld(found);
+        setHeld(fold(found, since.current));
+        since.current.clear();
         setReady(true);
       },
       (failure: unknown) => mine === read.current && setError(reason(failure)),
@@ -197,6 +205,12 @@ export function useCollection(
       read.current++;
     };
   }, [reload]);
+
+  const landed = useCallback((written: Stack[]) => {
+    if (written.length === 0) return;
+    for (const one of written) since.current.set(one.uri, one);
+    setHeld((was) => fold(was, since.current));
+  }, []);
 
   const totals = useMemo(() => {
     const prints = new Map<string, number>();
@@ -352,7 +366,17 @@ export function useCollection(
     amend,
     unfile,
     reload,
+    landed,
   };
+}
+
+// What a read found, with anything written since laid over it.
+export function fold(found: Stack[], since: Map<string, Stack>): Stack[] {
+  if (since.size === 0) return found;
+
+  const by = new Map(found.map((one) => [one.uri, one]));
+  for (const [uri, one] of since) by.set(uri, one);
+  return [...by.values()];
 }
 
 // Timestamps carry whatever offset wrote them, so they compare as instants.

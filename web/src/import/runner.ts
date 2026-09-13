@@ -1,11 +1,12 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useCallback, useSyncExternalStore } from "react";
-import { CARD } from "../collection/cards";
+import { CARD, type Owned } from "../collection/cards";
 import {
   applyWrites,
   BATCH,
   type Budget,
   BYTES,
+  type Held,
   POINTS,
   query,
   Refused,
@@ -39,6 +40,10 @@ export type State =
 
 let state: State = { at: "none" };
 let session: OAuthSession | null = null;
+// What to do with records once they are in the repo. The collection takes
+// them, so a view that would otherwise re-read the lot learns them a batch at
+// a time.
+let report: ((written: Held<Owned>[]) => void) | null = null;
 let ticking: ReturnType<typeof setInterval> | null = null;
 let stepping = false;
 // Discarding cannot reach into a call already out, so a step that comes back to
@@ -169,6 +174,8 @@ async function step(): Promise<void> {
   job.dueAt = Date.now() + spacing(budget, batch);
   if (!(await keep(job, mine))) return;
 
+  report?.(batch.map((one) => written(now.did, one)));
+
   if (stopping) {
     ticks(false);
     announce({ at: "stopped", done: job.done, total });
@@ -275,6 +282,16 @@ function reason(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
 }
 
+// A step as the repo now holds it. The cid is the one thing a write knows and
+// a plan does not, and nothing local reads it.
+function written(did: string, step: Step): Held<Owned> {
+  return {
+    uri: `at://${did}/${CARD}/${step.rkey}`,
+    cid: "",
+    value: step.value,
+  };
+}
+
 function write(step: Step): Write {
   return {
     action: step.held ? "update" : "create",
@@ -285,8 +302,12 @@ function write(step: Step): Write {
 
 // Adopts whatever the last visit left and carries on with it, so an import
 // resumes because the app opened rather than because a page was found.
-export async function attach(now: OAuthSession | null): Promise<void> {
+export async function attach(
+  now: OAuthSession | null,
+  onWritten?: (written: Held<Owned>[]) => void,
+): Promise<void> {
   session = now;
+  report = onWritten ?? null;
   if (!now) {
     ticks(false);
     announce({ at: "none" });

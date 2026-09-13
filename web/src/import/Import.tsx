@@ -19,20 +19,29 @@ export const IMPORT = "/collection/import";
 
 const NAMES = FORMATS.map((one) => one.name).join(", ");
 
-// An import carries on wherever you are in the app, so it says so wherever you
-// are, and every other view is a way back to the one that can stop it.
+// An import outlives the page that started it, so it reports from wherever you
+// are — and a stopped one says so loudest, being the one nothing else would
+// ever mention again.
 export function ImportStatus({ path }: { path: string }) {
   const state = useImport();
-  if (state.at !== "running" || path === IMPORT) return null;
+  if (state.at === "none" || path === IMPORT) return null;
 
   return (
     <p className="destination">
       <Link className="link" to={IMPORT}>
-        Importing {state.done.toLocaleString()} of{" "}
-        {state.total.toLocaleString()} records
+        {say(state)}
       </Link>
     </p>
   );
+}
+
+function say(state: Exclude<State, { at: "none" }>): string {
+  const total = state.total.toLocaleString();
+  if (state.at === "done") return `Import finished, ${total} records`;
+
+  const done = state.done.toLocaleString();
+  if (state.at === "running") return `Importing ${done} of ${total} records`;
+  return `Import stopped at ${done} of ${total} records`;
 }
 
 // A collection arriving from somewhere else, and the one point at which the
@@ -83,7 +92,7 @@ export function Import({
   if (!session) return <Gate />;
 
   if (state.at !== "none") {
-    return <Job state={state} forget={forget} owning={owning} />;
+    return <Job state={state} forget={forget} />;
   }
 
   return (
@@ -135,11 +144,9 @@ export function Import({
 function Job({
   state,
   forget,
-  owning,
 }: {
   state: Exclude<State, { at: "none" }>;
   forget: () => void;
-  owning: Holdings;
 }) {
   if (state.at === "done") {
     return (
@@ -147,13 +154,7 @@ function Job({
         <p className="tally">
           {state.total.toLocaleString()} records written.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            owning.reload();
-            forget();
-          }}
-        >
+        <button type="button" onClick={forget}>
           Import another
         </button>
       </>

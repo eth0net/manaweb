@@ -32,8 +32,8 @@ export function App() {
   // An import outlives the page that started it, so what picks it back up is
   // the app opening rather than that page being visited.
   useEffect(() => {
-    void attach(signedIn);
-  }, [signedIn]);
+    void attach(signedIn, collection.landed);
+  }, [signedIn, collection.landed]);
 
   // A bare `/` and the OAuth callback both land somewhere the bar can't mark,
   // and the callback has to be read out of the address before it is rewritten.
