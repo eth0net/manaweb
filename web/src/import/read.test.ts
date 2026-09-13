@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { BATCH, BYTES } from "../oauth/repo";
 import { MANABOX } from "./formats";
 import { read } from "./read";
 
@@ -232,4 +233,40 @@ test("a tags column joins the flags that have their own", () => {
     NOW,
   );
   expect(stacks[0]?.tags).toEqual(["altered", "Infestation Sage"]);
+});
+
+// Derived from a real 8,325-row export: its finishes, grades, quantities and
+// quoted names in their measured proportions, plus the rows a real export never
+// has — a repeat, one differing only in price, an alter, a misprint, a grade.
+test("a collection-sized export reads into stacks", async () => {
+  const { stacks, skipped } = read(
+    await fixture("manabox-collection"),
+    MANABOX,
+  );
+
+  expect(skipped).toEqual([]);
+  expect(stacks.length).toBeGreaterThan(BATCH);
+  expect(stacks.reduce((sum, held) => sum + held.quantity, 0)).toBe(505);
+
+  // Of the five planted rows two join what they copy — the identical one and
+  // the one differing only in price — and three are stacks of their own.
+  expect(stacks).toHaveLength(365 - 2);
+  expect(stacks.filter((held) => held.tags?.includes("altered"))).toHaveLength(
+    1,
+  );
+  expect(stacks.filter((held) => held.condition === "played")).toHaveLength(1);
+  expect(stacks.some((held) => (held.acquisitions?.length ?? 0) > 1)).toBe(
+    true,
+  );
+});
+
+// The body limit is what bounds a batch once records carry history, so the
+// measured size is worth holding onto.
+test("a batch of real records sits well inside one body", async () => {
+  const { stacks } = read(await fixture("manabox-collection"), MANABOX);
+  const bytes = stacks
+    .slice(0, BATCH)
+    .reduce((sum, held) => sum + JSON.stringify(held).length, 0);
+
+  expect(bytes).toBeLessThan(BYTES / 10);
 });

@@ -17,6 +17,9 @@ extend-exclude = [
   # Captured Scryfall responses, compared byte for byte. "Aether Syphon" is a
   # real card, and one flavor text has a hyphenated "be-lieve".
   "**/tests/fixtures/**",
+  # Exports read back byte for byte, carrying set codes a dictionary reads as
+  # words: THS is Theros, DFT is Aetherdrift.
+  "web/src/import/fixtures/**",
   # Verbatim license text. Not ours to correct.
   "LICENSE",
   "lexicons/LICENSE",

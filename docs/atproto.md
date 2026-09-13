@@ -38,9 +38,18 @@ two windows: `repo-write-hour` 5,000 points and `repo-write-day` 35,000, where
 a create costs 3 points. So **1,666 creates an hour, 11,666 a day**.
 
 A 10,000-*stack* import is therefore about six hours and 86% of the day's
-budget. A 10,000-*card* collection is far fewer stacks, since bulk commons
-duplicate heavily, so this doesn't force coarser records — but it does mean
-import is a resumable background job that has to be honest about taking hours.
+budget.
+
+**Stacks are 70% of cards, measured.** An 11,839-card collection across two
+ManaBox binders came to 8,321 stacks: five hours and 71% of a day. The earlier
+guess that bulk commons would collapse heavily was wrong twice over — most of a
+collector's cards are singletons, and where copies do repeat the exporting tool
+has already summed them into a quantity column, so the client's own merge finds
+almost nothing left to do. It earns its keep against formats that emit a row
+per copy, and as the thing that stops a re-import duplicating what is there.
+
+So coarser records are not forced, but import is a resumable background job
+that has to be honest about taking hours.
 
 **Resumption picks the record keys.** A batch whose answer is lost leaves the
 client unable to say whether the PDS committed it, and `applyWrites` is one
