@@ -24,6 +24,11 @@ Additive optional fields are safe. Removing a field or adding a required one is
 not — records live in repos we don't control. A new NSID is cheap, so prefer
 one to widening an existing shape.
 
+An array's `maxLength` has to describe a record a PDS will take. A write caps
+at 1,000,000 bytes, so a ceiling is only honest if the array at that length,
+holding items at *their* ceilings, still fits — `entries` at 10,000
+`designEntry` came to 2.65MB and could never have been written.
+
 ## Checking them
 
 ```sh

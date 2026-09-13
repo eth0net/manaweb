@@ -27,7 +27,7 @@
           },
           "entries": {
             "type": "array",
-            "maxLength": 10000,
+            "maxLength": 2000,
             "items": {
               "type": "ref",
               "ref": "app.manaweb.defs#designEntry"
