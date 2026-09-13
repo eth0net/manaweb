@@ -169,7 +169,7 @@ function Job({
       {state.at === "running" && (
         <p className="quiet">
           {state.due > Date.now()
-            ? `Waiting on the write budget until ${clock(state.due)}. Leaving this tab open is what keeps it going.`
+            ? `Waiting on the write budget until ${clock(state.due)}. It carries on wherever you go in the app, and picks up here next time if you close it.`
             : "Writing."}
         </p>
       )}
