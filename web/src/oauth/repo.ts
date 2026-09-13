@@ -12,6 +12,28 @@ export type Held<T> = { uri: string; cid: string; value: T };
 type Page<T> = { records: Held<T>[]; cursor?: string };
 type Written = { uri: string; cid: string };
 
+// `applyWrites` takes 200 at a time inside a 1MB body, and the call is one
+// transaction: all of them land or none does.
+export const BATCH = 200;
+
+export type Write = {
+  action: "create" | "update";
+  rkey: string;
+  value: object;
+};
+
+// A refusal that says when to come back, which a paced job needs and a single
+// write can ignore.
+export class Refused extends Error {
+  after: number;
+
+  constructor(message: string, after: number) {
+    super(message);
+    this.name = "Refused";
+    this.after = after;
+  }
+}
+
 // The session resolves the account's own PDS, so a path is the whole address.
 async function query<T>(
   session: OAuthSession,
@@ -40,9 +62,23 @@ async function unwrap<T>(response: Response, nsid: string): Promise<T> {
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const said = (body as { message?: string } | null)?.message;
-    throw new Error(`${nsid}: ${said ?? response.status}`);
+    const message = `${nsid}: ${said ?? response.status}`;
+    if (response.status !== 429) throw new Error(message);
+    throw new Refused(message, after(response));
   }
   return body as T;
+}
+
+// `retry-after` counts seconds from now, `ratelimit-reset` names the second the
+// window turns. Neither is promised, so a refusal saying nothing waits anyway.
+function after(response: Response): number {
+  const wait = Number(response.headers.get("retry-after"));
+  if (wait > 0) return wait * 1000;
+
+  const reset = Number(response.headers.get("ratelimit-reset"));
+  if (reset > 0) return Math.max(reset * 1000 - Date.now(), 0);
+
+  return 60_000;
 }
 
 // Every record in one collection, paged out in full.
@@ -94,6 +130,24 @@ export function put<T extends object>(
     collection,
     rkey: key,
     record: { $type: collection, ...record },
+  });
+}
+
+// Creates and updates together, which is what makes an import one call per
+// two hundred stacks rather than one per stack.
+export function applyWrites(
+  session: OAuthSession,
+  collection: string,
+  writes: Write[],
+): Promise<unknown> {
+  return procedure(session, "com.atproto.repo.applyWrites", {
+    repo: session.did,
+    writes: writes.map(({ action, rkey, value }) => ({
+      $type: `com.atproto.repo.applyWrites#${action}`,
+      collection,
+      rkey,
+      value: { $type: collection, ...value },
+    })),
   });
 }
 

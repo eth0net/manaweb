@@ -1,7 +1,7 @@
 import {
   COPIES,
-  earlier,
-  LOTS,
+  joins,
+  merge,
   NOTE,
   type Owned,
   stack,
@@ -133,29 +133,15 @@ function collapse(rows: Owned[]): Owned[] {
 
   for (const one of rows) {
     const held = found.get(stack(one)) ?? [];
-    const into = held.find(
-      (other) =>
-        other.quantity + one.quantity <= COPIES &&
-        lots(other).length + lots(one).length <= LOTS,
-    );
+    const at = held.findIndex((other) => joins(other, one));
+    const into = at < 0 ? undefined : held[at];
 
-    if (!into) {
-      held.push(one);
-      found.set(stack(one), held);
-      continue;
-    }
-
-    into.quantity += one.quantity;
-    into.createdAt = earlier(into.createdAt, one.createdAt);
-    const all = [...lots(into), ...lots(one)];
-    if (all.length > 0) into.acquisitions = all;
+    if (into) held[at] = merge(into, one);
+    else held.push(one);
+    found.set(stack(one), held);
   }
 
   return [...found.values()].flat();
-}
-
-function lots(one: Owned): Acquisition[] {
-  return one.acquisitions ?? [];
 }
 
 function tags(cell: (field: Field) => string): string[] {

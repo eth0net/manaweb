@@ -1,5 +1,5 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Acquisition, Main } from "../lexicons/app/manaweb/card";
 import {
   create,
@@ -58,6 +58,8 @@ export type Holdings = {
   // Cards outlive the container naming them, so a place is emptied before it
   // is deleted.
   unfile: (container: string) => Promise<void>;
+  // Reads the collection again, for a write this view did not make.
+  reload: () => void;
 };
 
 // The lexicon's ceilings on one stack: lots recorded, copies held, tags, the
@@ -100,21 +102,9 @@ export function apply(
 
   if (next.quantity < 1) return { writes: [], drops: [uri], stacks: rest };
 
-  const into = rest.find((other) => stack(other.value) === stack(next));
-  // Both histories survive, and a merge crossing either ceiling is not made.
-  const lots = [
-    ...(into?.value.acquisitions ?? []),
-    ...(next.acquisitions ?? []),
-  ];
-  const copies = (into?.value.quantity ?? 0) + next.quantity;
-  if (into && lots.length <= LOTS && copies <= COPIES) {
-    const merged = clean({
-      ...into.value,
-      quantity: copies,
-      ...(lots.length > 0 ? { acquisitions: lots } : {}),
-      createdAt: earlier(into.value.createdAt, next.createdAt),
-      updatedAt: at,
-    });
+  const into = rest.find((other) => joins(other.value, next));
+  if (into) {
+    const merged = merge(into.value, next, at);
     return {
       writes: [{ uri: into.uri, value: merged }],
       drops: [uri],
@@ -131,6 +121,33 @@ export function apply(
       other.uri === uri ? { ...other, value: next } : other,
     ),
   };
+}
+
+// Whether two stacks are one: the same identity, and neither ceiling crossed
+// by putting them together.
+export function joins(one: Owned, other: Owned): boolean {
+  return (
+    stack(one) === stack(other) &&
+    one.quantity + other.quantity <= COPIES &&
+    lots(one).length + lots(other).length <= LOTS
+  );
+}
+
+// The record that replaces both: every copy, both histories, and the earlier
+// of the two beginnings. A merge with no timestamp is one not written yet.
+export function merge(one: Owned, other: Owned, at?: string): Owned {
+  const all = [...lots(one), ...lots(other)];
+  return clean({
+    ...one,
+    ...(at ? { updatedAt: at } : {}),
+    quantity: one.quantity + other.quantity,
+    acquisitions: all.length > 0 ? all : undefined,
+    createdAt: earlier(one.createdAt, other.createdAt),
+  });
+}
+
+function lots(one: Owned): Acquisition[] {
+  return one.acquisitions ?? [];
 }
 
 // Two changes in order, so a record written and then dropped is only dropped.
@@ -153,26 +170,33 @@ export function useCollection(
   const [held, setHeld] = useState<Stack[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string>();
+  // Which read is the current one, so a slow answer to a stale session or an
+  // unmounted view lands nowhere.
+  const read = useRef(0);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     if (!session) {
       setHeld([]);
       setReady(false);
       return;
     }
-    let live = true;
+    const mine = ++read.current;
     list<Owned>(session, CARD).then(
       (found) => {
-        if (!live) return;
+        if (mine !== read.current) return;
         setHeld(found);
         setReady(true);
       },
-      (failure: unknown) => live && setError(reason(failure)),
+      (failure: unknown) => mine === read.current && setError(reason(failure)),
     );
-    return () => {
-      live = false;
-    };
   }, [session]);
+
+  useEffect(() => {
+    reload();
+    return () => {
+      read.current++;
+    };
+  }, [reload]);
 
   const totals = useMemo(() => {
     const prints = new Map<string, number>();
@@ -327,6 +351,7 @@ export function useCollection(
     take,
     amend,
     unfile,
+    reload,
   };
 }
 

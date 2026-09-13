@@ -42,6 +42,17 @@ budget. A 10,000-*card* collection is far fewer stacks, since bulk commons
 duplicate heavily, so this doesn't force coarser records — but it does mean
 import is a resumable background job that has to be honest about taking hours.
 
+**Resumption picks the record keys.** A batch whose answer is lost leaves the
+client unable to say whether the PDS committed it, and `applyWrites` is one
+transaction, so the question is per batch rather than per record. Letting the
+server assign keys makes a replay silently duplicate every stack in it;
+assigning them here makes the replay fail instead, because a create of a key
+already present refuses the whole call. So the plan is written down with its
+keys before anything is sent, and a resume asks after the first record its next
+batch would create: present means that batch landed, absent means it did not.
+One `getRecord` settles it, and only the batch a resume begins on is ever in
+doubt.
+
 `com.atproto.repo.importRepo` is not an escape hatch: it needs `ACCESS_FULL`
 with `repo:manage`, and a signed CAR file a browser client can't produce
 because the PDS holds the signing key.
