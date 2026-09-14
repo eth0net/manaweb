@@ -8,12 +8,10 @@ export const CATALOG = import.meta.env.DEV
 export const RESOLVER = "https://pds.e0n.sh";
 
 // A `repo:` scope names one exact collection, so this list is the enumeration.
+// Only what the client writes today, for the reason in `docs/atproto.md`.
 export const COLLECTIONS = [
   "app.manaweb.card",
   "app.manaweb.container",
-  "app.manaweb.deck",
-  "app.manaweb.list",
-  "app.manaweb.snapshot",
 ] as const;
 
 // Held equal to the committed document by a test: PAR refuses what it omits.

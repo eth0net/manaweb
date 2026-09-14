@@ -161,11 +161,19 @@ to the whole repo, which that screen renders as managing posts, likes and
 follows and reading private preferences — everything, to write five
 collections.
 
-**`repo:` takes `*` or an exact NSID, and nothing in between.** So the
-enumeration is the only granular form, and adding a record type later means
-adding a scope, which costs every existing user a fresh consent. All five are
-declared now though v0 writes two; `tools/lexicon-check` holds the document
-and the schemas to each other for that reason.
+**`repo:` takes `*` or an exact NSID, and each one takes an action.**
+`repo:app.manaweb.card?action=create` grants creates and nothing else; an
+unqualified scope means all three, since `action` defaults to the whole set.
+Two independent PDS implementations enforce it and the qualified form is live
+in the wild, so the enumeration is not the finest grain available — it is the
+coarsest of three.
+
+Only the two collections v0 writes are declared. A scope for a record type
+nothing creates is authority held for nothing, and the cost of adding one later
+is a consent prompt that says what it is for — which is a better moment to ask
+than a signup that quietly took it. Scopes are matched as exact strings, so a
+qualified form has to be written the same way in both places;
+`web/src/config.ts` and the document are held to each other by a test.
 
 Which to request is a design choice, not something to read off the server.
 `scopes_supported` carries `atproto` and the transitional scopes and nothing

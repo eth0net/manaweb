@@ -33,6 +33,13 @@ business.
   client-side caching that keeps the server light is in
   [`architecture.md`](architecture.md).
 
+**A local importer is a power-user option, not a way out of the ceiling.** A
+CLI reading a ManaBox CSV would still need a live session and would still write
+at 1,666 records an hour — it buys a connection that holds for five hours
+rather than a phone's. Worth having once step 6's `goat` recipes exist, and the
+same shape; not worth building first, because almost nobody will leave the site
+or the PWA to import.
+
 ## Phase 1 — Scanner
 
 **Client-side inference.** Recognition runs in the browser (WASM) against a
