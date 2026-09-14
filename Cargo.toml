@@ -39,7 +39,7 @@ thiserror = "2.0.20"
 tokio = "1.53.1"
 # Matched to reqwest's, which is already in the tree — 0.7 would put two
 # copies of it there for one middleware.
-tower-http = { version = "0.6.11", features = ["cors", "fs", "trace"] }
+tower-http = { version = "0.7.1", features = ["cors", "fs", "trace"] }
 tracing = "0.1.42"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tokio-util = { version = "0.7.19", features = ["io"] }
