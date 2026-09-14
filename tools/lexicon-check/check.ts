@@ -308,12 +308,41 @@ expect(
   !scopes.some((scope) => scope.includes("*")),
 );
 
-// Adding a record type without its scope costs every existing user a fresh
-// consent, since repo: takes an exact NSID and there is no prefix form.
+// The document asks for no more than it can write. A record type may exist
+// without a scope — it runs ahead of its implementation — but a scope for a
+// record type that does not exist is authority taken for nothing.
+const records = new Set<string>();
 for (const file of files) {
   const doc = JSON.parse(readFileSync(join(DIR, file), "utf8"));
-  if (doc.defs?.main?.type !== "record") continue;
-  expect(`${doc.id} has a repo: scope`, scopes.includes(`repo:${doc.id}`));
+  if (doc.defs?.main?.type === "record") records.add(doc.id);
+}
+for (const scope of scopes) {
+  if (!scope.startsWith("repo:")) continue;
+  const nsid = scope.slice("repo:".length).split("?")[0];
+  expect(`${scope} names a record type that exists`, records.has(nsid));
+}
+
+// A record's `record` cannot be a ref, so an import entry has to restate the
+// card's shape. Nothing stops the two drifting except this.
+{
+  const card = JSON.parse(readFileSync(join(DIR, "app.manaweb.card.json"), "utf8"));
+  const bulk = JSON.parse(readFileSync(join(DIR, "app.manaweb.import.json"), "utf8"));
+  const written = card.defs.main.record.properties;
+  const planned = bulk.defs.entry.properties;
+
+  // `updatedAt` is the one field a plan cannot carry: nothing has amended it.
+  const expected = Object.keys(written).filter((name) => name !== "updatedAt");
+  expect(
+    "an import entry holds every field a card does",
+    expected.every((name) => name in planned) &&
+      Object.keys(planned).every((name) => expected.includes(name)),
+  );
+  for (const name of expected) {
+    const same =
+      JSON.stringify(written[name]) ===
+      JSON.stringify(planned[name]).replaceAll("app.manaweb.card#", "#");
+    expect(`an import entry's ${name} matches the card's`, same);
+  }
 }
 
 console.log(failed ? "\nFAILED" : "\nall green");

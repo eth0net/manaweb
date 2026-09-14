@@ -258,6 +258,41 @@ Missing plus mismatches *is* the shopping list, so a per-deck wishlist needs no
 maintaining. Only entries with a deliberate print intent can mismatch, which is
 what keeps "any printing" designs quiet.
 
+### An import lands whole, then becomes cards
+
+A CSV is consumed into `app.manaweb.import` parts in a few seconds, and those
+parts drain into `app.manaweb.card` records over the hours the write budget
+takes. The upload is therefore finished the moment it is accepted, which is the
+only part a person is waiting on, and the plan stops being state on one device.
+
+**A part is sized by the transaction that drains it, not by bytes.** Draining
+is one `applyWrites` holding the part's creates plus a delete of the part
+itself, and that call caps at 200 writes — so a part holds at most 199 entries,
+and the writer packs fewer when the entries are large. Bytes bind first only
+for cards carrying a full note and history.
+
+**The delete is what makes a second writer impossible.** A repo throws on
+deleting a key it does not hold, and `applyWrites` is one transaction, so a
+second attempt at an already-drained part fails before any of its creates land.
+Two tabs, two devices and a background worker can all race for the same part
+and exactly one wins, with no lock and no bookkeeping.
+
+**The collection reads both shapes as one**, matching a part's entry to a
+written record by the identity the merge rule already uses, so an entry needs
+no address of its own. Editing a card that has not been written yet rewrites
+its part: a delete then costs two points and the card is never created at all,
+against three to create it and one to remove it afterwards.
+
+**None of this makes an import faster.** The same cards cost the same points
+and take the same hours. What it buys is an upload that cannot be half-consumed
+and a collection that is complete from the moment the file is accepted.
+
+**Only a person can say whether a second identical file is a mistake.** Two
+scans of two identical precons export identical bytes, and merging them is
+right for the second precon and wrong for the double-click. Re-importing sums
+quantities silently, so the check is a question about the filename rather than
+a refusal.
+
 ### Scanning
 
 Scanning goes to a **staging list**, not straight to a destination. Scan
