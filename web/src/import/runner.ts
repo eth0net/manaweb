@@ -97,14 +97,27 @@ function wake(): void {
   if (document.visibilityState === "visible") void tick();
 }
 
+// An hour's budget is eight calls, and waiting a tick between them turns
+// sixteen seconds of someone's attention into three minutes of it. So batches
+// run back to back for as long as the budget allows, bounded in case a PDS
+// answers that the window has already turned and then refuses anyway.
+const BURST = 16;
+
 async function tick(): Promise<void> {
   if (stepping || !session) return;
   stepping = true;
   try {
-    await locked(step);
+    for (let at = 0; at < BURST; at++) {
+      await locked(step);
+      if (!due()) break;
+    }
   } finally {
     stepping = false;
   }
+}
+
+function due(): boolean {
+  return ticking !== null && state.at === "running" && state.due <= Date.now();
 }
 
 // Two tabs both ticking is fine as long as one writes at a time, which is what

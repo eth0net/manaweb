@@ -230,6 +230,14 @@ The daily ceiling makes this the normal case rather than the exception. At
 11,666 creates a day a large collection spans days, so an import surviving a
 browser restart is the ordinary path through the feature.
 
+**Elapsed time is not attended time.** An hour's budget is eight `applyWrites`
+calls, so what an import actually needs is the app open for the seconds those
+take, six times, an hour or more apart. Batches therefore run back to back
+while the budget allows rather than one per tick — the difference between
+sixteen seconds of someone's attention per window and three minutes of it.
+Quoting the elapsed figure as though it were the ask is what makes the feature
+sound unusable.
+
 Which means the collection has to show the truth while that is going on. The
 runner hands each landed batch to the collection rather than letting it re-read
 the repo, so what has been written appears as it is written and a half-finished
