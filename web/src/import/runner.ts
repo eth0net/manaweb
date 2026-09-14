@@ -24,8 +24,11 @@ export const HOURLY = Math.floor(5000 / POINTS.create);
 // Chrome floors it at a minute in a hidden tab, which is a minute of lateness.
 const TICK = 20_000;
 
-// Answers that never came, before an import stops calling it a blip.
-const MISSES = 10;
+// Backoff for answers that never came, and how many of those make a silence
+// worth reporting. Nothing here ends an import: a PDS restarted overnight is
+// not a reason to abandon five hours of work, and only a verdict is.
+const BACKOFF = 30 * 60_000;
+const QUIET = 5;
 
 // One tab writes at a time. Held for a step rather than for the whole import,
 // so a tab that dies between steps blocks nobody.
@@ -33,7 +36,14 @@ const LOCK = "manaweb-import";
 
 export type State =
   | { at: "none" }
-  | { at: "running"; done: number; total: number; due: number }
+  | {
+      at: "running";
+      done: number;
+      total: number;
+      due: number;
+      // The PDS has stopped answering. Not a failure, and not yet nothing.
+      quiet: boolean;
+    }
   | { at: "stopped"; done: number; total: number }
   | { at: "done"; total: number }
   | { at: "failed"; done: number; total: number; why: string };
@@ -120,14 +130,14 @@ async function step(): Promise<void> {
   if (!now) return;
 
   const mine = era;
-  const job = await load();
-  if (!job || job.did !== now.did || job.paused) {
+  const job = await load(now.did);
+  if (!job || job.paused) {
     ticks(false);
     return;
   }
 
   if (job.done >= job.steps.length) {
-    await clear();
+    await clear(now.did);
     ticks(false);
     announce({ at: "done", total: job.steps.length });
     return;
@@ -146,17 +156,23 @@ async function step(): Promise<void> {
     if (seen) job.done += batch.length;
     job.pending = false;
     if (await keep(job, mine)) {
-      announce({ at: "running", done: job.done, total, due: 0 });
+      announce({ at: "running", done: job.done, total, due: 0, quiet: false });
     }
     return;
   }
 
   if (Date.now() < job.dueAt) {
-    announce({ at: "running", done: job.done, total, due: job.dueAt });
+    announce({
+      at: "running",
+      done: job.done,
+      total,
+      due: job.dueAt,
+      quiet: job.misses >= QUIET,
+    });
     return;
   }
 
-  announce({ at: "running", done: job.done, total, due: 0 });
+  announce({ at: "running", done: job.done, total, due: 0, quiet: false });
   job.pending = true;
   if (!(await keep(job, mine))) return;
 
@@ -181,7 +197,13 @@ async function step(): Promise<void> {
     announce({ at: "stopped", done: job.done, total });
     return;
   }
-  announce({ at: "running", done: job.done, total, due: job.dueAt });
+  announce({
+    at: "running",
+    done: job.done,
+    total,
+    due: job.dueAt,
+    quiet: false,
+  });
 }
 
 // A refusal is an answer and says when to come back. Anything that isn't an
@@ -199,13 +221,20 @@ async function refused(
   // an import however many of them arrive.
   if (failure instanceof Refused) {
     job.dueAt = Date.now() + failure.after;
+    job.misses = 0;
     if (await keep(job, mine)) {
-      announce({ at: "running", done: job.done, total, due: job.dueAt });
+      announce({
+        at: "running",
+        done: job.done,
+        total,
+        due: job.dueAt,
+        quiet: false,
+      });
     }
     return;
   }
 
-  if (named(failure) || job.misses + 1 >= MISSES) {
+  if (named(failure)) {
     job.paused = true;
     if (await keep(job, mine)) {
       ticks(false);
@@ -215,10 +244,16 @@ async function refused(
   }
 
   job.misses += 1;
-  job.dueAt = Date.now() + TICK * job.misses;
+  job.dueAt = Date.now() + Math.min(TICK * job.misses, BACKOFF);
 
   if (await keep(job, mine)) {
-    announce({ at: "running", done: job.done, total, due: job.dueAt });
+    announce({
+      at: "running",
+      done: job.done,
+      total,
+      due: job.dueAt,
+      quiet: job.misses >= QUIET,
+    });
   }
 }
 
@@ -314,8 +349,8 @@ export async function attach(
     return;
   }
 
-  const job = await load();
-  if (!job || job.did !== now.did) return;
+  const job = await load(now.did);
+  if (!job) return;
 
   const total = job.steps.length;
   if (job.paused) {
@@ -323,7 +358,13 @@ export async function attach(
     return;
   }
 
-  announce({ at: "running", done: job.done, total, due: job.dueAt });
+  announce({
+    at: "running",
+    done: job.done,
+    total,
+    due: job.dueAt,
+    quiet: job.misses >= QUIET,
+  });
   ticks(true);
   void tick();
 }
@@ -356,14 +397,21 @@ export async function begin(steps: Step[]): Promise<void> {
     return;
   }
 
-  announce({ at: "running", done: 0, total: steps.length, due: 0 });
+  announce({
+    at: "running",
+    done: 0,
+    total: steps.length,
+    due: 0,
+    quiet: false,
+  });
   ticks(true);
   void tick();
 }
 
 export async function carryOn(): Promise<void> {
+  if (!session) return;
   stopping = false;
-  const job = await load();
+  const job = await load(session.did);
   if (!job) return;
 
   job.paused = false;
@@ -374,6 +422,7 @@ export async function carryOn(): Promise<void> {
     done: job.done,
     total: job.steps.length,
     due: job.dueAt,
+    quiet: false,
   });
   ticks(true);
   void tick();
@@ -387,9 +436,9 @@ export async function halt(): Promise<void> {
   }
 
   // A call already out records the stop itself, along with whatever it landed.
-  if (stepping) return;
+  if (stepping || !session) return;
 
-  const job = await load();
+  const job = await load(session.did);
   if (!job) return;
 
   job.paused = true;
@@ -401,7 +450,7 @@ export async function drop(): Promise<void> {
   era += 1;
   stopping = false;
   ticks(false);
-  await clear();
+  if (session) await clear(session.did);
   announce({ at: "none" });
 }
 

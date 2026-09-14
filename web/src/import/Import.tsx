@@ -169,9 +169,11 @@ function Job({
 
       {state.at === "running" && (
         <p className="quiet">
-          {state.due > Date.now()
-            ? `Waiting on the write budget until ${clock(state.due)}. It carries on wherever you go in the app, and picks up here next time if you close it.`
-            : "Writing."}
+          {state.quiet
+            ? "Your PDS has stopped answering. Nothing is lost and it keeps trying."
+            : state.due > Date.now()
+              ? `Waiting on the write budget until ${clock(state.due)}. It carries on wherever you go in the app, and picks up here next time if you close it.`
+              : "Writing."}
         </p>
       )}
 

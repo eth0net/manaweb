@@ -1,5 +1,6 @@
 import { type Catalog, words } from "../catalog";
 import { IMPORT } from "../import/Import";
+import { useImport } from "../import/runner";
 import { rkey } from "../oauth/repo";
 import { Link } from "../router";
 import type { Holdings } from "./cards";
@@ -21,6 +22,11 @@ export function Collection({
   path: string;
 }) {
   const key = path.startsWith(UNDER) ? path.slice(UNDER.length) : "";
+  // A total is read as the whole collection, so while an import is part way
+  // through it has to say what it is short of. A stopped one most of all.
+  const job = useImport();
+  const left =
+    job.at === "running" || job.at === "stopped" ? job.total - job.done : 0;
 
   if (key) {
     const here = containers.held.find((one) => rkey(one.uri) === key);
@@ -44,6 +50,12 @@ export function Collection({
     <>
       <p className="tally">
         {owning.total.toLocaleString()} card{owning.total === 1 ? "" : "s"}
+        {left > 0 && (
+          <span className="quiet">
+            {" "}
+            · {left.toLocaleString()} still to write
+          </span>
+        )}
       </p>
 
       <p className="quiet">

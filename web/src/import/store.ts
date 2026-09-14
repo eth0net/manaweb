@@ -5,7 +5,6 @@ import type { Step } from "./plan";
 // a written import is not.
 const DATABASE = "manaweb-import";
 const STORE = "job";
-const KEY = "current";
 
 // Whose repo it is writing to, what it planned, and how much of it landed.
 // `dueAt` is the instant a wait ends rather than its length, for the reason in
@@ -42,18 +41,20 @@ export async function save(job: Job): Promise<void> {
   const db = await open();
   try {
     const store = db.transaction(STORE, "readwrite").objectStore(STORE);
-    await settle(store.put(job, KEY));
+    await settle(store.put(job, job.did));
   } finally {
     db.close();
   }
 }
 
-export async function load(): Promise<Job | null> {
+// Keyed by whose repo it writes to. One key for all of them let a second
+// account's import destroy the first account's half-written one.
+export async function load(did: string): Promise<Job | null> {
   try {
     const db = await open();
     try {
       const store = db.transaction(STORE, "readonly").objectStore(STORE);
-      return (await settle(store.get(KEY))) ?? null;
+      return (await settle(store.get(did))) ?? null;
     } finally {
       db.close();
     }
@@ -62,14 +63,16 @@ export async function load(): Promise<Job | null> {
   }
 }
 
-export async function clear(): Promise<void> {
-  const request = indexedDB.deleteDatabase(DATABASE);
-  await new Promise<void>((resolve) => {
-    request.onsuccess = () => resolve();
-    // Another tab holding the database open blocks the delete, which reports
-    // neither success nor failure. The job it holds is the one being dropped,
-    // so waiting on it is waiting forever.
-    request.onblocked = () => resolve();
-    request.onerror = () => resolve();
-  });
+export async function clear(did: string): Promise<void> {
+  try {
+    const db = await open();
+    try {
+      const store = db.transaction(STORE, "readwrite").objectStore(STORE);
+      await settle(store.delete(did));
+    } finally {
+      db.close();
+    }
+  } catch {
+    // Nothing saved, or nothing that can be.
+  }
 }
