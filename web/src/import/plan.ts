@@ -9,6 +9,9 @@ export type Step = { rkey: string; value: Owned; held: boolean };
 // matching one already there joins it, which is still a write but not a second
 // stack, and keys are picked here so a batch replayed after a lost answer
 // collides rather than duplicating.
+// todo(eth0net): the same file planned twice sums its own quantities, so a
+// second import of one export silently doubles it. Only a person can tell that
+// from a second identical precon.
 export function plan(imported: Owned[], held: Stack[], at: string): Step[] {
   const open = held.map((one) => ({ key: rkey(one.uri), value: one.value }));
   const steps = new Map<string, Step>();

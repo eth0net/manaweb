@@ -61,8 +61,9 @@ backend:
   because a Pages deployment is a snapshot of one directory, so one deploy
   would delete what the other produced.
 - **v0 doesn't need the firehose at all.** The client reads its own records
-  straight from its own PDS (`listRecords`) and keeps a local view in
-  IndexedDB, so the PDS is the sync mechanism between a user's devices.
+  straight from its own PDS (`listRecords`), so the PDS is the sync mechanism
+  between a user's devices. Caching that read is still to do — see
+  `docs/architecture.md`.
   Indexing only earns its place when we need what the client can't do locally —
   Explore, cross-user aggregates.
 - **Our database is disposable.** Everything in it derives from Scryfall or
@@ -110,10 +111,11 @@ backend:
   card objects, so a faster price cadence has no cheap mechanism. Cadence is an
   open question for Phase 2.
 - **Import speed is the Phase 0 constraint.** A PDS allows 1,666 record creates
-  an hour and 11,666 a day by default (`applyWrites` caps at 200 per call; a
-  create costs 3 of an hourly 5,000-point budget). A large import is a
-  resumable background job measured in hours, and `importRepo` can't shortcut
-  it. See `docs/atproto.md`.
+  an hour and 11,666 a day, hardcoded rather than configurable (`applyWrites`
+  caps at 200 per call and is charged per write; a create costs 3 of an hourly
+  5,000-point budget). Stacks measured at 70% of cards, so 11,839 cards is
+  8,321 records and five hours. `importRepo` can't shortcut it. Elapsed time is
+  not attended time — see `docs/atproto.md` and `docs/architecture.md`.
 - Collection entries reference `scryfall_id` (exact print), not `oracle_id` —
   we track specific physical cards (set/collector number/finish), same as
   ManaBox.
@@ -195,8 +197,9 @@ backend:
    refreshes the cache weekly. Configured from the environment; `just serve`.
    The OAuth client metadata document is committed at
    `web/public/oauth/client-metadata.json`, not generated.
-5. Web client: OAuth, reads from own PDS, local view in IndexedDB, writes back.
-   Where the data model actually gets exercised.
+5. Web client: OAuth, reads from own PDS, writes back, and imports a CSV —
+   parsed and planned against what is held, written in paced batches that
+   survive a closed tab. Where the data model actually gets exercised.
 6. Fixture records seeding a dev account without the UI. `goat` is the atproto
    CLI and already writes them from an app password, so what is left is a
    directory of JSON and a `just` recipe rather than a program.

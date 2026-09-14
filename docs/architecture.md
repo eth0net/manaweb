@@ -18,9 +18,16 @@ client metadata document we serve. Our server never proxies a write.
   delete-plus-create, and excluding it stops a stack existing in two
   containers.
 - **Read-your-own-writes falls out.** A write would otherwise travel browser →
-  PDS → firehose → index before any server-backed view saw it. The client keeps
-  its own materialized view in IndexedDB, reading records from its own PDS with
-  `listRecords` on first load.
+  PDS → firehose → index before any server-backed view saw it. The client holds
+  the records it read from its own PDS and applies its own writes on top,
+  whether they came from an edit or from an import landing a batch.
+- **That view is not cached yet, and it is the next thing that will hurt.**
+  `listRecords` pages at 100 and has no `since`, so every load of an 8,321-stack
+  collection is 84 sequential round trips and 1.9MB, on every device, forever.
+  Only the catalog and a half-written import are in IndexedDB today. The fix is
+  the one the firehose section defers to Phase 3 — a read endpoint that returns
+  a user's own records in one response — so this waits for that rather than
+  growing a second cache to invalidate.
 - **The PDS is the device-sync mechanism.** Device B reads what device A wrote,
   with nothing of ours in between.
 - Offline writes need a queue. `client_id` is tied to the deployment domain, so
