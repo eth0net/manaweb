@@ -24,10 +24,17 @@ Additive optional fields are safe. Removing a field or adding a required one is
 not — records live in repos we don't control. A new NSID is cheap, so prefer
 one to widening an existing shape.
 
-An array's `maxLength` has to describe a record a PDS will take. A write caps
-at 1,000,000 bytes, so a ceiling is only honest if the array at that length,
-holding items at *their* ceilings, still fits — `entries` at 10,000
-`designEntry` came to 2.65MB and could never have been written.
+An array's `maxLength` has to describe a record a PDS will take, and a write
+caps at 1,000,000 bytes. Where the item has a bounded size the ceiling can be
+held to that: `designEntry` is at most 264 bytes, so 2,000 of them is 528KB and
+the number means something. `entries` at 10,000 came to 2.65MB and could never
+have been written.
+
+Where the item is open-ended no count can promise anything — a card carries a
+3,000-byte note, so a hundred of them fit and a hundred and twenty-five do not.
+There the writer packs by measured bytes and the ceiling is a sanity bound
+rather than a guarantee. Say which kind a `maxLength` is where it isn't
+obvious, because a reader will otherwise take it for the guarantee.
 
 ## Checking them
 
