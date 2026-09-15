@@ -8,6 +8,7 @@ import {
   type Print,
   words,
 } from "../catalog";
+import { shed } from "../import/runner";
 import { Modal } from "../Modal";
 import { describe, hasArt, Language } from "../Printing";
 import { Printings } from "../Printings";
@@ -18,6 +19,7 @@ import {
   NOTE,
   type Stack,
   shown,
+  stack,
   TAG,
   TAGS,
   unwritten,
@@ -176,13 +178,32 @@ function Row({
           {print && <p className="print">{describe(print)}</p>}
           {one.value.note && <p className="note">{one.value.note}</p>}
           <div className="meta">
-            {/* Nothing addresses a card until it is a record of its own.
-                todo(eth0net): taking copies off one means editing the part
-                holding them, under the lock the drain takes. */}
+            {/* No record addresses these copies yet, so a change to them is a
+                change to the part holding them, and adding one is a card of
+                its own from the search rather than a plus here. */}
             {unwritten(one) ? (
-              <span className="owned quiet">
-                {shown(one).toLocaleString()} landing
-              </span>
+              <>
+                <span className="adjust">
+                  <button
+                    type="button"
+                    className="step"
+                    aria-label="One fewer"
+                    onClick={() => void shed(stack(one.value), 1)}
+                  >
+                    −
+                  </button>
+                  <span className="owned">
+                    {shown(one).toLocaleString()} landing
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => void shed(stack(one.value), shown(one))}
+                >
+                  Remove
+                </button>
+              </>
             ) : (
               <>
                 <span className="adjust">

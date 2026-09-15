@@ -15,7 +15,7 @@ import {
   rkey,
   type Write,
 } from "../oauth/repo";
-import { drain, index, landed, owed, PART, pack } from "./part";
+import { drain, index, landed, owed, PART, pack, without } from "./part";
 import { IMPORTED, type Receipt } from "./receipt";
 import { clear, type Job, load, save } from "./store";
 
@@ -163,6 +163,13 @@ async function locked(work: () => Promise<void>): Promise<void> {
   await navigator.locks.request(LOCK, { ifAvailable: true }, async (held) => {
     if (held) await work();
   });
+}
+
+// For a person waiting on it rather than a tick: a step is one call, so this
+// waits its turn instead of giving up and doing nothing.
+async function queued(work: () => Promise<void>): Promise<void> {
+  if (!navigator.locks) return work();
+  await navigator.locks.request(LOCK, work);
 }
 
 // Writes the job down unless it has been discarded since, folding in a stop
@@ -576,6 +583,31 @@ export async function drop(): Promise<void> {
 function listen(watcher: () => void): () => void {
   watching.add(watcher);
   return () => void watching.delete(watcher);
+}
+
+// Copies dropped from a stack an import has not written yet, read and written
+// inside the lock so a drain never lands between the two.
+export async function shed(key: string, copies: number): Promise<boolean> {
+  const now = session;
+  if (!now || copies < 1) return false;
+
+  let dropped = false;
+  await queued(async () => {
+    if (!(await refresh(now))) return;
+
+    const { writes, left } = without(pending, key, copies);
+    if (writes.length === 0) return;
+
+    try {
+      await applyWrites(now, writes);
+      holding(left);
+      dropped = true;
+    } catch {
+      await refresh(now);
+    }
+  });
+
+  return dropped;
 }
 
 export function useImport(): State {

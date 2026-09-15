@@ -304,13 +304,18 @@ The count a person reads therefore never dips while an import turns into
 records, which is the property worth protecting: a test walks a whole import
 part by part and asserts it.
 
-What such a card is not is addressable. No record holds it, so the row says
-what is landing and offers no edit, and a key taken from it would reach some
-other record or none. Adding a copy still works and needs no special case: it
-writes a record of its own, and the drain merges the part into that, because
-what an entry joins is decided when it drains. Taking one away is the gap —
-there is nothing to take from until the part lands, and the minus is already
-present and disabled wherever the copies are not where the plus would write.
+What such a card is not is addressable. No record holds it, so a change to it
+is a change to the parts holding it: the copies are taken out of their entries,
+an entry emptied is dropped, and a part emptied of every entry is deleted rather
+than left as a record of nothing. One transaction, under the lock a drain takes,
+against parts read inside it. A part another device drained first is already
+gone, and the repo refuses to update a key it does not hold, so the edit fails
+whole rather than putting its cards back.
+
+Adding a copy is the asymmetry, and it needs no part at all: it writes a record
+of its own and the drain merges the part into that, because what an entry joins
+is decided when it drains. So the row carries a minus and no plus, and adding
+goes through the card the way it always did.
 
 **The collection reads both shapes as one**, matching a part's entry to a
 written record by the identity the merge rule already uses, so an entry needs

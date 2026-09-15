@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
-import { landing, type Owned, type Stack, shown } from "../collection/cards";
+import {
+  landing,
+  type Owned,
+  type Stack,
+  shown,
+  stack,
+} from "../collection/cards";
 import { BYTES, type Held, type Result } from "../oauth/repo";
-import { drain, index, landed, owed, PART, pack } from "./part";
+import { drain, index, landed, owed, PART, pack, without } from "./part";
 import type { Receipt } from "./receipt";
 
 const NOW = "2026-09-15T00:00:00.000Z";
@@ -16,6 +22,9 @@ const copy: Owned = {
 };
 
 const of: Receipt = { digest: "sha256-x", createdAt: NOW };
+
+// A second stack, to prove a removal leaves everything it did not name alone.
+const other: Owned = { ...copy, finish: "foil" };
 
 function many(count: number): Owned[] {
   return Array.from({ length: count }, (_, at) => ({
@@ -206,4 +215,77 @@ test("the total holds from the upload landing to the last part drained", () => {
 
   expect(drains).toBe(pack(twice, of).length);
   expect(count(records)).toBe(total);
+});
+
+function parts(...each: Owned[][]): Held<Receipt>[] {
+  return each.map((entries, at) => ({
+    uri: `at://${DID}/app.manaweb.import/p${at}`,
+    cid: `c${at}`,
+    value: { ...of, entries },
+  }));
+}
+
+const key = stack(copy);
+
+// `owed` counts entries; these tests are about the copies inside them.
+function copies(held: Held<Receipt>[]): number {
+  return held.reduce(
+    (sum, one) =>
+      sum +
+      ((one.value.entries ?? []) as Owned[]).reduce(
+        (n, e) => n + e.quantity,
+        0,
+      ),
+    0,
+  );
+}
+
+test("a copy taken off a stack leaves the rest of the part alone", () => {
+  const { writes, left } = without(
+    parts([{ ...copy, quantity: 3 }, other]),
+    key,
+    1,
+  );
+
+  expect(writes).toHaveLength(1);
+  expect(writes[0]).toMatchObject({ action: "update", rkey: "p0" });
+  expect(copies(left)).toBe(3);
+  expect(left[0]?.value.entries?.[0]?.quantity).toBe(2);
+});
+
+test("taking every copy drops the entry", () => {
+  const { left } = without(parts([{ ...copy, quantity: 2 }, other]), key, 2);
+  expect(copies(left)).toBe(1);
+  expect(left[0]?.value.entries).toEqual([other]);
+});
+
+// Entries of one stack can sit in different parts, so the removal walks them.
+test("copies are taken across as many parts as hold them", () => {
+  const { writes, left } = without(
+    parts([{ ...copy, quantity: 2 }], [{ ...copy, quantity: 2 }]),
+    key,
+    3,
+  );
+
+  expect(writes).toHaveLength(2);
+  expect(copies(left)).toBe(1);
+});
+
+test("a part emptied of everything is dropped rather than left saying nothing", () => {
+  const { writes, left } = without(parts([copy]), key, 1);
+  expect(writes).toEqual([
+    { action: "delete", collection: "app.manaweb.import", rkey: "p0" },
+  ]);
+  expect(left).toHaveLength(0);
+});
+
+test("a stack no part holds is no write at all", () => {
+  const { writes, left } = without(parts([other]), key, 1);
+  expect(writes).toHaveLength(0);
+  expect(copies(left)).toBe(1);
+});
+
+test("asking for more copies than are there takes what is there", () => {
+  const { left } = without(parts([{ ...copy, quantity: 2 }]), key, 9);
+  expect(copies(left)).toBe(0);
 });

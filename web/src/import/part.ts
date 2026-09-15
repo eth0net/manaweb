@@ -141,3 +141,60 @@ export function landed(writes: Write[], results: Result[]): Stack[] {
 export function owed(parts: Held<Receipt>[]): number {
   return parts.reduce((sum, one) => sum + (one.value.entries?.length ?? 0), 0);
 }
+
+// Copies taken off a stack no record holds yet, which means rewriting whichever
+// parts hold them. Writes only; what they mean is in `docs/data-model.md`.
+export function without(
+  parts: Held<Receipt>[],
+  key: string,
+  copies: number,
+): { writes: Write[]; left: Held<Receipt>[] } {
+  const writes: Write[] = [];
+  const left: Held<Receipt>[] = [];
+  let owed = copies;
+
+  for (const part of parts) {
+    const entries = (part.value.entries ?? []) as Owned[];
+    const kept: Owned[] = [];
+    let touched = false;
+
+    for (const entry of entries) {
+      const take =
+        owed > 0 && stack(entry) === key ? Math.min(owed, entry.quantity) : 0;
+      if (take === 0) {
+        kept.push(entry);
+        continue;
+      }
+
+      owed -= take;
+      touched = true;
+      if (entry.quantity > take)
+        kept.push({ ...entry, quantity: entry.quantity - take });
+    }
+
+    if (!touched) {
+      left.push(part);
+      continue;
+    }
+
+    if (kept.length === 0) {
+      writes.push({
+        action: "delete",
+        collection: IMPORTED,
+        rkey: rkey(part.uri),
+      });
+      continue;
+    }
+
+    const value = { ...part.value, entries: kept };
+    writes.push({
+      action: "update",
+      collection: IMPORTED,
+      rkey: rkey(part.uri),
+      value,
+    });
+    left.push({ ...part, value });
+  }
+
+  return { writes, left };
+}
