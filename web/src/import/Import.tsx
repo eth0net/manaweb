@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { Holdings } from "../collection/cards";
 import { Link } from "../router";
 import { detect, FORMATS, type Format } from "./formats";
-import { cards, plan, type Step } from "./plan";
+import { plan, type Weight, weigh } from "./plan";
 import { header, type Read, read } from "./read";
 import {
   begin,
@@ -67,6 +67,11 @@ export function Import({
     [found, owning.ready, owning.stacks],
   );
 
+  const weight = useMemo(
+    () => (steps ? weigh(steps, owning.stacks) : null),
+    [steps, owning.stacks],
+  );
+
   async function take(file: File | null) {
     setFound(null);
     setProblem("");
@@ -110,16 +115,20 @@ export function Import({
 
       {problem && <p className="warn">{problem}</p>}
 
-      {found && steps && (
+      {found && steps && weight && (
         <>
           <p className="tally">
-            {cards(steps).toLocaleString()} card
-            {cards(steps) === 1 ? "" : "s"}
+            {weight.adding.toLocaleString()} card
+            {weight.adding === 1 ? "" : "s"}
           </p>
           <p className="quiet">
-            Read as {found.format.name}. {counts(steps)}, which takes{" "}
-            {about(steps.length)} at the rate a PDS allows.
+            Read as {found.format.name}, as {counts(weight)}, which takes{" "}
+            {about(weight.records)} at the rate a PDS allows.
           </p>
+
+          {weight.before > 0 && (
+            <p className={again(weight) ? "warn" : "quiet"}>{lands(weight)}</p>
+          )}
 
           {found.got.skipped.length > 0 && (
             <ul className="skipped">
@@ -132,7 +141,9 @@ export function Import({
           )}
 
           <button type="button" onClick={() => void begin(steps)}>
-            Write {steps.length.toLocaleString()} records
+            Add {weight.adding.toLocaleString()} card
+            {weight.adding === 1 ? "" : "s"}
+            {again(weight) ? " anyway" : ""}
           </button>
         </>
       )}
@@ -215,12 +226,30 @@ function Gate() {
   );
 }
 
-function counts(steps: Step[]): string {
-  const held = steps.filter((one) => one.held).length;
-  const made = steps.length - held;
-  if (held === 0) return `${made.toLocaleString()} new stacks`;
-  if (made === 0) return `${held.toLocaleString()} joining stacks you have`;
-  return `${made.toLocaleString()} new stacks and ${held.toLocaleString()} joining ones you have`;
+function counts(weight: Weight): string {
+  const fresh = `${weight.fresh.toLocaleString()} new stacks`;
+  const joined = `${weight.joined.toLocaleString()} joining ones you hold`;
+  if (weight.joined === 0) return fresh;
+  if (weight.fresh === 0) {
+    return `${weight.records.toLocaleString()} stacks, all joining ones you hold`;
+  }
+  return `${fresh} and ${joined}`;
+}
+
+// A file that brings nothing new, which is the shape a second import of one
+// export takes.
+function again(weight: Weight): boolean {
+  return weight.before > 0 && weight.fresh === 0;
+}
+
+// Arithmetic is the whole guard: a second copy of one export and a second
+// identical precon plan the same way, and only the owner knows which this is.
+function lands(weight: Weight): string {
+  const from = weight.before.toLocaleString();
+  const to = weight.after.toLocaleString();
+  if (!again(weight))
+    return `Your collection goes from ${from} to ${to} cards.`;
+  return `Nothing here is new. Every stack joins one you already hold, taking the collection from ${from} to ${to} cards, which is also what importing the same file twice looks like.`;
 }
 
 function clock(at: number): string {

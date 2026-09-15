@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Owned, Stack } from "../collection/cards";
-import { plan } from "./plan";
+import { plan, weigh } from "./plan";
 
 const NOW = "2026-09-13T00:00:00.000Z";
 const JAN = "2026-01-01T00:00:00.000Z";
@@ -91,4 +91,46 @@ test("keys are ordered, so records land in the order they were read", () => {
   const keys = steps.map((one) => one.rkey);
   expect(keys).toEqual([...keys].sort());
   expect(new Set(keys).size).toBe(2);
+});
+
+test("a file arriving on an empty collection weighs itself", () => {
+  const steps = plan([{ ...copy, quantity: 4 }], [], NOW);
+  expect(weigh(steps, [])).toEqual({
+    records: 1,
+    fresh: 1,
+    joined: 0,
+    adding: 4,
+    before: 0,
+    after: 4,
+  });
+});
+
+test("a joining stack adds the file's copies, not the merged total", () => {
+  const held = stacks({ ...copy, quantity: 1 });
+  const steps = plan([{ ...copy, quantity: 3 }], held, NOW);
+  const weight = weigh(steps, held);
+  expect(weight.adding).toBe(3);
+  expect(weight.before).toBe(1);
+  expect(weight.after).toBe(4);
+});
+
+test("stacks the file never touches still count either side", () => {
+  const held = stacks(copy, { ...copy, finish: "foil", quantity: 7 });
+  const weight = weigh(plan([copy], held, NOW), held);
+  expect(weight.before).toBe(8);
+  expect(weight.after).toBe(9);
+  expect(weight.joined).toBe(1);
+});
+
+test("a file already imported brings nothing new and doubles the count", () => {
+  const first = plan([{ ...copy, quantity: 2 }], [], NOW);
+  const held = first.map((one, at) => ({
+    uri: `at://did:plc:x/app.manaweb.card/${one.rkey}`,
+    cid: `cid${at}`,
+    value: one.value,
+  }));
+
+  const weight = weigh(plan([{ ...copy, quantity: 2 }], held, NOW), held);
+  expect(weight.fresh).toBe(0);
+  expect(weight.after).toBe(weight.before * 2);
 });

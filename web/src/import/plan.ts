@@ -9,9 +9,6 @@ export type Step = { rkey: string; value: Owned; held: boolean };
 // matching one already there joins it, which is still a write but not a second
 // stack, and keys are picked here so a batch replayed after a lost answer
 // collides rather than duplicating.
-// todo(eth0net): the same file planned twice sums its own quantities, so a
-// second import of one export silently doubles it. Only a person can tell that
-// from a second identical precon.
 export function plan(imported: Owned[], held: Stack[], at: string): Step[] {
   const open = held.map((one) => ({ key: rkey(one.uri), value: one.value }));
   const steps = new Map<string, Step>();
@@ -33,7 +30,38 @@ export function plan(imported: Owned[], held: Stack[], at: string): Step[] {
   return [...steps.values()];
 }
 
-// Copies, rather than records, which is the number anyone reads it as.
-export function cards(steps: Step[]): number {
-  return steps.reduce((sum, one) => sum + one.value.quantity, 0);
+// What a plan does to the collection, in copies rather than records. A
+// joining step already carries the copies it merged, so the file's own count
+// is the difference and never the sum.
+export type Weight = {
+  records: number;
+  fresh: number;
+  joined: number;
+  adding: number;
+  before: number;
+  after: number;
+};
+
+export function weigh(steps: Step[], held: Stack[]): Weight {
+  const joining = new Set(
+    steps.filter((one) => one.held).map((one) => one.rkey),
+  );
+  const before = copies(held.map((one) => one.value));
+  const kept = copies(
+    held.filter((one) => !joining.has(rkey(one.uri))).map((one) => one.value),
+  );
+  const after = kept + copies(steps.map((one) => one.value));
+
+  return {
+    records: steps.length,
+    fresh: steps.length - joining.size,
+    joined: joining.size,
+    adding: after - before,
+    before,
+    after,
+  };
+}
+
+function copies(values: Owned[]): number {
+  return values.reduce((sum, one) => sum + one.quantity, 0);
 }
