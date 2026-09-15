@@ -1,25 +1,30 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CardRow } from "./CardRow";
 import type { Catalog } from "./catalog";
 import { useOwning } from "./collection/context";
+import { amend, useSettings } from "./router";
 
 // What an empty search box shows. Browsing 988 sets answers "what did this set
 // hold" without a query, which paging 37,564 cards blindly would not.
 export function Explore({ catalog }: { catalog: Catalog }) {
-  const [code, setCode] = useState("");
-
-  // Above the view that uses it, so opening a set and coming back doesn't
-  // throw it away. Anything else navigated into wants the same.
-  const [filter, setFilter] = useState("");
+  // In the address, so a set survives the tab being left and the back button
+  // leaves it. Anything else navigated into wants the same.
+  const settings = useSettings();
+  const code = settings.get("set") ?? "";
+  const filter = settings.get("find") ?? "";
 
   return code ? (
-    <Printings catalog={catalog} code={code} onBack={() => setCode("")} />
+    <Printings
+      catalog={catalog}
+      code={code}
+      onBack={() => amend({ set: "" }, true)}
+    />
   ) : (
     <Sets
       catalog={catalog}
       filter={filter}
-      onFilter={setFilter}
-      onSet={setCode}
+      onFilter={(find) => amend({ find })}
+      onSet={(set) => amend({ set }, true)}
     />
   );
 }

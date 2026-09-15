@@ -1,15 +1,19 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CardRow } from "./CardRow";
 import { type Catalog, language } from "./catalog";
 import { Explore } from "./Explore";
+import { amend, useSettings } from "./router";
 
 // A cap on what one query collects, so a single letter doesn't gather every
 // card containing it. Rows past the fold cost nothing to have — see the CSS.
 const FOUND = 600;
 
 export function Search({ catalog }: { catalog: Catalog }) {
-  const [query, setQuery] = useState("");
-  const [lang, setLang] = useState("");
+  // In the address rather than in this component, which unmounts the moment
+  // another tab is opened and would otherwise take the search with it.
+  const settings = useSettings();
+  const query = settings.get("q") ?? "";
+  const lang = settings.get("lang") ?? "";
 
   // A few milliseconds per keystroke, so no debounce.
   const found = useMemo(
@@ -23,10 +27,13 @@ export function Search({ catalog }: { catalog: Catalog }) {
         <input
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => amend({ q: event.target.value })}
           placeholder="Search cards"
         />
-        <select value={lang} onChange={(event) => setLang(event.target.value)}>
+        <select
+          value={lang}
+          onChange={(event) => amend({ lang: event.target.value })}
+        >
           <option value="">Any language</option>
           {catalog.languages.map((code) => (
             <option key={code} value={code}>

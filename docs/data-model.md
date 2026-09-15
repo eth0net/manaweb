@@ -62,9 +62,11 @@ The model makes decks, binders and lists the same thing. The UI should hide it.
   That's why a deck references its container.
 - **Deck view** shows only designs carrying deck metadata; lists get their own
   view. Filtering on kind is the entire mechanism.
-- **Filters survive navigation.** Opening a set or a card and coming back
-  keeps what was typed, so view state lives above the view using it rather
-  than inside it.
+- **Filters survive navigation, because they are in the address.** What was
+  typed and what it was narrowed to say where you are, so they belong in the
+  query rather than in a component — one that unmounts the moment another tab
+  is opened, taking the search with it. Typing replaces the entry so the back
+  button is not a hundred keystrokes; opening a set is a step of its own.
 - **One app for phone and desktop**, not two designs and not a desktop layout
   that shrinks. Every layout decision is made for both at once.
 - Containers are an **opt-in organizational layer**. Default to a single
@@ -96,7 +98,14 @@ field, scanning and typing being one intent by two inputs.
 
 Routes settle before the bar does, because a shared deck link outlives any
 arrangement of tabs. `/cards`, `/collection/:container`, `/decks/:deck` and
-`/lists/:list` are the commitment; their order along the bottom is not.
+`/lists/:list` are the commitment; their order along the bottom is not. A set
+is `/cards?set=`, and a set deep enough to deserve `/cards/:set` is a decision
+to make when something links to one.
+
+**A tab's own button is two things.** From another tab it returns you where you
+left this one; from inside it, it takes you to the top. The name in the header
+is the way back to the default view. Neither survives a reload, which is when
+starting from the top is what anyone expects.
 
 **The bar is a bar only where a thumb reaches it.** On a laptop the same four
 destinations stand up as a rail down the left, in the same order: one

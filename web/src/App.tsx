@@ -12,7 +12,7 @@ import { IMPORT, Import, ImportStatus } from "./import/Import";
 import { attach } from "./import/runner";
 import { Nav } from "./Nav";
 import { useSession } from "./oauth/useSession";
-import { HOME, known, replace, tab, usePath } from "./router";
+import { HOME, known, Link, replace, tab, usePath } from "./router";
 import { Search } from "./Search";
 import { Soon } from "./Soon";
 import { useCatalog } from "./useCatalog";
@@ -45,8 +45,10 @@ export function App() {
     <main>
       <header>
         <h1>
-          <img src="/icon.svg" alt="" width="128" height="128" />
-          Manaweb
+          <Link to={HOME} className="mark">
+            <img src="/icon.svg" alt="" width="128" height="128" />
+            Manaweb
+          </Link>
         </h1>
         {load.status === "ready" && (
           <CatalogStatus status={status} loaded={load} />

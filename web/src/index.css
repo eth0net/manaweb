@@ -60,16 +60,21 @@ header {
 }
 
 h1 {
-  align-items: center;
-  display: flex;
   font-size: 1.25rem;
-  gap: 0.4rem;
   margin: 0;
 }
 
-/* The mark is decorative beside the name, and takes its own theme: it is an
-   image rather than markup, so nothing here colors it. */
-h1 img {
+.mark {
+  align-items: center;
+  color: inherit;
+  display: flex;
+  gap: 0.4rem;
+  text-decoration: none;
+}
+
+/* Decorative beside the name, and takes its own theme: it is an image rather
+   than markup, so nothing here colors it. */
+.mark img {
   height: 1.6em;
   width: 1.6em;
 }
