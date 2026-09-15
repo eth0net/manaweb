@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { landing, type Owned, type Stack, shown } from "../collection/cards";
-import { BYTES, type Held } from "../oauth/repo";
-import { drain, index, owed, PART, pack } from "./part";
+import { BYTES, type Held, type Result } from "../oauth/repo";
+import { drain, index, landed, owed, PART, pack } from "./part";
 import type { Receipt } from "./receipt";
 
 const NOW = "2026-09-15T00:00:00.000Z";
@@ -26,6 +26,18 @@ function many(count: number): Owned[] {
 
 function part(value: Receipt): Held<Receipt> {
   return { uri: `at://${DID}/app.manaweb.import/p1`, cid: "c1", value };
+}
+
+// What a PDS answers with: its own keys, one per write, in order. The counter
+// spans calls, because one repo never hands out a key twice.
+let minted = 0;
+
+function answered(writes: { action: string; rkey?: string }[]): Result[] {
+  return writes.map((one) => {
+    if (one.action === "delete") return {};
+    const key = one.rkey ?? `server${minted++}`;
+    return { uri: `at://${DID}/app.manaweb.card/${key}`, cid: `cid-${key}` };
+  });
 }
 
 function stacks(...values: Owned[]): Stack[] {
@@ -68,12 +80,7 @@ test("stacks at their ceilings cut a part short of its count", () => {
 });
 
 test("a drain writes a card for every entry and retires the part", () => {
-  const { writes } = drain(
-    part({ ...of, entries: many(3) }),
-    new Map(),
-    DID,
-    NOW,
-  );
+  const writes = drain(part({ ...of, entries: many(3) }), new Map(), NOW);
   expect(writes).toHaveLength(4);
   expect(writes.filter((one) => one.action === "create")).toHaveLength(3);
   expect(writes.at(-1)).toEqual({
@@ -85,38 +92,55 @@ test("a drain writes a card for every entry and retires the part", () => {
 
 test("an entry matching a card held joins it rather than starting one", () => {
   const held = stacks({ ...copy, quantity: 2 });
-  const { writes, landed } = drain(
+  const writes = drain(
     part({ ...of, entries: [{ ...copy, quantity: 3 }] }),
     index(held),
-    DID,
     NOW,
   );
 
   expect(writes[0]).toMatchObject({ action: "update", rkey: "held0" });
-  expect(landed[0]?.value.quantity).toBe(5);
-  expect(landed[0]?.uri).toBe(held[0]?.uri);
+  const wrote = landed(writes, answered(writes));
+  expect(wrote[0]?.value.quantity).toBe(5);
+});
+
+// A key from a client is that device's clock, and two of them collide.
+test("a create leaves the key to the server", () => {
+  const writes = drain(part({ ...of, entries: many(2) }), new Map(), NOW);
+  const made = writes.filter((one) => one.action === "create");
+  expect(made).toHaveLength(2);
+  expect(made.every((one) => !("rkey" in one) || !one.rkey)).toBe(true);
+});
+
+test("what landed is addressed by the answer, not by the plan", () => {
+  const writes = drain(part({ ...of, entries: many(2) }), new Map(), NOW);
+  const wrote = landed(writes, answered(writes));
+
+  expect(wrote).toHaveLength(2);
+  expect(wrote[0]?.uri).toMatch(/app\.manaweb\.card\/server\d+$/);
+  expect(wrote[1]?.uri).not.toBe(wrote[0]?.uri);
+});
+
+test("the part's own delete is not a card that landed", () => {
+  const writes = drain(part({ ...of, entries: many(3) }), new Map(), NOW);
+  expect(landed(writes, answered(writes))).toHaveLength(3);
 });
 
 // Joining is decided against the collection, not against the file, so a part
 // written weeks earlier lands on whatever is there when it drains.
 test("what an entry joins is decided when it drains, not when it packs", () => {
   const entries = [copy];
-  const alone = drain(part({ ...of, entries }), new Map(), DID, NOW);
-  const onto = drain(part({ ...of, entries }), index(stacks(copy)), DID, NOW);
+  const alone = drain(part({ ...of, entries }), new Map(), NOW);
+  const onto = drain(part({ ...of, entries }), index(stacks(copy)), NOW);
 
-  expect(alone.writes[0]?.action).toBe("create");
-  expect(onto.writes[0]?.action).toBe("update");
+  expect(alone[0]?.action).toBe("create");
+  expect(onto[0]?.action).toBe("update");
 });
 
 test("two entries of one stack become one record", () => {
-  const { writes } = drain(
-    part({ ...of, entries: [copy, copy] }),
-    new Map(),
-    DID,
-    NOW,
-  );
+  const writes = drain(part({ ...of, entries: [copy, copy] }), new Map(), NOW);
   expect(writes.filter((one) => one.action === "create")).toHaveLength(1);
-  expect(writes.filter((one) => one.action === "update")).toHaveLength(1);
+  expect(writes.filter((one) => one.action === "update")).toHaveLength(0);
+  expect((writes[0] as { value: Owned }).value.quantity).toBe(2);
 });
 
 test("what is owed is what the repo still holds", () => {
@@ -127,10 +151,9 @@ test("a card written a moment ago is what the next part joins", () => {
   const fresh = stacks({ ...copy, quantity: 4 })[0];
   if (!fresh) throw new Error("no stack");
 
-  const { writes } = drain(
+  const writes = drain(
     part({ ...of, entries: [copy] }),
     index([], [fresh]),
-    DID,
     NOW,
   );
   expect(writes[0]).toMatchObject({ action: "update", rkey: "held0" });
@@ -170,9 +193,10 @@ test("the total holds from the upload landing to the last part drained", () => {
     const [one, ...rest] = left;
     if (!one) break;
 
-    const { landed } = drain(one, index(records), DID, NOW);
+    const writes = drain(one, index(records), NOW);
     const by = new Map(records.map((held) => [held.uri, held]));
-    for (const made of landed) by.set(made.uri, made);
+    for (const made of landed(writes, answered(writes)))
+      by.set(made.uri, made);
 
     records = [...by.values()];
     left = rest;

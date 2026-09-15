@@ -2,6 +2,7 @@ import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useSyncExternalStore } from "react";
 import type { Owned, Stack } from "../collection/cards";
 import {
+  type Applied,
   applyWrites,
   BATCH,
   type Budget,
@@ -14,7 +15,7 @@ import {
   rkey,
   type Write,
 } from "../oauth/repo";
-import { drain, index, owed, PART, pack } from "./part";
+import { drain, index, landed, owed, PART, pack } from "./part";
 import { IMPORTED, type Receipt } from "./receipt";
 import { clear, type Job, load, save } from "./store";
 
@@ -201,9 +202,9 @@ async function upload(
 
   const taking = job.receipt ? [job.receipt] : job.parts.slice(0, room(job));
 
-  let budget: Budget;
+  let applied: Applied;
   try {
-    budget = await applyWrites(now, taking.map(part));
+    applied = await applyWrites(now, taking.map(part));
   } catch (failure) {
     await refused(job, mine, failure);
     return;
@@ -213,7 +214,8 @@ async function upload(
   else job.parts = job.parts.slice(taking.length);
 
   job.misses = 0;
-  job.dueAt = Date.now() + spacing(budget, taking.length * POINTS.create);
+  job.dueAt =
+    Date.now() + spacing(applied.budget, taking.length * POINTS.create);
   if (!(await keep(job, mine))) return;
 
   // Every part just written has to be found before it can be drained, and one
@@ -286,15 +288,10 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
   if (!one) return;
   announce({ at: "running", done, total, due: 0, quiet: false });
 
-  const { writes, landed } = drain(
-    one,
-    index(held, recent.values()),
-    now.did,
-    stamp(),
-  );
-  let budget: Budget;
+  const writes = drain(one, index(held, recent.values()), stamp());
+  let applied: Applied;
   try {
-    budget = await applyWrites(now, writes);
+    applied = await applyWrites(now, writes);
   } catch (failure) {
     // A part another device drained first is gone, and its cards with it. That
     // is the delete doing its work, not a failure to report.
@@ -307,14 +304,15 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
     return;
   }
 
+  const wrote = landed(writes, applied.results);
   holding(pending.slice(1));
-  for (const made of landed) recent.set(made.uri, made);
+  for (const made of wrote) recent.set(made.uri, made);
   job.misses = 0;
   job.total = total;
-  job.dueAt = Date.now() + spacing(budget, cost(writes));
+  job.dueAt = Date.now() + spacing(applied.budget, cost(writes));
   if (!(await keep(job, mine))) return;
 
-  report?.(landed);
+  report?.(wrote);
 
   if (stopping) {
     ticks(false);

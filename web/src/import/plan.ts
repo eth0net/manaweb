@@ -5,10 +5,10 @@ import { rkey } from "../oauth/repo";
 // One record the import writes, and whether the repo already holds it.
 export type Step = { rkey: string; value: Owned; held: boolean };
 
-// What an import comes to against the collection as it stands. A stack
-// matching one already there joins it, which is still a write but not a second
-// stack, and keys are picked here so a batch replayed after a lost answer
-// collides rather than duplicating.
+// What an import comes to against the collection as it stands, for the one
+// question asked before it starts: what this file does to the card count.
+// Nothing here is written — the drain decides that again, against whatever the
+// collection holds by then — so the keys are identity and reach no repo.
 export function plan(imported: Owned[], held: Stack[], at: string): Step[] {
   const open = held.map((one) => ({ key: rkey(one.uri), value: one.value }));
   const steps = new Map<string, Step>();

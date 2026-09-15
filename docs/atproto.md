@@ -65,6 +65,37 @@ why a second attempt at one cannot land. So a resume asks the PDS nothing, takes
 no lock, and chooses no key in advance — the three things the paced writer it
 replaces had to do.
 
+**Let the server pick record keys.** A TID is a millisecond clock plus five
+random bits of clock id, kept monotonic only within the process that mints it,
+and the reference implementation says of those bits that they are "not
+guaranteed to be collision resistant". Two devices writing in the same
+millisecond can therefore mint the same key, which fails one of their
+transactions outright. `prepare.ts` already falls back to a server-side
+`TID.next()` when a write carries no key, so omitting it puts one clock in
+charge; `applyWrites` answers with a `results` array parallel to the writes,
+carrying the uri and cid of each. Measured against the reference on 2026-09-15.
+
+**A write already tells you the repo's revision.** `applyWrites` returns
+`commit.rev` alongside those results, so a client knows the revision after its
+own writes without asking. What it cannot cheaply learn is the revision after
+someone else's: `com.atproto.sync.getLatestCommit` answers unauthenticated on
+`pds.e0n.sh` and is gated behind auth on `bsky.social`.
+
+**`listRecords` was never meant to answer "what changed".** Its parameters are
+`repo`, `collection`, `limit`, `cursor` and `reverse` — no revision, no time,
+and the `rkeyStart`/`rkeyEnd` of older versions are gone. The cursor is an rkey,
+so `reverse` plus a cursor does return only records sorting after it, but that
+is ordering rather than history: a collection keyed `literal:self` sorts
+nothing, an account migrated in by `importRepo` carries keys minted on another
+server's clock, and a process restarting with a backward clock can mint a key
+below one it already wrote. Useful as an optimization, never as the argument.
+
+The primitive with an actual argument behind it is
+`com.atproto.sync.getRepo?since=<rev>`, which returns a diff of blocks from that
+revision — what `rev` is for. It costs CAR and MST parsing in the browser, and
+it is one of the endpoints `bsky.social` gates, so it waits for a reason to pay
+that.
+
 `com.atproto.repo.importRepo` is not an escape hatch: it needs `ACCESS_FULL`
 with `repo:manage`, and a signed CAR file a browser client can't produce
 because the PDS holds the signing key.

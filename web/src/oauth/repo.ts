@@ -86,6 +86,14 @@ async function unwrap<T>(response: Response, nsid: string): Promise<T> {
   throw failure;
 }
 
+// Where a write landed, parallel to the writes that made it. A delete carries
+// nothing, so the array is read by position rather than searched.
+export type Result = { uri?: string; cid?: string };
+
+// What a call wrote and what the account has left. `rev` is the repo's revision
+// after it, which nothing asks a PDS for separately — see `docs/atproto.md`.
+export type Applied = { results: Result[]; rev?: string; budget: Budget };
+
 // What the PDS will still take, reported on every answer. Which of its buckets
 // the figure belongs to is not said and does not matter — see `docs/atproto.md`.
 export type Budget = { remaining: number; reset: number } | null;
@@ -166,7 +174,7 @@ export function put<T extends object>(
 export async function applyWrites(
   session: OAuthSession,
   writes: Write[],
-): Promise<Budget> {
+): Promise<Applied> {
   const nsid = "com.atproto.repo.applyWrites";
   const response = await send(session, nsid, {
     repo: session.did,
@@ -181,8 +189,16 @@ export async function applyWrites(
     })),
   });
 
-  await unwrap(response, nsid);
-  return budget(response);
+  const said = await unwrap<{
+    results?: Result[];
+    commit?: { rev?: string };
+  }>(response, nsid);
+
+  return {
+    results: said?.results ?? [],
+    rev: said?.commit?.rev,
+    budget: budget(response),
+  };
 }
 
 export function remove(

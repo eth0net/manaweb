@@ -31,13 +31,11 @@ client metadata document we serve. Our server never proxies a write.
 - **The cache is never what the import reads.** It decides whether a card joins
   a stack or starts one, and a record the cache has not heard of would become a
   second stack, so that path waits for the repo's own answer.
-- **Making the read itself cheap needs something we do not have.** A rev to
-  compare against would turn 84 requests into one, and there is no portable way
-  to ask for it: `com.atproto.sync.getLatestCommit` answers unauthenticated on
-  `pds.e0n.sh` and is gated behind auth on `bsky.social`, and whether an OAuth
-  session may call a sync method at all is unmeasured. Until that is settled the
-  real fix is the one the firehose section defers to Phase 3 — a read endpoint
-  returning a user's own records in one response.
+- **Making the read itself cheap needs something we do not have.** A revision to
+  compare against would turn 84 requests into one, and no way of asking for one
+  is portable — [`atproto.md`](atproto.md) has what each server answers. Until
+  that is settled the real fix is the one the firehose section defers to Phase 3:
+  a read endpoint returning a user's own records in one response.
 - **The PDS is the device-sync mechanism.** Device B reads what device A wrote,
   with nothing of ours in between.
 - Offline writes need a queue. `client_id` is tied to the deployment domain, so

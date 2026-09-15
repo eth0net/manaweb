@@ -1,4 +1,3 @@
-import { TID } from "@atproto/common-web";
 import {
   CARD,
   joins,
@@ -7,7 +6,13 @@ import {
   type Stack,
   stack,
 } from "../collection/cards";
-import { BYTES, type Held, rkey, type Write } from "../oauth/repo";
+import {
+  BYTES,
+  type Held,
+  type Result,
+  rkey,
+  type Write,
+} from "../oauth/repo";
 import { IMPORTED, type Receipt } from "./receipt";
 
 // A drain is the part's writes plus the one that retires the part, and
@@ -62,41 +67,47 @@ export function index(
 
 // One part retired: its cards and the part itself, in a single transaction.
 // The delete is what makes a second attempt fail rather than duplicate.
+//
+// No key is minted for a create. A record key from a client is that device's
+// clock, and two of them collide; the server's is one clock — `docs/atproto.md`.
 export function drain(
   part: Held<Receipt>,
   held: Map<string, Stack>,
-  did: string,
   at: string,
-): { writes: Write[]; landed: Stack[] } {
-  const found = new Map(held);
+): Write[] {
   const writes: Write[] = [];
-  const landed: Stack[] = [];
-  let key = "";
+  // Where each stack's write already sits, so a second entry of one stack
+  // amends it rather than addressing a record that has no key yet.
+  const queued = new Map<string, number>();
 
   for (const entry of part.value.entries ?? []) {
     const one = entry as Owned;
-    const into = found.get(stack(one));
-    const record = into?.value;
+    const key = stack(one);
+    const already = queued.get(key);
+    const write = already === undefined ? undefined : writes[already];
 
-    if (into && record && joins(record, one)) {
-      const value = merge(record, one, at);
-      const next = { ...into, value };
+    if (already !== undefined && write && "value" in write) {
+      const was = write.value as Owned;
+      if (joins(was, one)) {
+        writes[already] = { ...write, value: merge(was, one, at) };
+        continue;
+      }
+    }
+
+    const into = held.get(key);
+    if (already === undefined && into && joins(into.value, one)) {
+      queued.set(key, writes.length);
       writes.push({
         action: "update",
         collection: CARD,
         rkey: rkey(into.uri),
-        value,
+        value: merge(into.value, one, at),
       });
-      landed.push(next);
-      found.set(stack(value), next);
       continue;
     }
 
-    key = TID.nextStr(key);
-    const next = { uri: `at://${did}/${CARD}/${key}`, cid: "", value: one };
-    writes.push({ action: "create", collection: CARD, rkey: key, value: one });
-    landed.push(next);
-    found.set(stack(one), next);
+    queued.set(key, writes.length);
+    writes.push({ action: "create", collection: CARD, value: one });
   }
 
   writes.push({
@@ -104,7 +115,25 @@ export function drain(
     collection: IMPORTED,
     rkey: rkey(part.uri),
   });
-  return { writes, landed };
+  return writes;
+}
+
+// What a drain wrote, as the repo now addresses it. Results come back parallel
+// to the writes, so a delete is skipped by position rather than by searching.
+export function landed(writes: Write[], results: Result[]): Stack[] {
+  const found: Stack[] = [];
+
+  writes.forEach((one, at) => {
+    const said = results[at];
+    if (one.action === "delete" || !said?.uri) return;
+    found.push({
+      uri: said.uri,
+      cid: said.cid ?? "",
+      value: one.value as Owned,
+    });
+  });
+
+  return found;
 }
 
 // What a part still owes, which is what progress is counted in: an import is
