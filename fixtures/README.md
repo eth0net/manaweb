@@ -16,7 +16,7 @@ a path it exercises rather than for itself.
 |---|---|---|
 | `liliana.mnwb.me` | `did:plc:rk2rhs4yvucutbrd2aoi5gci` | primary author: a real collection and published decks |
 | `jace.mnwb.me` | | forks everything, so `forkedFrom` is always exercised |
-| `nissa.mnwb.me` | | hoards. Thousands of entries, for the import ceiling |
+| `nissa.mnwb.me` | `did:plc:exdeooh3bfnsmzi36okzo6zw` | hoards. Thousands of entries, for the import ceiling |
 | `squee.mnwb.me` | | writes and deletes constantly, and comes back regardless |
 | `norin.mnwb.me` | | deactivates and reactivates at any provocation |
 | `teferi.mnwb.me` | | writes, then goes quiet past the replay window |
