@@ -225,17 +225,19 @@ So an import is not kept alive. It is made cheap to lose:
 - **A short tick reads the clock**, rather than one long timer being trusted to
   fire. Chrome floors a hidden tab's wake-ups at one a minute, which costs a
   minute; a seven-minute timer fires whenever it likes after a sleep.
-- **The stored job is the truth and memory is only what gets rendered**, so the
-  runner reads it, writes one batch, and writes it back, inside a lock held for
-  that step alone. Two tabs then interleave safely rather than needing one of
-  them to win.
+- **The repo is the truth, and the device holds only what has not reached it
+  yet.** Once the parts are uploaded there is no local state worth protecting:
+  what is left to write is what the repo still lists, so clearing the browser,
+  changing device or signing in somewhere new all resume the same import.
 - **Resumption is a consequence of opening the app**, not of finding the page
   that started it. Which also means the runner cannot live in a component: a
   route change would end the import.
 
 The daily ceiling makes this the normal case rather than the exception. At
 11,666 creates a day a large collection spans days, so an import surviving a
-browser restart is the ordinary path through the feature.
+browser restart is the ordinary path through the feature. What that costs a
+person is now only whether their cards have finished sorting themselves out,
+rather than whether their collection made it off the device at all.
 
 **Elapsed time is not attended time.** An hour's budget is eight `applyWrites`
 calls, so what an import actually needs is the app open for the seconds those

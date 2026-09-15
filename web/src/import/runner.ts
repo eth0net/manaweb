@@ -1,25 +1,28 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useCallback, useSyncExternalStore } from "react";
-import { CARD, type Owned } from "../collection/cards";
+import type { Stack } from "../collection/cards";
 import {
   applyWrites,
   BATCH,
   type Budget,
   BYTES,
-  create,
   type Held,
+  list,
   POINTS,
-  query,
   Refused,
+  remove,
+  rkey,
   type Write,
 } from "../oauth/repo";
-import type { Step } from "./plan";
+import { drain, index, owed, PART, pack } from "./part";
 import { IMPORTED, type Receipt } from "./receipt";
 import { clear, type Job, load, save } from "./store";
 
-// A create costs 3 points of an hourly 5,000, so 1,666 fit in an hour. Nothing
-// paces off this: it is what an import is quoted at before one has run.
-export const HOURLY = Math.floor(5000 / POINTS.create);
+// A part costs its cards plus the write that retires it, so eight of them fit
+// in an hourly 5,000 and carry 1,592 cards between them. Nothing paces off
+// this: it is what an import is quoted at before one has run.
+const DRAIN = PART * POINTS.create + POINTS.delete;
+export const HOURLY = Math.floor(5000 / DRAIN) * PART;
 
 // Deadlines are read rather than slept through, because a browser honors no
 // timer it doesn't feel like honoring. A tick this short costs nothing and
@@ -38,6 +41,9 @@ const LOCK = "manaweb-import";
 
 export type State =
   | { at: "none" }
+  // The upload is the only part of an import held on one device, so it says so
+  // separately from the hours of writing that follow it.
+  | { at: "uploading"; done: number; total: number }
   | {
       at: "running";
       done: number;
@@ -52,10 +58,22 @@ export type State =
 
 let state: State = { at: "none" };
 let session: OAuthSession | null = null;
+// The collection as it stands, which the drain needs to know whether a card
+// joins a stack or starts one. Null until the first read answers.
+let holdings: (() => Stack[] | null) | null = null;
 // What to do with records once they are in the repo. The collection takes
 // them, so a view that would otherwise re-read the lot learns them a batch at
 // a time.
-let report: ((written: Held<Owned>[]) => void) | null = null;
+let report: ((written: Stack[]) => void) | null = null;
+// Parts the repo holds, newest read last. The repo is the truth and this is
+// what saves asking it again between every write.
+let pending: Held<Receipt>[] = [];
+// What this runner wrote and the collection has not rendered back yet. Parts
+// run back to back, and React state does not update between two of them.
+let recent = new Map<string, Stack>();
+// The instant the current wait ends, mirrored out of the stored job so a burst
+// can tell whether the next call is owed one.
+let waiting = 0;
 let ticking: ReturnType<typeof setInterval> | null = null;
 let stepping = false;
 // Discarding cannot reach into a call already out, so a step that comes back to
@@ -119,7 +137,9 @@ async function tick(): Promise<void> {
 }
 
 function due(): boolean {
-  return ticking !== null && state.at === "running" && state.due <= Date.now();
+  if (ticking === null) return false;
+  if (state.at !== "uploading" && state.at !== "running") return false;
+  return waiting <= Date.now();
 }
 
 // Two tabs both ticking is fine as long as one writes at a time, which is what
@@ -151,36 +171,97 @@ async function step(): Promise<void> {
     return;
   }
 
-  if (job.done >= job.steps.length) {
-    if (!(await filed(now, job, mine))) return;
+  waiting = job.dueAt;
+  if (job.receipt || job.parts.length > 0) return upload(now, job, mine);
+  return sink(now, job, mine);
+}
+
+// The whole file into the repo, receipt first so a part is never an orphan.
+// Parts are few and large, so what fits in one call is measured, not counted.
+async function upload(
+  now: OAuthSession,
+  job: Job,
+  mine: number,
+): Promise<void> {
+  announce({ at: "uploading", done: sent(job), total: job.total });
+  if (Date.now() < job.dueAt) return;
+
+  const taking = job.receipt ? [job.receipt] : job.parts.slice(0, room(job));
+
+  let budget: Budget;
+  try {
+    budget = await applyWrites(now, taking.map(part));
+  } catch (failure) {
+    await refused(job, mine, failure);
+    return;
+  }
+
+  if (job.receipt) job.receipt = null;
+  else job.parts = job.parts.slice(taking.length);
+
+  job.misses = 0;
+  job.dueAt = Date.now() + spacing(budget, taking.length * POINTS.create);
+  if (!(await keep(job, mine))) return;
+
+  // Every part just written has to be found before it can be drained, and one
+  // listing covers however many calls the upload took.
+  if (job.parts.length === 0) pending = [];
+  announce({ at: "uploading", done: sent(job), total: job.total });
+}
+
+// No key: a part is read back by listing, never addressed, so the server picks.
+function part(value: Receipt): Write {
+  return { action: "create", collection: IMPORTED, value };
+}
+
+function room(job: Job): number {
+  let bytes = 0;
+  let taken = 0;
+
+  for (const one of job.parts.slice(0, BATCH)) {
+    bytes += JSON.stringify(one).length + 128;
+    if (bytes > BYTES * 0.85 && taken > 0) break;
+    taken += 1;
+  }
+  return taken;
+}
+
+// How far along, from whichever side of the import still holds the work: the
+// parts not uploaded before they are, and what the repo owes after.
+function sent(job: Job): number {
+  const left =
+    job.receipt || job.parts.length > 0
+      ? job.parts.reduce((sum, one) => sum + size(one), 0)
+      : owed(pending);
+  return Math.max(job.total - left, 0);
+}
+
+function size(one: Receipt): number {
+  return one.entries?.length ?? 0;
+}
+
+// Parts into cards, one transaction each. The repo says what is left, so this
+// resumes on a device that never saw the file.
+async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
+  if (pending.length === 0 && !(await refresh(now))) return;
+
+  if (pending.length === 0) {
     await clear(now.did);
     ticks(false);
-    announce({ at: "done", total: job.steps.length });
+    announce({ at: "done", total: job.total });
     return;
   }
 
-  const total = job.steps.length;
-  const batch = job.steps
-    .slice(job.done, job.done + BATCH)
-    .slice(0, fits(job));
+  const held = holdings?.();
+  if (!held) return;
 
-  // A call whose answer was lost had either committed or not, and only the
-  // record it would create can say which.
-  if (job.pending) {
-    const seen = await landed(now, batch);
-    if (seen === null) return;
-    if (seen) job.done += batch.length;
-    job.pending = false;
-    if (await keep(job, mine)) {
-      announce({ at: "running", done: job.done, total, due: 0, quiet: false });
-    }
-    return;
-  }
+  const total = Math.max(job.total, owed(pending));
+  const done = total - owed(pending);
 
   if (Date.now() < job.dueAt) {
     announce({
       at: "running",
-      done: job.done,
+      done,
       total,
       due: job.dueAt,
       quiet: job.misses >= QUIET,
@@ -188,57 +269,62 @@ async function step(): Promise<void> {
     return;
   }
 
-  announce({ at: "running", done: job.done, total, due: 0, quiet: false });
-  job.pending = true;
-  if (!(await keep(job, mine))) return;
+  const [one] = pending;
+  if (!one) return;
+  announce({ at: "running", done, total, due: 0, quiet: false });
 
+  const { writes, landed } = drain(
+    one,
+    index(held, recent.values()),
+    now.did,
+    stamp(),
+  );
   let budget: Budget;
   try {
-    budget = await applyWrites(now, CARD, batch.map(write));
+    budget = await applyWrites(now, writes);
   } catch (failure) {
-    await refused(job, mine, failure, total);
+    // A part another device drained first is gone, and its cards with it. That
+    // is the delete doing its work, not a failure to report.
+    const gone =
+      named(failure) &&
+      (await refresh(now)) &&
+      !pending.some((other) => other.uri === one.uri);
+    if (gone) return;
+    await refused(job, mine, failure);
     return;
   }
 
-  job.done += batch.length;
-  job.pending = false;
+  pending = pending.slice(1);
+  for (const made of landed) recent.set(made.uri, made);
   job.misses = 0;
-  job.dueAt = Date.now() + spacing(budget, batch);
+  job.total = total;
+  job.dueAt = Date.now() + spacing(budget, cost(writes));
   if (!(await keep(job, mine))) return;
 
-  report?.(batch.map((one) => written(now.did, one)));
+  report?.(landed);
 
   if (stopping) {
     ticks(false);
-    announce({ at: "stopped", done: job.done, total });
+    announce({ at: "stopped", done: total - owed(pending), total });
     return;
   }
   announce({
     at: "running",
-    done: job.done,
+    done: total - owed(pending),
     total,
     due: job.dueAt,
     quiet: false,
   });
 }
 
-// The receipt is the only thing that remembers this file was taken, so a
-// refusal on the last write of all is worth coming back for.
-async function filed(
-  now: OAuthSession,
-  job: Job,
-  mine: number,
-): Promise<boolean> {
-  if (!job.receipt) return true;
-
+// What the repo still holds of every import, which is the only thing that says
+// how much is left. False where the read failed, which answers nothing.
+async function refresh(now: OAuthSession): Promise<boolean> {
   try {
-    await create(now, IMPORTED, job.receipt);
+    const found = await list<Receipt>(now, IMPORTED);
+    pending = found.filter((one) => size(one.value) > 0);
     return true;
-  } catch (failure) {
-    // The cards all landed, so a PDS refusing the receipt outright ends the
-    // import without one rather than ending it in failure.
-    if (named(failure)) return true;
-    await refused(job, mine, failure, job.steps.length);
+  } catch {
     return false;
   }
 }
@@ -246,13 +332,9 @@ async function filed(
 // A refusal is an answer and says when to come back. Anything that isn't an
 // answer at all is the network, which is worth waiting out; anything the PDS
 // named is a verdict, which is not.
-async function refused(
-  job: Job,
-  mine: number,
-  failure: unknown,
-  total: number,
-) {
-  job.pending = false;
+async function refused(job: Job, mine: number, failure: unknown) {
+  const total = job.total;
+  const done = sent(job);
 
   // A refusal is an answer and carries its own wait, so it is never the end of
   // an import however many of them arrive.
@@ -260,13 +342,7 @@ async function refused(
     job.dueAt = Date.now() + failure.after;
     job.misses = 0;
     if (await keep(job, mine)) {
-      announce({
-        at: "running",
-        done: job.done,
-        total,
-        due: job.dueAt,
-        quiet: false,
-      });
+      announce({ at: "running", done, total, due: job.dueAt, quiet: false });
     }
     return;
   }
@@ -275,7 +351,7 @@ async function refused(
     job.paused = true;
     if (await keep(job, mine)) {
       ticks(false);
-      announce({ at: "failed", done: job.done, total, why: reason(failure) });
+      announce({ at: "failed", done, total, why: reason(failure) });
     }
     return;
   }
@@ -286,7 +362,7 @@ async function refused(
   if (await keep(job, mine)) {
     announce({
       at: "running",
-      done: job.done,
+      done,
       total,
       due: job.dueAt,
       quiet: job.misses >= QUIET,
@@ -297,53 +373,13 @@ async function refused(
 // What the PDS says it will still take, or nothing to wait for where it reports
 // no limit at all. Its figure is points against whichever bucket is tightest,
 // so a batch that fits inside what is left needs no pause before it.
-function spacing(budget: Budget, batch: Step[]): number {
+function spacing(budget: Budget, cost: number): number {
   if (!budget) return 0;
-  return budget.remaining > cost(batch)
-    ? 0
-    : Math.max(budget.reset - Date.now(), 0);
+  return budget.remaining > cost ? 0 : Math.max(budget.reset - Date.now(), 0);
 }
 
-function cost(batch: Step[]): number {
-  return batch.reduce(
-    (sum, one) => sum + (one.held ? POINTS.update : POINTS.create),
-    0,
-  );
-}
-
-// The body limit binds before the count does once stacks carry notes, tags and
-// a history, so the batch is whatever fits under both.
-function fits(job: Job): number {
-  let bytes = 0;
-  let taken = 0;
-
-  for (const one of job.steps.slice(job.done, job.done + BATCH)) {
-    bytes += JSON.stringify(one.value).length + one.rkey.length + 128;
-    if (bytes > BYTES * 0.9 && taken > 0) break;
-    taken += 1;
-  }
-  return taken;
-}
-
-// Whether the batch in doubt was written. Null where asking failed, which is
-// not an answer either way and leaves the doubt for the next tick.
-async function landed(
-  now: OAuthSession,
-  batch: Step[],
-): Promise<boolean | null> {
-  const made = batch.find((one) => !one.held);
-  if (!made) return false;
-
-  try {
-    await query(now, "com.atproto.repo.getRecord", {
-      repo: now.did,
-      collection: CARD,
-      rkey: made.rkey,
-    });
-    return true;
-  } catch (failure) {
-    return named(failure) ? false : null;
-  }
+function cost(writes: Write[]): number {
+  return writes.reduce((sum, one) => sum + POINTS[one.action], 0);
 }
 
 function named(failure: unknown): boolean {
@@ -354,69 +390,95 @@ function reason(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
 }
 
-// A step as the repo now holds it. The cid is the one thing a write knows and
-// a plan does not, and nothing local reads it.
-function written(did: string, step: Step): Held<Owned> {
-  return {
-    uri: `at://${did}/${CARD}/${step.rkey}`,
-    cid: "",
-    value: step.value,
-  };
-}
-
-function write(step: Step): Write {
-  return {
-    action: step.held ? "update" : "create",
-    rkey: step.rkey,
-    value: step.value,
-  };
+function stamp(): string {
+  return new Date().toISOString();
 }
 
 // Adopts whatever the last visit left and carries on with it, so an import
 // resumes because the app opened rather than because a page was found.
 export async function attach(
   now: OAuthSession | null,
-  onWritten?: (written: Held<Owned>[]) => void,
+  stacks: () => Stack[] | null,
+  onWritten?: (written: Stack[]) => void,
 ): Promise<void> {
   session = now;
+  holdings = stacks;
   report = onWritten ?? null;
   if (!now) {
+    pending = [];
+    recent = new Map();
     ticks(false);
     announce({ at: "none" });
     return;
   }
 
-  const job = await load(now.did);
-  if (!job) return;
-
-  const total = job.steps.length;
-  if (job.paused) {
-    announce({ at: "stopped", done: job.done, total });
+  // Anything not still waiting to be uploaded is in the repo, so that is what
+  // says how much is left — including for an import this device never saw.
+  const stored = await load(now.did);
+  if (!stored?.receipt && !stored?.parts.length && !(await refresh(now))) {
     return;
   }
 
-  announce({
-    at: "running",
-    done: job.done,
-    total,
-    due: job.dueAt,
-    quiet: job.misses >= QUIET,
-  });
+  const job = stored ?? found(now.did);
+  if (!job) return;
+  if (!stored) await save(job);
+
+  // A job outliving its parts is one that finished somewhere else.
+  if (!job.receipt && job.parts.length === 0 && pending.length === 0) {
+    await clear(now.did);
+    announce({ at: "done", total: job.total });
+    return;
+  }
+
+  waiting = job.dueAt;
+  announce(resumed(job));
+  if (job.paused) return;
   ticks(true);
   void tick();
 }
 
-export async function begin(steps: Step[], receipt: Receipt): Promise<void> {
-  if (!session || steps.length === 0) return;
+function found(did: string): Job | null {
+  if (pending.length === 0) return null;
+  return {
+    did,
+    receipt: null,
+    parts: [],
+    total: owed(pending),
+    dueAt: 0,
+    misses: 0,
+    paused: false,
+  };
+}
+
+function resumed(job: Job): State {
+  const done = sent(job);
+  if (job.paused) return { at: "stopped", done, total: job.total };
+  if (job.receipt || job.parts.length > 0) {
+    return { at: "uploading", done, total: job.total };
+  }
+  return {
+    at: "running",
+    done,
+    total: job.total,
+    due: job.dueAt,
+    quiet: job.misses >= QUIET,
+  };
+}
+
+export async function begin(
+  stacks: Parameters<typeof pack>[0],
+  receipt: Receipt,
+): Promise<void> {
+  if (!session || stacks.length === 0) return;
   stopping = false;
+  pending = [];
 
   const job: Job = {
     did: session.did,
-    steps,
     receipt,
-    done: 0,
+    parts: pack(stacks, receipt),
+    total: stacks.length,
     dueAt: 0,
-    pending: false,
     misses: 0,
     paused: false,
   };
@@ -429,19 +491,13 @@ export async function begin(steps: Step[], receipt: Receipt): Promise<void> {
     announce({
       at: "failed",
       done: 0,
-      total: steps.length,
+      total: job.total,
       why: reason(failure),
     });
     return;
   }
 
-  announce({
-    at: "running",
-    done: 0,
-    total: steps.length,
-    due: 0,
-    quiet: false,
-  });
+  announce({ at: "uploading", done: 0, total: job.total });
   ticks(true);
   void tick();
 }
@@ -457,8 +513,8 @@ export async function carryOn(): Promise<void> {
   await save(job);
   announce({
     at: "running",
-    done: job.done,
-    total: job.steps.length,
+    done: sent(job),
+    total: job.total,
     due: job.dueAt,
     quiet: false,
   });
@@ -469,7 +525,7 @@ export async function carryOn(): Promise<void> {
 export async function halt(): Promise<void> {
   stopping = true;
   ticks(false);
-  if (state.at === "running") {
+  if (state.at === "running" || state.at === "uploading") {
     announce({ at: "stopped", done: state.done, total: state.total });
   }
 
@@ -481,15 +537,29 @@ export async function halt(): Promise<void> {
 
   job.paused = true;
   await save(job);
-  announce({ at: "stopped", done: job.done, total: job.steps.length });
 }
 
+// Gives up the import, and the parts with it: left in the repo they would
+// carry on filling the collection from a file nobody wants any more.
 export async function drop(): Promise<void> {
   era += 1;
   stopping = false;
   ticks(false);
-  if (session) await clear(session.did);
+  const now = session;
   announce({ at: "none" });
+  if (!now) return;
+
+  await clear(now.did);
+  const left = pending;
+  pending = [];
+  recent = new Map();
+  for (const one of left) {
+    try {
+      await remove(now, IMPORTED, rkey(one.uri));
+    } catch {
+      // A part already drained, or a PDS that will refuse the next one too.
+    }
+  }
 }
 
 export function useImport(): State {

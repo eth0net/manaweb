@@ -38,7 +38,9 @@ two windows: `repo-write-hour` 5,000 points and `repo-write-day` 35,000, where
 a create costs 3 points. So **1,666 creates an hour, 11,666 a day**.
 
 A 10,000-*stack* import is therefore about six hours and 86% of the day's
-budget.
+budget. A drain pays one point more than that: 199 creates and the delete that
+retires the part come to 598, so eight parts fit in an hour and carry 1,592
+stacks between them.
 
 **Stacks are 70% of cards, measured.** An 11,839-card collection across two
 ManaBox binders came to 8,321 stacks: five hours and 71% of a day. The earlier
@@ -51,16 +53,17 @@ per copy, and as the thing that stops a re-import duplicating what is there.
 So coarser records are not forced, but import is a resumable background job
 that has to be honest about taking hours.
 
-**Resumption picks the record keys.** A batch whose answer is lost leaves the
-client unable to say whether the PDS committed it, and `applyWrites` is one
-transaction, so the question is per batch rather than per record. Letting the
-server assign keys makes a replay silently duplicate every stack in it;
-assigning them here makes the replay fail instead, because a create of a key
-already present refuses the whole call. So the plan is written down with its
-keys before anything is sent, and a resume asks after the first record its next
-batch would create: present means that batch landed, absent means it did not.
-One `getRecord` settles it, and only the batch a resume begins on is ever in
-doubt.
+**The upload is not paced at all.** 8,321 stacks pack into 42 parts, 1.89MB and
+129 points, which is three calls and a few seconds. What takes hours is turning
+those parts into cards, and by then the collection is in the repo, replicated
+and readable. The ceiling stopped being what a person waits for and became what
+the app catches up on.
+
+**A lost answer needs no investigation.** Draining a part is one transaction
+that retires the part as it writes, and [`data-model.md`](data-model.md) covers
+why a second attempt at one cannot land. So a resume asks the PDS nothing, takes
+no lock, and chooses no key in advance — the three things the paced writer it
+replaces had to do.
 
 `com.atproto.repo.importRepo` is not an escape hatch: it needs `ACCESS_FULL`
 with `repo:manage`, and a signed CAR file a browser client can't produce

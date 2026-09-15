@@ -110,12 +110,15 @@ backend:
   Note there is **no prices bulk file** — prices exist only as fields inside
   card objects, so a faster price cadence has no cheap mechanism. Cadence is an
   open question for Phase 2.
-- **Import speed is the Phase 0 constraint.** A PDS allows 1,666 record creates
-  an hour and 11,666 a day, hardcoded rather than configurable (`applyWrites`
-  caps at 200 per call and is charged per write; a create costs 3 of an hourly
-  5,000-point budget). Stacks measured at 70% of cards, so 11,839 cards is
-  8,321 records and five hours. `importRepo` can't shortcut it. Elapsed time is
-  not attended time — see `docs/atproto.md` and `docs/architecture.md`.
+- **Import speed is the Phase 0 constraint, but not the upload's.** A PDS
+  allows 1,666 record creates an hour and 11,666 a day, hardcoded rather than
+  configurable (`applyWrites` caps at 200 per call and is charged per write; a
+  create costs 3 of an hourly 5,000-point budget). Stacks measured at 70% of
+  cards, so 11,839 cards is 8,321 records and five hours. A file therefore
+  lands as `app.manaweb.import` parts first — 42 of them, 1.89MB, three calls —
+  and drains into cards afterwards. `importRepo` can't shortcut either.
+  Elapsed time is not attended time — see `docs/atproto.md` and
+  `docs/architecture.md`.
 - Collection entries reference `scryfall_id` (exact print), not `oracle_id` —
   we track specific physical cards (set/collector number/finish), same as
   ManaBox.

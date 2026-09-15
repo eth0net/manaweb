@@ -4,7 +4,7 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "An import, holding what it has left to write. No entries means finished.",
+      "description": "An import: the file it took, or a part of it still to be written.",
       "key": "tid",
       "record": {
         "type": "object",
@@ -12,7 +12,7 @@
         "properties": {
           "entries": {
             "type": "array",
-            "maxLength": 200,
+            "maxLength": 199,
             "items": { "type": "ref", "ref": "#entry" },
             "description": "A sanity bound, not a promise: the writer packs by bytes."
           },

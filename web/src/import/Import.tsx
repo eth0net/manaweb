@@ -47,6 +47,7 @@ function say(state: Exclude<State, { at: "none" }>): string {
   if (state.at === "done") return `Import finished, ${total} records`;
 
   const done = state.done.toLocaleString();
+  if (state.at === "uploading") return `Uploading ${total} records`;
   if (state.at === "running") return `Importing ${done} of ${total} records`;
   return `Import stopped at ${done} of ${total} records`;
 }
@@ -104,13 +105,15 @@ export function Import({
     });
   }
 
+  // The file goes to the repo as the file, not as the plan: what each of its
+  // stacks joins is decided when the card is written, however much later.
   function start(taking: Taken, weight: Weight) {
-    void begin(steps ?? [], {
+    void begin(taking.got.stacks, {
       source: taking.format.name,
       file: taking.file,
       digest: taking.digest,
       cards: weight.adding,
-      stacks: weight.records,
+      stacks: taking.got.stacks.length,
       createdAt: new Date().toISOString(),
     });
   }
@@ -151,8 +154,10 @@ export function Import({
             {weight.adding === 1 ? "" : "s"}
           </p>
           <p className="quiet">
-            Read as {found.format.name}, as {counts(weight)}, which takes{" "}
-            {about(weight.records)} at the rate a PDS allows.
+            Read as {found.format.name}, as {counts(weight)}. The file goes to
+            your repository in seconds. Becoming cards there takes{" "}
+            {about(found.got.stacks.length)} of write budget, and carries on
+            whenever the app is open.
           </p>
 
           {already && <p className="warn">{recalled(already.value)}</p>}
@@ -203,6 +208,18 @@ function Job({
     );
   }
 
+  if (state.at === "uploading") {
+    return (
+      <>
+        <p className="tally">Sending {state.total.toLocaleString()} records</p>
+        <p className="quiet">
+          Going to your repository whole. Nothing is a card yet, and closing
+          this before it finishes is the one thing that loses the file.
+        </p>
+      </>
+    );
+  }
+
   return (
     <>
       <p className="tally">
@@ -214,7 +231,7 @@ function Job({
           {state.quiet
             ? "Your PDS has stopped answering. Nothing is lost and it keeps trying."
             : state.due > Date.now()
-              ? `Waiting on the write budget until ${clock(state.due)}. It carries on wherever you go in the app, and picks up here next time if you close it.`
+              ? `Waiting on the write budget until ${clock(state.due)}. Your repository already holds the file, so this is it becoming cards — on any device you sign in to, whether or not it is this one.`
               : "Writing."}
         </p>
       )}

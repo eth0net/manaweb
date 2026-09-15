@@ -1,4 +1,3 @@
-import type { Step } from "./plan";
 import type { Receipt } from "./receipt";
 
 // An import as it stands, so a closed tab picks it up rather than starting
@@ -7,18 +6,18 @@ import type { Receipt } from "./receipt";
 const DATABASE = "manaweb-import";
 const STORE = "job";
 
-// Whose repo it is writing to, what it planned, and how much of it landed.
-// `dueAt` is the instant a wait ends rather than its length, for the reason in
-// `docs/architecture.md`; `pending` marks a call whose answer was never seen,
-// which is the only thing a resume has to investigate.
+// Whose repo it is writing to, and the only part of an import that is not in
+// that repo yet. `dueAt` is the instant a wait ends rather than its length, for
+// the reason in `docs/architecture.md`.
 export type Job = {
   did: string;
-  steps: Step[];
-  // Filed once the last card lands, so it outlives the tab that planned it.
-  receipt?: Receipt;
-  done: number;
+  // Written first, so a part found without one belongs to an upload cut short.
+  receipt: Receipt | null;
+  // Parts the repo does not hold. This empties in seconds, and what is left of
+  // the import after it does is readable from any device.
+  parts: Receipt[];
+  total: number;
   dueAt: number;
-  pending: boolean;
   misses: number;
   paused: boolean;
 };

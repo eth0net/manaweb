@@ -63,6 +63,9 @@ export type Holdings = {
   // Folds in records another part of the app wrote, so a long import fills the
   // collection in as it lands rather than at the end.
   landed: (stacks: Stack[]) => void;
+  // The stacks as they stand, for a caller outside React that must not wait for
+  // a render to see them. Null until the first read answers.
+  snapshot: () => Stack[] | null;
 };
 
 // The lexicon's ceilings on one stack: lots recorded, copies held, tags, the
@@ -205,6 +208,14 @@ export function useCollection(
       read.current++;
     };
   }, [reload]);
+
+  // Read by the import, which decides whether a card joins a stack or starts
+  // one and cannot be re-rendered into knowing.
+  const current = useRef<Stack[] | null>(null);
+  useEffect(() => {
+    current.current = ready ? held : null;
+  }, [held, ready]);
+  const snapshot = useCallback(() => current.current, []);
 
   const landed = useCallback((written: Stack[]) => {
     if (written.length === 0) return;
@@ -367,6 +378,7 @@ export function useCollection(
     unfile,
     reload,
     landed,
+    snapshot,
   };
 }
 

@@ -35,10 +35,10 @@ business.
 
 **A local importer is a power-user option, not a way out of the ceiling.** A
 CLI reading a ManaBox CSV would still need a live session and would still write
-at 1,666 records an hour — it buys a connection that holds for five hours
-rather than a phone's. Worth having once step 6's `goat` recipes exist, and the
-same shape; not worth building first, because almost nobody will leave the site
-or the PWA to import.
+at 1,666 records an hour. It bought a connection that holds for five hours
+rather than a phone's, and parts took even that away: the browser has the file
+in the repo before anyone could open a terminal. Worth having once step 6's
+`goat` recipes exist; not worth building first.
 
 ## Phase 1 — Scanner
 

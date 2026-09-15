@@ -20,13 +20,14 @@ export const BYTES = 1_000_000;
 // What each write costs against the account's hourly and daily budgets. The
 // call is charged the sum over its writes, so a batch buys round-trips and
 // atomicity rather than headroom.
-export const POINTS = { create: 3, update: 2 };
+export const POINTS = { create: 3, update: 2, delete: 1 };
 
-export type Write = {
-  action: "create" | "update";
-  rkey: string;
-  value: object;
-};
+// Each write names its own collection, so one transaction can write records of
+// one type and retire a record of another.
+export type Write =
+  | { action: "create"; collection: string; rkey?: string; value: object }
+  | { action: "update"; collection: string; rkey: string; value: object }
+  | { action: "delete"; collection: string; rkey: string };
 
 // A refusal that says when to come back, which a paced job needs and a single
 // write can ignore.
@@ -160,21 +161,23 @@ export function put<T extends object>(
   });
 }
 
-// Creates and updates together, which is what makes an import one call per
-// two hundred stacks rather than one per stack.
+// Writes of any kind, across any collections, as one transaction. The whole
+// call is charged before either cap refuses it.
 export async function applyWrites(
   session: OAuthSession,
-  collection: string,
   writes: Write[],
 ): Promise<Budget> {
   const nsid = "com.atproto.repo.applyWrites";
   const response = await send(session, nsid, {
     repo: session.did,
-    writes: writes.map(({ action, rkey, value }) => ({
-      $type: `com.atproto.repo.applyWrites#${action}`,
-      collection,
-      rkey,
-      value: { $type: collection, ...value },
+    writes: writes.map((one) => ({
+      $type: `com.atproto.repo.applyWrites#${one.action}`,
+      collection: one.collection,
+      // Omitted on a create, which is what leaves the key to the server.
+      ...(one.rkey ? { rkey: one.rkey } : {}),
+      ...(one.action === "delete"
+        ? {}
+        : { value: { $type: one.collection, ...one.value } }),
     })),
   });
 
