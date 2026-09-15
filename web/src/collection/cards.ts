@@ -10,8 +10,12 @@ import {
   remove,
   rkey,
 } from "../oauth/repo";
+import { recall, remember } from "./store";
 
 export const CARD = "app.manaweb.card";
+
+// How long a change settles before the cache is rewritten.
+const SAVE = 1000;
 
 // The lexicon's `knownValues`, best grade first.
 export const CONDITIONS = [
@@ -224,6 +228,8 @@ export function useCollection(
 ): Holdings {
   const [held, setHeld] = useState<Stack[]>([]);
   const [ready, setReady] = useState(false);
+  // Whether the repo itself has answered, as against the cache having painted.
+  const [fresh, setFresh] = useState(false);
   const [error, setError] = useState<string>();
   // Which read is the current one, so a slow answer to a stale session or an
   // unmounted view lands nowhere.
@@ -232,20 +238,38 @@ export function useCollection(
   // trips, so an import can land a batch before it answers, and the answer
   // would otherwise be a view of the repo from before that batch.
   const since = useRef(new Map<string, Stack>());
+  // Which read the repo has answered, so what the last visit saw is never laid
+  // over something newer.
+  const answered = useRef(0);
 
   const reload = useCallback(() => {
     if (!session) {
       setHeld([]);
       setReady(false);
+      setFresh(false);
       return;
     }
+    setFresh(false);
     const mine = ++read.current;
+    const { did } = session;
+
+    // What the last visit saw, while the repo is asked again.
+    recall(did).then((cached) => {
+      if (mine !== read.current || answered.current === mine || !cached)
+        return;
+      setHeld(fold(cached, since.current));
+      setReady(true);
+    });
+
     list<Owned>(session, CARD).then(
       (found) => {
         if (mine !== read.current) return;
-        setHeld(fold(found, since.current));
+        const next = fold(found, since.current);
+        answered.current = mine;
+        setHeld(next);
         since.current.clear();
         setReady(true);
+        setFresh(true);
       },
       (failure: unknown) => mine === read.current && setError(reason(failure)),
     );
@@ -258,12 +282,22 @@ export function useCollection(
     };
   }, [reload]);
 
-  // Read by the import, which decides whether a card joins a stack or starts
-  // one and cannot be re-rendered into knowing.
+  // Writes this client made are the collection too, so the next visit paints
+  // them and not the read they replaced. Waiting is what makes five presses of
+  // a plus one save rather than five of two megabytes.
+  useEffect(() => {
+    if (!session || !ready) return;
+    const { did } = session;
+    const soon = setTimeout(() => void remember(did, held), SAVE);
+    return () => clearTimeout(soon);
+  }, [session, ready, held]);
+
+  // Read by the import, which cannot be re-rendered into knowing. It waits for
+  // the repo's own answer, for the reason in `docs/architecture.md`.
   const current = useRef<Stack[] | null>(null);
   useEffect(() => {
-    current.current = ready ? held : null;
-  }, [held, ready]);
+    current.current = fresh ? held : null;
+  }, [held, fresh]);
   const snapshot = useCallback(() => current.current, []);
 
   const landed = useCallback((written: Stack[]) => {

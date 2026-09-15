@@ -176,8 +176,9 @@ function Row({
           {print && <p className="print">{describe(print)}</p>}
           {one.value.note && <p className="note">{one.value.note}</p>}
           <div className="meta">
-            {/* An import writes its cards whole and turns them into records
-                over hours, and nothing addresses one until it is a record. */}
+            {/* Nothing addresses a card until it is a record of its own.
+                todo(eth0net): taking copies off one means editing the part
+                holding them, under the lock the drain takes. */}
             {unwritten(one) ? (
               <span className="owned quiet">
                 {shown(one).toLocaleString()} landing

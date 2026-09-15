@@ -62,8 +62,8 @@ backend:
   would delete what the other produced.
 - **v0 doesn't need the firehose at all.** The client reads its own records
   straight from its own PDS (`listRecords`), so the PDS is the sync mechanism
-  between a user's devices. Caching that read is still to do — see
-  `docs/architecture.md`.
+  between a user's devices. That read is cached for a first paint but still
+  costs 84 round trips to settle — see `docs/architecture.md`.
   Indexing only earns its place when we need what the client can't do locally —
   Explore, cross-user aggregates.
 - **Our database is disposable.** Everything in it derives from Scryfall or

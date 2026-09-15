@@ -21,13 +21,23 @@ client metadata document we serve. Our server never proxies a write.
   PDS → firehose → index before any server-backed view saw it. The client holds
   the records it read from its own PDS and applies its own writes on top,
   whether they came from an edit or from an import landing a batch.
-- **That view is not cached yet, and it is the next thing that will hurt.**
-  `listRecords` pages at 100 and has no `since`, so every load of an 8,321-stack
-  collection is 84 sequential round trips and 1.9MB, on every device, forever.
-  Only the catalog and a half-written import are in IndexedDB today. The fix is
-  the one the firehose section defers to Phase 3 — a read endpoint that returns
-  a user's own records in one response — so this waits for that rather than
-  growing a second cache to invalidate.
+- **That view paints from a cache, but still costs what it always did.**
+  `listRecords` pages at 100 and has no `since`, so reading an 8,321-stack
+  collection is 84 sequential round trips and 1.9MB — on every device, every
+  load. What IndexedDB buys is that none of it is on the way to a first paint:
+  the last read shows immediately and the repo's answer replaces it. Writes go
+  in too, a second after they settle, so a visit paints what this browser did
+  and not the read it replaced.
+- **The cache is never what the import reads.** It decides whether a card joins
+  a stack or starts one, and a record the cache has not heard of would become a
+  second stack, so that path waits for the repo's own answer.
+- **Making the read itself cheap needs something we do not have.** A rev to
+  compare against would turn 84 requests into one, and there is no portable way
+  to ask for it: `com.atproto.sync.getLatestCommit` answers unauthenticated on
+  `pds.e0n.sh` and is gated behind auth on `bsky.social`, and whether an OAuth
+  session may call a sync method at all is unmeasured. Until that is settled the
+  real fix is the one the firehose section defers to Phase 3 — a read endpoint
+  returning a user's own records in one response.
 - **The PDS is the device-sync mechanism.** Device B reads what device A wrote,
   with nothing of ours in between.
 - Offline writes need a queue. `client_id` is tied to the deployment domain, so

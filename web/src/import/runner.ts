@@ -58,8 +58,8 @@ export type State =
 
 let state: State = { at: "none" };
 let session: OAuthSession | null = null;
-// The collection as it stands, which the drain needs to know whether a card
-// joins a stack or starts one. Null until the first read answers.
+// The collection as it stands, which the drain resolves each entry against.
+// Null until the repo itself has answered.
 let holdings: (() => Stack[] | null) | null = null;
 // What to do with records once they are in the repo. The collection takes
 // them, so a view that would otherwise re-read the lot learns them a batch at
