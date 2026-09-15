@@ -168,9 +168,12 @@ Two independent PDS implementations enforce it and the qualified form is live
 in the wild, so the enumeration is not the finest grain available — it is the
 coarsest of three.
 
-Only the two collections v0 writes are declared. A scope for a record type
-nothing creates is authority held for nothing, and the cost of adding one later
-is a consent prompt that says what it is for — which is a better moment to ask
+Only the three collections v0 writes are declared, and only
+`app.manaweb.import` unqualified: it is created today and updated and deleted
+by the drain, and a scope narrowed now is a second consent prompt within the
+same feature. A scope for a record type nothing creates is authority held for
+nothing, and the cost of adding one later is a consent prompt that says what it
+is for — which is a better moment to ask
 than a signup that quietly took it. Scopes are matched as exact strings, so a
 qualified form has to be written the same way in both places;
 `web/src/config.ts` and the document are held to each other by a test.

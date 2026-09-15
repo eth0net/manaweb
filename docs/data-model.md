@@ -277,6 +277,17 @@ second attempt at an already-drained part fails before any of its creates land.
 Two tabs, two devices and a background worker can all race for the same part
 and exactly one wins, with no lock and no bookkeeping.
 
+**An import with no entries left is a receipt.** Emptiness is what says the
+file was taken whole, so no field records completion and the last drain is what
+marks it. The record keeps the file's name, the tool it came from, and a hash
+of the cards it listed — quantities included, order not — so a second upload of
+one export is recognized on a device that never saw the first.
+
+Recognition is all it offers. A file imported twice and a second identical
+precon plan identically, so the import states what it will do to the card count
+and leaves the choice with the owner. A receipt covers no card added by hand,
+which is the other reason it can never be what a collection is read from.
+
 **The collection reads both shapes as one**, matching a part's entry to a
 written record by the identity the merge rule already uses, so an entry needs
 no address of its own. Editing a card that has not been written yet rewrites

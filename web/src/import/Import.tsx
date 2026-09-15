@@ -5,6 +5,7 @@ import { Link } from "../router";
 import { detect, FORMATS, type Format } from "./formats";
 import { plan, type Weight, weigh } from "./plan";
 import { header, type Read, read } from "./read";
+import { digest, type Receipt, useReceipts } from "./receipt";
 import {
   begin,
   carryOn,
@@ -16,6 +17,12 @@ import {
 } from "./runner";
 
 export const IMPORT = "/collection/import";
+
+// The lexicon's ceiling on a remembered file name.
+const FILE = 255;
+
+// A file read and identified, which is everything the receipt for it needs.
+type Taken = { format: Format; got: Read; file: string; digest: string };
 
 const NAMES = FORMATS.map((one) => one.name).join(", ");
 
@@ -53,11 +60,10 @@ export function Import({
   session: OAuthSession | null;
   owning: Holdings;
 }) {
-  const [found, setFound] = useState<{ format: Format; got: Read } | null>(
-    null,
-  );
+  const [found, setFound] = useState<Taken | null>(null);
   const [problem, setProblem] = useState("");
   const state = useImport();
+  const taken = useReceipts(session);
 
   const steps = useMemo(
     () =>
@@ -72,6 +78,11 @@ export function Import({
     [steps, owning.stacks],
   );
 
+  // Cards bought since an import still plan as new, so the arithmetic below
+  // stops recognizing a file the moment the collection moves on. This does not.
+  const already =
+    found && taken.find((one) => one.value.digest === found.digest);
+
   async function take(file: File | null) {
     setFound(null);
     setProblem("");
@@ -83,7 +94,25 @@ export function Import({
       setProblem(`Not a collection this reads. It knows ${NAMES}.`);
       return;
     }
-    setFound({ format, got: read(text, format) });
+
+    const got = read(text, format);
+    setFound({
+      format,
+      got,
+      file: file.name.slice(0, FILE),
+      digest: await digest(got.stacks),
+    });
+  }
+
+  function start(taking: Taken, weight: Weight) {
+    void begin(steps ?? [], {
+      source: taking.format.name,
+      file: taking.file,
+      digest: taking.digest,
+      cards: weight.adding,
+      stacks: weight.records,
+      createdAt: new Date().toISOString(),
+    });
   }
 
   // The file goes with the job. Planned against a collection that now holds
@@ -126,6 +155,8 @@ export function Import({
             {about(weight.records)} at the rate a PDS allows.
           </p>
 
+          {already && <p className="warn">{recalled(already.value)}</p>}
+
           {weight.before > 0 && (
             <p className={again(weight) ? "warn" : "quiet"}>{lands(weight)}</p>
           )}
@@ -140,10 +171,10 @@ export function Import({
             </ul>
           )}
 
-          <button type="button" onClick={() => void begin(steps)}>
+          <button type="button" onClick={() => start(found, weight)}>
             Add {weight.adding.toLocaleString()} card
             {weight.adding === 1 ? "" : "s"}
-            {again(weight) ? " anyway" : ""}
+            {already || again(weight) ? " anyway" : ""}
           </button>
         </>
       )}
@@ -240,6 +271,17 @@ function counts(weight: Weight): string {
 // export takes.
 function again(weight: Weight): boolean {
   return weight.before > 0 && weight.fresh === 0;
+}
+
+// A file taken before, named and dated, which is a fact rather than a shape
+// the numbers happen to have.
+function recalled(one: Receipt): string {
+  const when = new Date(one.createdAt).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+  });
+  const what = one.file || "A file naming these exact cards";
+  return `${what} was imported on ${when}.`;
 }
 
 // Arithmetic is the whole guard: a second copy of one export and a second

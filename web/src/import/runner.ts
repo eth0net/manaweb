@@ -6,6 +6,7 @@ import {
   BATCH,
   type Budget,
   BYTES,
+  create,
   type Held,
   POINTS,
   query,
@@ -13,6 +14,7 @@ import {
   type Write,
 } from "../oauth/repo";
 import type { Step } from "./plan";
+import { IMPORTED, type Receipt } from "./receipt";
 import { clear, type Job, load, save } from "./store";
 
 // A create costs 3 points of an hourly 5,000, so 1,666 fit in an hour. Nothing
@@ -150,6 +152,7 @@ async function step(): Promise<void> {
   }
 
   if (job.done >= job.steps.length) {
+    if (!(await filed(now, job, mine))) return;
     await clear(now.did);
     ticks(false);
     announce({ at: "done", total: job.steps.length });
@@ -217,6 +220,27 @@ async function step(): Promise<void> {
     due: job.dueAt,
     quiet: false,
   });
+}
+
+// The receipt is the only thing that remembers this file was taken, so a
+// refusal on the last write of all is worth coming back for.
+async function filed(
+  now: OAuthSession,
+  job: Job,
+  mine: number,
+): Promise<boolean> {
+  if (!job.receipt) return true;
+
+  try {
+    await create(now, IMPORTED, job.receipt);
+    return true;
+  } catch (failure) {
+    // The cards all landed, so a PDS refusing the receipt outright ends the
+    // import without one rather than ending it in failure.
+    if (named(failure)) return true;
+    await refused(job, mine, failure, job.steps.length);
+    return false;
+  }
 }
 
 // A refusal is an answer and says when to come back. Anything that isn't an
@@ -382,13 +406,14 @@ export async function attach(
   void tick();
 }
 
-export async function begin(steps: Step[]): Promise<void> {
+export async function begin(steps: Step[], receipt: Receipt): Promise<void> {
   if (!session || steps.length === 0) return;
   stopping = false;
 
   const job: Job = {
     did: session.did,
     steps,
+    receipt,
     done: 0,
     dueAt: 0,
     pending: false,

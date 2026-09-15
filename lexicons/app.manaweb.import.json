@@ -4,11 +4,11 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "Part of an import, holding cards not yet written one by one.",
+      "description": "An import, holding what it has left to write. No entries means finished.",
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["entries", "createdAt"],
+        "required": ["digest", "createdAt"],
         "properties": {
           "entries": {
             "type": "array",
@@ -25,6 +25,21 @@
             "type": "string",
             "maxLength": 255,
             "description": "The file they arrived in, world-readable like every other field."
+          },
+          "digest": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "SHA-256 over the cards the file named, prefixed with the algorithm."
+          },
+          "cards": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Copies the file brought, as planned rather than as written."
+          },
+          "stacks": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Records the file came to."
           },
           "createdAt": { "type": "string", "format": "datetime" }
         }

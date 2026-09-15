@@ -8,7 +8,7 @@
   ],
   "grant_types": ["authorization_code", "refresh_token"],
   "response_types": ["code"],
-  "scope": "atproto repo:app.manaweb.card repo:app.manaweb.container",
+  "scope": "atproto repo:app.manaweb.card repo:app.manaweb.container repo:app.manaweb.import",
   "token_endpoint_auth_method": "none",
   "application_type": "web",
   "dpop_bound_access_tokens": true

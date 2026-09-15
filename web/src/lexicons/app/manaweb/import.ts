@@ -3,11 +3,17 @@ import type * as AppManawebCard from './card.js'
 export interface Main {
   $type: 'app.manaweb.import'
   /** A sanity bound, not a promise: the writer packs by bytes. */
-  entries: Entry[]
+  entries?: Entry[]
   /** The tool the cards were exported from. */
   source?: string
   /** The file they arrived in, world-readable like every other field. */
   file?: string
+  /** SHA-256 over the cards the file named, prefixed with the algorithm. */
+  digest: string
+  /** Copies the file brought, as planned rather than as written. */
+  cards?: number
+  /** Records the file came to. */
+  stacks?: number
   createdAt: string
   [k: string]: unknown
 }

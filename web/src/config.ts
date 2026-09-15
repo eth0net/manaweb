@@ -12,6 +12,7 @@ export const RESOLVER = "https://pds.e0n.sh";
 export const COLLECTIONS = [
   "app.manaweb.card",
   "app.manaweb.container",
+  "app.manaweb.import",
 ] as const;
 
 // Held equal to the committed document by a test: PAR refuses what it omits.

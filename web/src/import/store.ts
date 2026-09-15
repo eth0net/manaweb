@@ -1,4 +1,5 @@
 import type { Step } from "./plan";
+import type { Receipt } from "./receipt";
 
 // An import as it stands, so a closed tab picks it up rather than starting
 // over. Its own database: the catalog's is a cache anyone may clear, and half
@@ -13,6 +14,8 @@ const STORE = "job";
 export type Job = {
   did: string;
   steps: Step[];
+  // Filed once the last card lands, so it outlives the tab that planned it.
+  receipt?: Receipt;
   done: number;
   dueAt: number;
   pending: boolean;
