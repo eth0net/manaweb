@@ -3,10 +3,13 @@ import {
   apply,
   type Change,
   fold,
+  landing,
   type Owned,
   type Stack,
+  shown,
   stack,
   then,
+  unwritten,
 } from "./cards";
 
 const copy: Owned = {
@@ -284,4 +287,55 @@ test("a read that already has the record keeps the newer one", () => {
   const folded = fold([one as Stack], new Map([[newer.uri, newer]]));
   expect(folded).toHaveLength(1);
   expect(folded[0]?.value.quantity).toBe(4);
+});
+
+function record(value: Owned, at = 0): Stack {
+  return {
+    uri: `at://did:plc:x/app.manaweb.card/held${at}`,
+    cid: `cid${at}`,
+    value,
+  };
+}
+
+test("an entry matching a record counts against it without touching it", () => {
+  const one = record({ ...copy, quantity: 2 });
+  const [only] = landing([one], [{ ...copy, quantity: 3 }]);
+
+  expect(only?.value.quantity).toBe(2);
+  expect(only?.waiting).toBe(3);
+  expect(shown(only as Stack)).toBe(5);
+  expect(unwritten(only as Stack)).toBe(false);
+});
+
+test("an entry nothing holds is a stack with no record behind it", () => {
+  const [only] = landing([], [{ ...copy, quantity: 4 }]);
+
+  expect(unwritten(only as Stack)).toBe(true);
+  expect(only?.value.quantity).toBe(0);
+  expect(shown(only as Stack)).toBe(4);
+});
+
+test("entries of one stack across two parts count once", () => {
+  const found = landing([], [copy, { ...copy, quantity: 2 }]);
+  expect(found).toHaveLength(1);
+  expect(shown(found[0] as Stack)).toBe(3);
+});
+
+test("a stack differing in grade lands beside rather than on", () => {
+  const found = landing([record(copy)], [{ ...copy, condition: "played" }]);
+  expect(found).toHaveLength(2);
+  expect(found.filter(unwritten)).toHaveLength(1);
+});
+
+// Writing `shown` into a record would count the copies in the import twice,
+// and the import is what will write them.
+test("nothing landing is ever part of what a record says", () => {
+  const one = record({ ...copy, quantity: 2 });
+  const [only] = landing([one], [{ ...copy, quantity: 3 }]);
+  expect(only?.value).toEqual(one.value);
+});
+
+test("a collection with nothing landing is the same array", () => {
+  const held = [record(copy)];
+  expect(landing(held, [])).toBe(held);
 });

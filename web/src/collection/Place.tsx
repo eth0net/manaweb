@@ -17,8 +17,10 @@ import {
   type Holdings,
   NOTE,
   type Stack,
+  shown,
   TAG,
   TAGS,
+  unwritten,
 } from "./cards";
 import { type Containers, UNFILED } from "./containers";
 
@@ -71,7 +73,7 @@ export function Place({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [filed, found, filter]);
 
-  const total = filed.reduce((sum, one) => sum + one.value.quantity, 0);
+  const total = filed.reduce((sum, one) => sum + shown(one), 0);
 
   return (
     <>
@@ -136,6 +138,7 @@ function Row({
   owning: Holdings;
 }) {
   const { quantity } = one.value;
+  const landing = one.waiting ?? 0;
 
   return (
     <li>
@@ -161,6 +164,9 @@ function Row({
               <span className="tag">{words(one.value.condition)}</span>
             )}
             {one.value.proxy && <span className="tag">proxy</span>}
+            {landing > 0 && (
+              <span className="tag">{landing.toLocaleString()} landing</span>
+            )}
             {one.value.tags?.map((label) => (
               <span className="tag free" key={label}>
                 {label}
@@ -170,35 +176,45 @@ function Row({
           {print && <p className="print">{describe(print)}</p>}
           {one.value.note && <p className="note">{one.value.note}</p>}
           <div className="meta">
-            <span className="adjust">
-              <button
-                type="button"
-                className="step"
-                aria-label="One fewer"
-                onClick={() =>
-                  void owning.amend(one.uri, { quantity: quantity - 1 })
-                }
-              >
-                −
-              </button>
-              <span className="owned">{quantity.toLocaleString()}</span>
-              <button
-                type="button"
-                className="step"
-                aria-label="One more"
-                onClick={() =>
-                  void owning.amend(one.uri, { quantity: quantity + 1 })
-                }
-              >
-                +
-              </button>
-            </span>
-            <Edit
-              one={one}
-              name={name}
-              containers={containers}
-              owning={owning}
-            />
+            {/* An import writes its cards whole and turns them into records
+                over hours, and nothing addresses one until it is a record. */}
+            {unwritten(one) ? (
+              <span className="owned quiet">
+                {shown(one).toLocaleString()} landing
+              </span>
+            ) : (
+              <>
+                <span className="adjust">
+                  <button
+                    type="button"
+                    className="step"
+                    aria-label="One fewer"
+                    onClick={() =>
+                      void owning.amend(one.uri, { quantity: quantity - 1 })
+                    }
+                  >
+                    −
+                  </button>
+                  <span className="owned">{shown(one).toLocaleString()}</span>
+                  <button
+                    type="button"
+                    className="step"
+                    aria-label="One more"
+                    onClick={() =>
+                      void owning.amend(one.uri, { quantity: quantity + 1 })
+                    }
+                  >
+                    +
+                  </button>
+                </span>
+                <Edit
+                  one={one}
+                  name={name}
+                  containers={containers}
+                  owning={owning}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>

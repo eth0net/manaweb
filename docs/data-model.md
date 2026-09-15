@@ -297,6 +297,21 @@ precon plan identically, so the import states what it will do to the card count
 and leaves the choice with the owner. A receipt covers no card added by hand,
 which is the other reason it can never be what a collection is read from.
 
+**The collection reads both shapes as one.** A card sitting in a part is owned
+— it is in the repo — so it counts toward every total from the moment the
+upload finishes, folded in under the same stack identity the drain will use.
+The count a person reads therefore never dips while an import turns into
+records, which is the property worth protecting: a test walks a whole import
+part by part and asserts it.
+
+What such a card is not is addressable. No record holds it, so the row says
+what is landing and offers no edit, and a key taken from it would reach some
+other record or none. Adding a copy still works and needs no special case: it
+writes a record of its own, and the drain merges the part into that, because
+what an entry joins is decided when it drains. Taking one away is the gap —
+there is nothing to take from until the part lands, and the minus is already
+present and disabled wherever the copies are not where the plus would write.
+
 **The collection reads both shapes as one**, matching a part's entry to a
 written record by the identity the merge rule already uses, so an entry needs
 no address of its own. Editing a card that has not been written yet rewrites

@@ -1,6 +1,6 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { useCallback, useSyncExternalStore } from "react";
-import type { Stack } from "../collection/cards";
+import { useSyncExternalStore } from "react";
+import type { Owned, Stack } from "../collection/cards";
 import {
   applyWrites,
   BATCH,
@@ -68,12 +68,21 @@ let report: ((written: Stack[]) => void) | null = null;
 // Parts the repo holds, newest read last. The repo is the truth and this is
 // what saves asking it again between every write.
 let pending: Held<Receipt>[] = [];
+// The cards inside them, for the collection to show. Recomputed rather than
+// derived on read, so a subscriber gets one stable value per change.
+let waiting: Owned[] = [];
+
+function holding(parts: Held<Receipt>[]): void {
+  pending = parts;
+  waiting = parts.flatMap((one) => (one.value.entries ?? []) as Owned[]);
+  notify();
+}
 // What this runner wrote and the collection has not rendered back yet. Parts
 // run back to back, and React state does not update between two of them.
 let recent = new Map<string, Stack>();
 // The instant the current wait ends, mirrored out of the stored job so a burst
 // can tell whether the next call is owed one.
-let waiting = 0;
+let until = 0;
 let ticking: ReturnType<typeof setInterval> | null = null;
 let stepping = false;
 // Discarding cannot reach into a call already out, so a step that comes back to
@@ -83,9 +92,13 @@ let era = 0;
 let stopping = false;
 const watching = new Set<() => void>();
 
+function notify(): void {
+  for (const watcher of watching) watcher();
+}
+
 function announce(next: State): void {
   state = next;
-  for (const watcher of watching) watcher();
+  notify();
 }
 
 // The tab holds a job open, so leaving is worth a question. Only while one is
@@ -139,7 +152,7 @@ async function tick(): Promise<void> {
 function due(): boolean {
   if (ticking === null) return false;
   if (state.at !== "uploading" && state.at !== "running") return false;
-  return waiting <= Date.now();
+  return until <= Date.now();
 }
 
 // Two tabs both ticking is fine as long as one writes at a time, which is what
@@ -171,7 +184,7 @@ async function step(): Promise<void> {
     return;
   }
 
-  waiting = job.dueAt;
+  until = job.dueAt;
   if (job.receipt || job.parts.length > 0) return upload(now, job, mine);
   return sink(now, job, mine);
 }
@@ -205,7 +218,7 @@ async function upload(
 
   // Every part just written has to be found before it can be drained, and one
   // listing covers however many calls the upload took.
-  if (job.parts.length === 0) pending = [];
+  if (job.parts.length === 0) holding([]);
   announce({ at: "uploading", done: sent(job), total: job.total });
 }
 
@@ -294,7 +307,7 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
     return;
   }
 
-  pending = pending.slice(1);
+  holding(pending.slice(1));
   for (const made of landed) recent.set(made.uri, made);
   job.misses = 0;
   job.total = total;
@@ -322,7 +335,7 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
 async function refresh(now: OAuthSession): Promise<boolean> {
   try {
     const found = await list<Receipt>(now, IMPORTED);
-    pending = found.filter((one) => size(one.value) > 0);
+    holding(found.filter((one) => size(one.value) > 0));
     return true;
   } catch {
     return false;
@@ -405,7 +418,7 @@ export async function attach(
   holdings = stacks;
   report = onWritten ?? null;
   if (!now) {
-    pending = [];
+    holding([]);
     recent = new Map();
     ticks(false);
     announce({ at: "none" });
@@ -430,7 +443,7 @@ export async function attach(
     return;
   }
 
-  waiting = job.dueAt;
+  until = job.dueAt;
   announce(resumed(job));
   if (job.paused) return;
   ticks(true);
@@ -471,7 +484,7 @@ export async function begin(
 ): Promise<void> {
   if (!session || stacks.length === 0) return;
   stopping = false;
-  pending = [];
+  holding([]);
 
   const job: Job = {
     did: session.did,
@@ -551,7 +564,7 @@ export async function drop(): Promise<void> {
 
   await clear(now.did);
   const left = pending;
-  pending = [];
+  holding([]);
   recent = new Map();
   for (const one of left) {
     try {
@@ -562,12 +575,16 @@ export async function drop(): Promise<void> {
   }
 }
 
+function listen(watcher: () => void): () => void {
+  watching.add(watcher);
+  return () => void watching.delete(watcher);
+}
+
 export function useImport(): State {
-  return useSyncExternalStore(
-    useCallback((watcher: () => void) => {
-      watching.add(watcher);
-      return () => void watching.delete(watcher);
-    }, []),
-    () => state,
-  );
+  return useSyncExternalStore(listen, () => state);
+}
+
+// Cards the repo holds inside an import rather than as records of their own.
+export function useWaiting(): Owned[] {
+  return useSyncExternalStore(listen, () => waiting);
 }

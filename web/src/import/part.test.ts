@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { Owned, Stack } from "../collection/cards";
+import { landing, type Owned, type Stack, shown } from "../collection/cards";
 import { BYTES, type Held } from "../oauth/repo";
 import { drain, index, owed, PART, pack } from "./part";
 import type { Receipt } from "./receipt";
@@ -134,4 +134,52 @@ test("a card written a moment ago is what the next part joins", () => {
     NOW,
   );
   expect(writes[0]).toMatchObject({ action: "update", rkey: "held0" });
+});
+
+function flat(parts: Held<Receipt>[]): Owned[] {
+  return parts.flatMap((one) => (one.value.entries ?? []) as Owned[]);
+}
+
+function count(stacks: Stack[]): number {
+  return stacks.reduce((sum, one) => sum + shown(one), 0);
+}
+
+// The number a person reads as their collection. It is wrong for it to dip
+// while an import turns into records, and a drain is where it would.
+test("the total holds from the upload landing to the last part drained", () => {
+  const file = many(500).map((one, at) => ({
+    ...one,
+    quantity: (at % 3) + 1,
+  }));
+  // The same stack twice, which is what two parts merging into one record is.
+  const twice = [...file, ...file.slice(0, 120)];
+  const total = twice.reduce((sum, one) => sum + one.quantity, 0);
+
+  let left = pack(twice, of).map((value, at) => ({
+    uri: `at://${DID}/app.manaweb.import/p${at}`,
+    cid: `c${at}`,
+    value,
+  }));
+  let records: Stack[] = [];
+
+  expect(left.length).toBeGreaterThan(1);
+  expect(count(landing(records, flat(left)))).toBe(total);
+
+  let drains = 0;
+  while (left.length > 0) {
+    const [one, ...rest] = left;
+    if (!one) break;
+
+    const { landed } = drain(one, index(records), DID, NOW);
+    const by = new Map(records.map((held) => [held.uri, held]));
+    for (const made of landed) by.set(made.uri, made);
+
+    records = [...by.values()];
+    left = rest;
+    drains += 1;
+    expect(count(landing(records, flat(left)))).toBe(total);
+  }
+
+  expect(drains).toBe(pack(twice, of).length);
+  expect(count(records)).toBe(total);
 });

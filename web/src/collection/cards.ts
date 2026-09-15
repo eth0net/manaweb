@@ -27,8 +27,56 @@ export const CONDITIONS = [
 // Copies you own, however many of them are identical.
 export type Owned = Fields<Main>;
 
-// One record, and where the repo holds it.
-export type Stack = Held<Owned>;
+// One record, and where the repo holds it. `waiting` counts copies an import
+// has in the repo but not yet as records of their own, which `value` therefore
+// does not hold: everything shown adds the two, and everything written uses
+// `value.quantity` alone.
+export type Stack = Held<Owned> & { waiting?: number };
+
+// A stack no record holds yet, so there is nothing to write to.
+const WAITING = "waiting:";
+
+export function unwritten(one: Stack): boolean {
+  return one.uri.startsWith(WAITING);
+}
+
+export function shown(one: Stack): number {
+  return one.value.quantity + (one.waiting ?? 0);
+}
+
+// The collection with what an import is still landing folded in, keyed the way
+// the drain will key it, so what shows now is what will be there.
+export function landing(held: Stack[], waiting: Owned[]): Stack[] {
+  if (waiting.length === 0) return held;
+
+  const shelf = held.map((one) => ({ ...one }));
+  const by = new Map<string, Stack>();
+  for (const one of shelf) {
+    const key = stack(one.value);
+    if (!by.has(key)) by.set(key, one);
+  }
+
+  for (const entry of waiting) {
+    const key = stack(entry);
+    const into = by.get(key);
+
+    if (into && joins({ ...into.value, quantity: shown(into) }, entry)) {
+      into.waiting = (into.waiting ?? 0) + entry.quantity;
+      continue;
+    }
+
+    const made: Stack = {
+      uri: `${WAITING}${key}`,
+      cid: "",
+      value: { ...entry, quantity: 0 },
+      waiting: entry.quantity,
+    };
+    shelf.push(made);
+    if (!into) by.set(key, made);
+  }
+
+  return shelf;
+}
 
 // What an amendment comes to: the writes it needs, and the stacks left after.
 export type Change = {
@@ -172,6 +220,7 @@ export function then(first: Change, second: Change): Change {
 export function useCollection(
   session: OAuthSession | null,
   destination: string | null,
+  waiting: Owned[] = [],
 ): Holdings {
   const [held, setHeld] = useState<Stack[]>([]);
   const [ready, setReady] = useState(false);
@@ -223,22 +272,29 @@ export function useCollection(
     setHeld((was) => fold(was, since.current));
   }, []);
 
+  // What the collection shows, which is not what it writes to: an import puts
+  // cards in the repo hours before they are records, and a total that ignored
+  // them would read as half a collection.
+  const shelf = useMemo(() => landing(held, waiting), [held, waiting]);
+
   const totals = useMemo(() => {
     const prints = new Map<string, number>();
     const finishes = new Map<string, number>();
     const places = new Map<string | null, number>();
     let total = 0;
-    for (const { value } of held) {
+    for (const one of shelf) {
+      const { value } = one;
       const print = value.scryfallId;
       const finish = JSON.stringify([print, value.finish]);
       const place = value.container ?? null;
-      prints.set(print, (prints.get(print) ?? 0) + value.quantity);
-      finishes.set(finish, (finishes.get(finish) ?? 0) + value.quantity);
-      places.set(place, (places.get(place) ?? 0) + value.quantity);
-      total += value.quantity;
+      const count = shown(one);
+      prints.set(print, (prints.get(print) ?? 0) + count);
+      finishes.set(finish, (finishes.get(finish) ?? 0) + count);
+      places.set(place, (places.get(place) ?? 0) + count);
+      total += count;
     }
     return { prints, finishes, places, total };
-  }, [held]);
+  }, [shelf]);
 
   const owned = useCallback(
     (scryfallId: string, finish?: string) =>
@@ -304,6 +360,9 @@ export function useCollection(
 
   const amend = useCallback(
     async (uri: string, changes: Partial<Owned>) => {
+      // Nothing addresses a stack an import has not written yet, and a key
+      // taken from one would reach some other record or none.
+      if (uri.startsWith(WAITING)) return;
       await run(apply(held, uri, changes, new Date().toISOString()));
     },
     [held, run],
@@ -369,7 +428,7 @@ export function useCollection(
     owned,
     copies,
     filed,
-    stacks: held,
+    stacks: shelf,
     printings,
     total: totals.total,
     add,

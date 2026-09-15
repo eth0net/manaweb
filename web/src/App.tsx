@@ -9,7 +9,7 @@ import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
 import { Footer } from "./Footer";
 import { IMPORT, Import, ImportStatus } from "./import/Import";
-import { attach } from "./import/runner";
+import { attach, useWaiting } from "./import/runner";
 import { Nav } from "./Nav";
 import { useSession } from "./oauth/useSession";
 import { HOME, known, Link, replace, tab, usePath } from "./router";
@@ -25,7 +25,8 @@ export function App() {
     account.state.status === "in" ? account.state.session : null;
   const containers = useContainers(signedIn);
   const [chosen, choose] = useState<string | null>(null);
-  const collection = useCollection(signedIn, chosen);
+  const waiting = useWaiting();
+  const collection = useCollection(signedIn, chosen, waiting);
   const path = usePath();
   const here = tab(path);
 
