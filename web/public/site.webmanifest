@@ -1,0 +1,26 @@
+{
+  "name": "Manaweb",
+  "short_name": "Manaweb",
+  "description": "A Magic: The Gathering collection tracker built on atproto.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#fdfdfc",
+  "background_color": "#fdfdfc",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

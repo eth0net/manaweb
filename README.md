@@ -50,6 +50,9 @@ you run a modified version as a network service, your users get the source.
 vocabulary, and copyleft on a schema file would discourage the adoption that's
 the whole point of publishing them.
 
+The icon is the spider web from [Noto Emoji](https://github.com/googlefonts/noto-emoji),
+Apache-2.0, recolored.
+
 Card data and images come from [Scryfall](https://scryfall.com) under the
 Wizards of the Coast Fan Content Policy. Manaweb is unofficial Fan Content
 permitted under the Fan Content Policy. Not approved or endorsed by Wizards.

@@ -15,6 +15,11 @@ What can be built and charged for, and under what license it ships.
   That does *not* preserve the right to relicense unilaterally, and the
   decision becomes irreversible at the first outside PR.
 
+**The icon is not ours.** `web/public/icon.svg` is the spider web from Google's
+Noto Emoji, taken via SVG Repo, which names the collection, googlefonts and the
+Apache License. That flows into AGPL-3.0 one way and needs the attribution
+kept, which the README carries.
+
 ## IP constraints
 
 Two policies bind what can be built, whether or not money is involved.

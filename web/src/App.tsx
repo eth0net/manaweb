@@ -44,7 +44,10 @@ export function App() {
   return (
     <main>
       <header>
-        <h1>Manaweb</h1>
+        <h1>
+          <img src="/icon.svg" alt="" width="128" height="128" />
+          Manaweb
+        </h1>
         {load.status === "ready" && (
           <CatalogStatus status={status} loaded={load} />
         )}
