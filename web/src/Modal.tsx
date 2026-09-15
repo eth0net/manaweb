@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 // One dialog's worth of wiring: a trigger, a panel, and Escape.
 export function Modal({
@@ -38,24 +39,29 @@ export function Modal({
         {label}
       </button>
 
-      <dialog
-        ref={dialog}
-        className={wide ? "wide" : undefined}
-        onClose={() => setOpen(false)}
-      >
-        <div className="panel">
-          <h2>{title}</h2>
-          {/* Built on opening, so a modal per search result costs three
-              elements rather than a list nobody has asked to see. */}
-          {open && children}
-          <p className="actions">
-            {actions}
-            <button type="button" onClick={() => dialog.current?.close()}>
-              Close
-            </button>
-          </p>
-        </div>
-      </dialog>
+      {/* Out of the tree that triggered it: a dialog is flow content, and a
+          trigger inside a sentence would end the paragraph holding it. */}
+      {createPortal(
+        <dialog
+          ref={dialog}
+          className={wide ? "wide" : undefined}
+          onClose={() => setOpen(false)}
+        >
+          <div className="panel">
+            <h2>{title}</h2>
+            {/* Built on opening, so a modal per search result costs three
+                elements rather than a list nobody has asked to see. */}
+            {open && children}
+            <p className="actions">
+              {actions}
+              <button type="button" onClick={() => dialog.current?.close()}>
+                Close
+              </button>
+            </p>
+          </div>
+        </dialog>,
+        document.body,
+      )}
     </>
   );
 }
