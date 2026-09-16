@@ -99,13 +99,23 @@ function notify(): void {
 
 function announce(next: State): void {
   state = next;
+  ask(next.at === "uploading");
   notify();
 }
 
-// The tab holds a job open, so leaving is worth a question. Only while one is
-// actually running: a listener left registered would ask after nothing.
+// The upload is the only part of an import held on one device, so it is the
+// only part worth asking about before a tab closes.
+let guarding = false;
+
 function guard(event: BeforeUnloadEvent): void {
   event.preventDefault();
+}
+
+function ask(on: boolean): void {
+  if (on === guarding) return;
+  guarding = on;
+  if (on) addEventListener("beforeunload", guard);
+  else removeEventListener("beforeunload", guard);
 }
 
 function ticks(on: boolean): void {
@@ -113,13 +123,11 @@ function ticks(on: boolean): void {
 
   if (on) {
     ticking = setInterval(() => void tick(), TICK);
-    addEventListener("beforeunload", guard);
     addEventListener("visibilitychange", wake);
     addEventListener("online", wake);
   } else {
     if (ticking) clearInterval(ticking);
     ticking = null;
-    removeEventListener("beforeunload", guard);
     removeEventListener("visibilitychange", wake);
     removeEventListener("online", wake);
   }
