@@ -133,6 +133,14 @@ a card's rules say is its own table, for the reasons in
 [`scryfall.md`](scryfall.md). The sync truncates the WAL when it commits,
 which otherwise sits at roughly the size of the database again.
 
+The connection pool is sqlx's default ten, and measuring it changed nothing. An
+idle pooled connection holds no read snapshot and so defers no checkpoint; a
+streaming query holds one until its last row, and the catalog build streams.
+They never overlap — a refresh syncs, then exports — and there is only ever one
+writer, so the five-second busy timeout has nothing to expire against. Measured
+on 2026-09-16 across a full replace: reads through the pool took 1.6ms at worst
+and none failed while the write was open.
+
 **Phase 3's non-derivable state gets a file of its own.** Everything in the
 cache derives from Scryfall, which is what makes it disposable; one thing
 arriving with Explore won't, being activity we only ever saw go past. A record
