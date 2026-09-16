@@ -81,6 +81,9 @@ function holding(parts: Held<Receipt>[]): void {
 // What this runner wrote and the collection has not rendered back yet. Parts
 // run back to back, and React state does not update between two of them.
 let recent = new Map<string, Stack>();
+// What the imports still draining came to, taken from their receipts, so a
+// device that never saw the file counts from the whole and not from the rest.
+let planned = 0;
 // The instant the current wait ends, mirrored out of the stored job so a burst
 // can tell whether the next call is owed one.
 let until = 0;
@@ -348,7 +351,14 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
 async function refresh(now: OAuthSession): Promise<boolean> {
   try {
     const found = await list<Receipt>(now, IMPORTED);
-    holding(found.filter((one) => size(one.value) > 0));
+    const left = found.filter((one) => size(one.value) > 0);
+    const digests = new Set(left.map((one) => one.value.digest));
+
+    planned = found
+      .filter((one) => size(one.value) === 0 && digests.has(one.value.digest))
+      .reduce((sum, one) => sum + (one.value.stacks ?? 0), 0);
+
+    holding(left);
     return true;
   } catch {
     return false;
@@ -469,7 +479,7 @@ function found(did: string): Job | null {
     did,
     receipt: null,
     parts: [],
-    total: owed(pending),
+    total: Math.max(planned, owed(pending)),
     dueAt: 0,
     misses: 0,
     paused: false,
