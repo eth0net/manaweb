@@ -200,9 +200,10 @@ backend:
    refreshes the cache weekly. Configured from the environment; `just serve`.
    The OAuth client metadata document is committed at
    `web/public/oauth/client-metadata.json`, not generated.
-5. Web client: OAuth, reads from own PDS, writes back, and imports a CSV —
-   parsed and planned against what is held, written in paced batches that
-   survive a closed tab. Where the data model actually gets exercised.
+5. **Done** — the web client: OAuth, reads from own PDS, writes back, and
+   imports a CSV, parsed and planned against what is held, then landed whole
+   and drained into records at whatever the PDS will take. Measured end to end
+   against a limited one. Deployment is what v0 still wants of it.
 6. Fixture records seeding a dev account without the UI. `goat` is the atproto
    CLI and already writes them from an app password, so what is left is a
    directory of JSON and a `just` recipe rather than a program.
