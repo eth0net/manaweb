@@ -100,6 +100,31 @@ that.
 with `repo:manage`, and a signed CAR file a browser client can't produce
 because the PDS holds the signing key.
 
+**Run against a limited PDS on 2026-09-16**, importing 4,336 ManaBox rows as
+4,333 stacks into a fresh account. The upload was three `applyWrites` calls and
+a few seconds; the drain then ran eight times back to back and stopped itself.
+Each drain charged exactly 598 points — 2674, 2076, 1478, 880, 282 remaining —
+which is 199 creates and the part's delete, so the arithmetic above is the
+server's arithmetic.
+
+**The header names whichever bucket has least left, which hides the one you
+care about.** The first calls reported `3000;w=300`, the per-IP bucket, falling
+one per request; only once it dropped below the write budget did the header
+switch to `5000;w=3600`. A client reading the figure without the policy would
+have paced against the wrong window.
+
+**Pacing off the header meant no refusal at all** until a reload threw the
+deadline away. When one did arrive it carried `retry-after: 3363` and a
+`ratelimit-reset` agreeing with it, and `ratelimit-remaining: 0` against 282
+before the call — so a refused write is charged, not refunded. Reading
+`retry-after` first is right, and the 429 is the fallback rather than the
+mechanism.
+
+**`listRecords` answers newest first.** Parts therefore drain in reverse of the
+order they were written, which nothing depends on but every count does: the
+short final part goes first, so a window's work is not always a round number of
+records.
+
 **A self-hoster cannot raise them, only switch them off.** The budgets and
 windows are hardcoded; `PDS_RATE_LIMITS_ENABLED`, `PDS_RATE_LIMIT_BYPASS_KEY`
 and `PDS_RATE_LIMIT_BYPASS_IPS` are the whole surface. The default is *off*,
