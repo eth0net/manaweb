@@ -1,0 +1,4 @@
+# Only the hashed files: a second rule matching the same path would have its
+# Cache-Control comma-joined with this one rather than replacing it.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
