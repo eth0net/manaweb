@@ -200,55 +200,19 @@ verify-oauth url="https://manaweb.app/oauth/client-metadata.json":
     print("\nFAILED" if problems else "  ok    served as its own client_id")
     sys.exit(1 if problems else 0)
 
-# Content-addressed files are immutable; the manifest is the only thing a
-# client re-reads, and it goes last so it never names an object not yet there.
-[doc('upload the catalog the manifest names to R2 (needs wrangler, and an authenticated Cloudflare)')]
+# The same upload the server runs after a refresh, so a bug in it cannot wait
+# for the weekly job to show itself. Credentials come from the environment.
+[doc('upload the catalog the manifest names to its bucket')]
 [group('deploy')]
-[script('python3')]
-upload dir="catalog" bucket="manaweb-static":
-    import json, pathlib, subprocess, sys
-
-    IMMUTABLE = "public, max-age=31536000, immutable"
-    directory = pathlib.Path("{{ dir }}")
-    wrangler = pathlib.Path("node_modules/.bin/wrangler").resolve()
-    if not wrangler.exists():
-        sys.exit("  FAIL  no wrangler: run `bun install`")
-
-    manifest = directory / "manifest.json"
-    try:
-        named = json.loads(manifest.read_bytes())
-    except OSError as error:
-        sys.exit(f"  FAIL  no manifest: {error}. Run `just serve` to export one")
-
-    pair = [named["cards"]["name"], named["prints"]["name"]]
-    for name in pair + ["manifest.json"]:
-        path = directory / name
-        if not path.is_file():
-            sys.exit(f"  FAIL  {manifest} names {name}, which is not in {directory}")
-
-    def put(name, cache):
-        path = directory / name
-        subprocess.run(
-            [
-                str(wrangler), "r2", "object", "put", f"{{ bucket }}/{name}",
-                "--file", str(path), "--remote",
-                "--content-type", "application/json", "--cache-control", cache,
-            ],
-            check=True,
-        )
-        print(f"  ok    {name}  {path.stat().st_size // 1024} KiB  {cache}")
-
-    for name in pair:
-        put(name, IMMUTABLE)
-    put("manifest.json", "no-cache")
-    print(f"\nversion {named['version']}")
+upload prefix="catalog" dir="catalog":
+    cargo run --release -p manaweb-objects --bin manaweb-upload -- {{ prefix }} {{ dir }}
 
 # Needs the bucket's custom domain, whose CORS and cache rules are set in
 # Cloudflare rather than on an object, so a checkout cannot answer for them.
 [doc('fetch a deployed catalog and hold it to the headers a client needs')]
 [group('deploy')]
 [script('python3')]
-verify-catalog origin="https://static.manaweb.app":
+verify-catalog origin="https://static.manaweb.app/catalog":
     import json, sys, urllib.error, urllib.request
 
     base = "{{ origin }}".rstrip("/")

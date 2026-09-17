@@ -21,6 +21,7 @@ repository = "https://github.com/eth0net/manaweb"
 [workspace.dependencies]
 manaweb-api = { path = "crates/api" }
 manaweb-core = { path = "crates/core" }
+manaweb-objects = { path = "crates/objects" }
 manaweb-scryfall = { path = "crates/scryfall" }
 
 async-compression = { version = "0.4.44", features = ["gzip", "tokio"] }

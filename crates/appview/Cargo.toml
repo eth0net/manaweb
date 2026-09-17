@@ -23,6 +23,7 @@ manaweb-core.workspace = true
 manaweb-scryfall.workspace = true
 
 axum.workspace = true
+manaweb-objects.workspace = true
 sqlx.workspace = true
 tokio = { workspace = true, features = [
   "macros",

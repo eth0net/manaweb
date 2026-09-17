@@ -172,8 +172,11 @@ backend:
 - **Deploy**: Pages for the app, R2 for the catalog, which **reverses the
   earlier `rust-embed` decision** — there is nothing to embed, and Bun never
   enters a Rust build at all. The binary writes a catalog directory
-  (`MANAWEB_CATALOG`); uploading it is a separate step. Still a `justfile`
-  rather than `build.rs`, for the same reason as before.
+  (`MANAWEB_CATALOG`) and uploads it through `crates/objects`, which is also
+  the `manaweb-upload` tool — the host runs a container and has no checkout to
+  run a recipe from. Each artifact set lands under its own prefix, the catalog
+  under `catalog/`. Still a `justfile` rather than `build.rs`, for the same
+  reason as before.
 - **Local dev**: frontend runs its own dev server (`bun run dev`, hot reload)
   fetching the catalog from the binary's site directory. Nothing has to be
   built into anything.

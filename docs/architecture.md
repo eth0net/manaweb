@@ -59,7 +59,11 @@ catalog change for different reasons:
 
 `static` rather than `catalog` because more artifacts of that shape are coming
 — a scanner index, precomputed recommendations — and the Phase 3 query API
-wants `api` alongside.
+wants `api` alongside. Each is a set of content-addressed files and a
+`manifest.json` naming them, so each gets a prefix of its own: the catalog is
+`static.manaweb.app/catalog/`. Two sets at the root would both want to call
+that file `manifest.json`, and the prefix is also what a prune can be scoped
+to once one exists.
 
 **A Pages deployment is a snapshot of one directory**, so a commit-triggered
 deploy carrying the catalog would have to rebuild an 11MB artifact it has no
@@ -80,6 +84,19 @@ comma-joined, so overlapping patterns there would say `immutable, no-cache`.
 An R2 custom domain caches only certain file types by default and JSON isn't
 among them, so it needs a cache rule. Files upload uncompressed for the CDN to
 compress.
+
+**The server uploads its own catalog**, through `crates/objects` and an R2 API
+token it reads from the environment. The host runs a container image and holds
+no checkout, so there is no `just` and no wrangler out there to call — a dev
+tool is not a production runner. `manaweb-upload` is the same library behind a
+binary, for pushing a catalog by hand, which is what `just upload` now runs: a
+second implementation for local use would be the one nobody exercises until
+the weekly job fails.
+
+It publishes after a sync and again at startup, so restarting the service is
+how an upload that failed gets retried. A pair whose name is already in the
+bucket is left alone, the names being content-addressed, so that retry costs
+one HEAD rather than 12MB.
 
 Two origins also means every catalog fetch is cross-origin, so the bucket
 needs a CORS policy. `Access-Control-Allow-Origin: *` is right: the catalog is

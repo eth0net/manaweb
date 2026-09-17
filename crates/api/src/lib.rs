@@ -21,7 +21,8 @@ use sqlx::SqlitePool;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 
-/// Every route the server answers, with `catalog` served as files underneath.
+/// Every route the server answers, with `catalog` served under `/catalog`,
+/// where the bucket keeps it.
 ///
 /// Nothing here sets `Cache-Control`: the objects carry their own once
 /// uploaded, and a dev server wants none of it.
@@ -36,7 +37,7 @@ pub fn router(pool: SqlitePool, catalog: PathBuf) -> Router {
     Router::new()
         .route("/health", get(health))
         .with_state(pool)
-        .fallback_service(ServeDir::new(catalog))
+        .nest_service("/catalog", ServeDir::new(catalog))
         .layer(cors)
 }
 

@@ -46,12 +46,16 @@ async fn the_catalog_directory_is_served() {
     let catalog = scratch("catalog");
     fs::write(catalog.join("manifest.json"), br#"{"version":"x"}"#).unwrap();
 
-    let response = get(catalog.clone(), "/manifest.json").await;
+    let response = get(catalog.clone(), "/catalog/manifest.json").await;
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(body(response).await, br#"{"version":"x"}"#);
 
-    let missing = get(catalog.clone(), "/nothing.json").await;
+    let missing = get(catalog.clone(), "/catalog/nothing.json").await;
     assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+
+    // The prefix is the artifact set, so the root belongs to no set at all.
+    let root = get(catalog.clone(), "/manifest.json").await;
+    assert_eq!(root.status(), StatusCode::NOT_FOUND);
 
     fs::remove_dir_all(catalog).unwrap();
 }
@@ -63,7 +67,7 @@ async fn the_catalog_is_readable_from_another_origin() {
 
     // The app is served from a different host than the catalog, so without
     // this the first fetch fails in the browser and nowhere else.
-    let response = get(catalog.clone(), "/manifest.json").await;
+    let response = get(catalog.clone(), "/catalog/manifest.json").await;
     assert_eq!(
         response.headers().get("access-control-allow-origin"),
         Some(&HeaderValue::from_static("*"))

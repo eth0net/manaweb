@@ -15,6 +15,8 @@
 //! | `MANAWEB_CATALOG` | `catalog` |
 //! | `MANAWEB_BIND` | `127.0.0.1:8080` |
 //! | `MANAWEB_SYNC` | `1` |
+//!
+//! The bucket it uploads to is configured too, in `manaweb-objects`.
 
 use std::error::Error;
 use std::net::SocketAddr;
@@ -23,12 +25,16 @@ use std::time::Duration;
 use std::{env, process};
 
 use manaweb_core::{cards, catalog};
+use manaweb_objects::Bucket;
 use manaweb_scryfall::{BulkKind, Client};
 use sqlx::SqlitePool;
 use tokio::net::TcpListener;
 use tokio::time::{MissedTickBehavior, interval};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
+
+/// Which artifact set the catalog is, in the bucket.
+const CATALOG: &str = "catalog";
 
 /// Scryfall asks for gameplay data no more than once a week.
 const REFRESH: Duration = Duration::from_hours(7 * 24);
@@ -61,7 +67,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
     // A restart shouldn't wait on a sync, so the catalog comes from whatever
     // the cache already holds.
     match export(&pool, &settings.catalog).await {
-        Ok(version) => tracing::info!(%version, "catalog written"),
+        Ok(version) => {
+            tracing::info!(%version, "catalog written");
+            if let Err(error) = settings.upload().await {
+                tracing::error!("{error}");
+            }
+        }
         Err(error) => tracing::warn!("no catalog yet: {error}"),
     }
 
@@ -151,6 +162,7 @@ async fn refresh(
     );
 
     export(pool, &settings.catalog).await?;
+    settings.upload().await?;
 
     Ok(())
 }
@@ -163,6 +175,9 @@ struct Settings {
     catalog: PathBuf,
     bind: SocketAddr,
     sync: bool,
+    /// Where a written catalog goes. Unconfigured leaves it on disk, which
+    /// is what local development wants.
+    bucket: Option<Bucket>,
 }
 
 impl Settings {
@@ -173,7 +188,24 @@ impl Settings {
             catalog: PathBuf::from(var("MANAWEB_CATALOG", "catalog")),
             bind: bind.parse().map_err(|_| format!("MANAWEB_BIND: {bind}"))?,
             sync: !matches!(var("MANAWEB_SYNC", "1").as_str(), "0" | "false"),
+            bucket: Bucket::from_env()?,
         })
+    }
+
+    /// Sends a written catalog to the bucket, if there is one.
+    async fn upload(&self) -> Result<(), Box<dyn Error>> {
+        let Some(bucket) = &self.bucket else {
+            return Ok(());
+        };
+
+        let done = bucket.upload(CATALOG, &self.catalog).await?;
+        tracing::info!(
+            version = %done.version,
+            sent = done.sent.len(),
+            held = done.held.len(),
+            "catalog uploaded"
+        );
+        Ok(())
     }
 }
 

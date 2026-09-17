@@ -46,6 +46,18 @@ skip = [
   { crate = "syn@2" },
   # sqlx's hashlink is a minor behind indexmap's. Gone when hashlink bumps.
   { crate = "hashbrown@0.16" },
+  # object_store is on the newer RustCrypto line for its md-5 and sha2, where
+  # sqlx is still on the older one. One migration, four entries. Gone when sqlx
+  # takes sha2 0.11.
+  { crate = "block-buffer@0.10" },
+  { crate = "cpufeatures@0.2" },
+  { crate = "crypto-common@0.1" },
+  { crate = "digest@0.10" },
+  # object_store reads base64 0.23 where reqwest, hyper-util and sqlx read
+  # 0.22. Gone at the next reqwest bump: 0.13.5 is already on 0.23.
+  { crate = "base64@0.22" },
+  # ring holds spin 0.9 against crc-fast's 0.10, both under object_store.
+  { crate = "spin@0.9" },
 ]
 
 [sources]
