@@ -98,8 +98,12 @@ verify-oauth url="https://manaweb.app/oauth/client-metadata.json":
     import json, sys, urllib.error, urllib.request
 
     url = "{{ url }}"
+    # Named for the same reason `verify-catalog` names itself.
+    request = urllib.request.Request(
+        url, headers={"User-Agent": "manaweb-verify (+https://manaweb.app)"}
+    )
     try:
-        response = urllib.request.urlopen(url)
+        response = urllib.request.urlopen(request)
     except urllib.error.HTTPError as error:
         response = error  # an HTTPError is the response, and 404 is a finding
     except urllib.error.URLError as error:
