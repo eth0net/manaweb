@@ -126,3 +126,110 @@ verify-oauth url="https://manaweb.app/oauth/client-metadata.json":
         print(f"  FAIL  {problem}")
     print("\nFAILED" if problems else "  ok    served as its own client_id")
     sys.exit(1 if problems else 0)
+
+# Content-addressed files are immutable; the manifest is the only thing a
+# client re-reads, and it goes last so it never names an object not yet there.
+[doc('upload the catalog the manifest names to R2 (needs wrangler, and an authenticated Cloudflare)')]
+[group('deploy')]
+[script('python3')]
+upload dir="catalog" bucket="manaweb-static":
+    import json, pathlib, subprocess, sys
+
+    IMMUTABLE = "public, max-age=31536000, immutable"
+    directory = pathlib.Path("{{ dir }}")
+    wrangler = pathlib.Path("web/node_modules/.bin/wrangler").resolve()
+    if not wrangler.exists():
+        sys.exit("  FAIL  no wrangler: cd web && bun install")
+
+    manifest = directory / "manifest.json"
+    try:
+        named = json.loads(manifest.read_bytes())
+    except OSError as error:
+        sys.exit(f"  FAIL  no manifest: {error}. Run `just serve` to export one")
+
+    pair = [named["cards"]["name"], named["prints"]["name"]]
+    for name in pair + ["manifest.json"]:
+        path = directory / name
+        if not path.is_file():
+            sys.exit(f"  FAIL  {manifest} names {name}, which is not in {directory}")
+
+    def put(name, cache):
+        path = directory / name
+        subprocess.run(
+            [
+                str(wrangler), "r2", "object", "put", f"{{ bucket }}/{name}",
+                "--file", str(path), "--remote",
+                "--content-type", "application/json", "--cache-control", cache,
+            ],
+            check=True,
+        )
+        print(f"  ok    {name}  {path.stat().st_size // 1024} KiB  {cache}")
+
+    for name in pair:
+        put(name, IMMUTABLE)
+    put("manifest.json", "no-cache")
+    print(f"\nversion {named['version']}")
+
+# Needs the bucket's custom domain, whose CORS and cache rules are set in
+# Cloudflare rather than on an object, so a checkout cannot answer for them.
+[doc('fetch a deployed catalog and hold it to the headers a client needs')]
+[group('deploy')]
+[script('python3')]
+verify-catalog origin="https://static.manaweb.app":
+    import json, sys, urllib.error, urllib.request
+
+    base = "{{ origin }}".rstrip("/")
+    problems = []
+
+    def fetch(url, method="GET"):
+        # An Origin makes the reply carry the CORS headers a browser would get.
+        request = urllib.request.Request(
+            url, method=method, headers={"Origin": "https://manaweb.app"}
+        )
+        try:
+            return urllib.request.urlopen(request)
+        except urllib.error.HTTPError as error:
+            return error
+        except urllib.error.URLError as error:
+            sys.exit(f"  FAIL  {url} unreachable: {error.reason}")
+
+    with fetch(f"{base}/manifest.json") as response:
+        status, headers = response.status, response.headers
+        body = response.read()
+
+    if status != 200:
+        problems.append(f"manifest.json: status {status}, must be 200")
+    if headers.get_content_type() != "application/json":
+        problems.append(f"manifest.json: content-type {headers.get_content_type()}")
+    if headers.get("access-control-allow-origin") != "*":
+        problems.append(
+            "manifest.json: no CORS, so every catalog fetch fails in a browser"
+        )
+    if "no-cache" not in (headers.get("cache-control") or ""):
+        problems.append(
+            f"manifest.json: cache-control {headers.get('cache-control')!r}, "
+            "must be no-cache or a stale one pins the client to an old pair"
+        )
+
+    named = {}
+    try:
+        named = json.loads(body)
+    except ValueError as error:
+        problems.append(f"manifest.json: not JSON: {error}")
+
+    for part in ("cards", "prints"):
+        name = named.get(part, {}).get("name")
+        if not name:
+            continue
+        with fetch(f"{base}/{name}", method="HEAD") as response:
+            if response.status != 200:
+                problems.append(f"{name}: status {response.status}, named but not served")
+            elif "immutable" not in (response.headers.get("cache-control") or ""):
+                problems.append(f"{name}: cache-control is not immutable")
+            else:
+                print(f"  ok    {name}  cached {response.headers.get('cf-cache-status')}")
+
+    for problem in problems:
+        print(f"  FAIL  {problem}")
+    print("\nFAILED" if problems else f"  ok    {named.get('version')} served")
+    sys.exit(1 if problems else 0)
