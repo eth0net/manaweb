@@ -100,6 +100,12 @@ callback can be declared for them in advance. Reach the `dev` preview by its
 custom domain, which is the one that has one. The OAuth side is in
 [`atproto.md`](atproto.md).
 
+That is also why Pages rather than Workers with static assets, which Cloudflare
+otherwise points new projects at: branch aliases there are listed as coming
+soon, so a preview would be a second Worker wired up by hand instead of a
+branch that deploys itself. Their own migration guide calls the move
+straightforward, so this is a decision to revisit rather than live with.
+
 **Previews read and write production data.** A parallel NSID namespace would
 be permanent once records existed, would be declared in the scopes every user
 consents to, and would leave junk in people's repos. Isolation, when wanted,
