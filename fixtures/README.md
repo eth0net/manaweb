@@ -1,8 +1,9 @@
 # Fixtures
 
 Test accounts on `pds.e0n.sh`, which serves handles under both `.mnwb.me` and
-`.pds.e0n.sh`. Records to seed them with land here too — `goat` writes those,
-so there is no CLI of ours to build.
+`.pds.e0n.sh`, and the records that seed them. `goat` writes those, so there is
+no CLI of ours to build — it now lives at `github.com/bluesky-social/goat`
+rather than under `indigo/cmd`, which is where `go install` still sends people.
 
 Passwords belong in 1Password and never in this file. DIDs are public
 identifiers, so each one gets recorded below once its account exists.
@@ -24,6 +25,21 @@ a path it exercises rather than for itself.
 
 The first account accumulates data whose DID has to survive. The personas
 exist to be deleted, which is why only one of them is worth naming carefully.
+
+## Seeding
+
+    goat account login -u liliana.mnwb.me -p <app password>
+    just seed liliana.mnwb.me
+
+`records/<collection>/<rkey>.json` is the whole layout: the directory names
+the collection and the filename is the record key, so a record needs nothing
+of its own to say where it goes. Every key is a fixed TID, which is what makes
+a second seed replace the first rather than doubling it, and the lexicon check
+holds the files to their schemas so a broken one is found before a seed is.
+
+An at-uri carries the account, and a container is referenced by one, so the
+files write the DID of the primary author below and `just seed` rewrites it to
+whichever account it is given. Seeding that account therefore rewrites nothing.
 
 ## What a handle may be
 

@@ -277,6 +277,34 @@ for (const [label, record] of refused) {
   }
 }
 
+// A seed stops halfway through on a broken record, having written some.
+const FIXTURES = join(dirname(dirname(import.meta.dir)), "fixtures/records");
+const TID = /^[234567abcdefghij][234567abcdefghijklmnopqrstuvwxyz]{12}$/;
+
+console.log("\nfixture records:");
+for (const collection of readdirSync(FIXTURES).sort()) {
+  for (const file of readdirSync(join(FIXTURES, collection)).sort()) {
+    const at = `${collection}/${file}`;
+    const record = JSON.parse(
+      readFileSync(join(FIXTURES, collection, file), "utf8"),
+    );
+    if (record.$type !== collection) {
+      fail(`${at}: $type is "${record.$type}", so the directory misnames it`);
+      continue;
+    }
+    if (!TID.test(file.replace(/\.json$/, ""))) {
+      fail(`${at}: the filename is the record key, which this schema wants as a tid`);
+      continue;
+    }
+    try {
+      lex.assertValidRecord(collection, record);
+      ok(at);
+    } catch (error) {
+      fail(`${at}: ${(error as Error).message}`);
+    }
+  }
+}
+
 // The client metadata document. It is committed rather than generated, because
 // the client imports these same bytes to decide what to request, so this is
 // where the two are held to each other. See docs/atproto.md.

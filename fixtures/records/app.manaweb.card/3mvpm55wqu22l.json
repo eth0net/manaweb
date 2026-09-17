@@ -1,0 +1,13 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "8bed211e-f3ec-4e9e-b9a7-0989930dd049",
+  "finish": "foil",
+  "quantity": 1,
+  "condition": "lightPlayed",
+  "container": "at://did:plc:rk2rhs4yvucutbrd2aoi5gci/app.manaweb.container/3mvpm4z66222l",
+  "note": "Corner ding, bottom left.",
+  "tags": [
+    "signed"
+  ],
+  "createdAt": "2026-09-17T12:00:00.000Z"
+}

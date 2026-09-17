@@ -1,0 +1,6 @@
+{
+  "$type": "app.manaweb.container",
+  "name": "Jetmir deck box",
+  "kind": "deckBox",
+  "createdAt": "2026-09-17T12:00:00.000Z"
+}

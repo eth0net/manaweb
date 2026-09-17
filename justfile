@@ -90,6 +90,71 @@ sync file="":
 catalog out="":
     cargo run --release -p manaweb-core --example catalog -- {{ db }} {{ out }}
 
+# Every at-uri in the fixtures names the primary author, and is rewritten to
+# whichever account this writes to. `goat account login` first.
+[doc('seed a dev account with the fixture records (needs goat)')]
+[group('dev')]
+[script('python3')]
+seed handle dir="fixtures/records":
+    import pathlib, shutil, subprocess, sys
+
+    AUTHOR = "did:plc:rk2rhs4yvucutbrd2aoi5gci"
+    CONTAINER = "app.manaweb.container"
+    directory = pathlib.Path("{{ dir }}")
+    if not shutil.which("goat"):
+        sys.exit("  FAIL  no goat: go install github.com/bluesky-social/goat@latest")
+
+    def goat(*args, **rest):
+        return subprocess.run(
+            ["goat", *args], capture_output=True, text=True, **rest
+        )
+
+    found = goat("resolve", "--did", "{{ handle }}")
+    if found.returncode != 0:
+        sys.exit(f"  FAIL  {{ handle }}: {found.stderr.strip()}")
+    did = found.stdout.strip()
+
+    # goat writes to whoever it is logged in as, and the handle only decides
+    # whose DID the records name. Mismatched, that lands one account's records
+    # in another's repo pointing at the first, and nothing reports it.
+    signed = goat("account", "check-auth")
+    if signed.returncode != 0:
+        sys.exit(f"  FAIL  {signed.stderr.strip()}. Run `goat account login`")
+    session = next(
+        (
+            line.removeprefix("DID:").strip()
+            for line in signed.stdout.splitlines()
+            if line.startswith("DID:")
+        ),
+        "",
+    )
+    if session != did:
+        sys.exit(f"  FAIL  logged in as {session}, not {{ handle }} ({did})")
+
+    # Containers first, so anything reading as this lands sees a card's place
+    # before the card naming it.
+    files = sorted(
+        directory.glob("*/*.json"),
+        key=lambda one: (one.parent.name != CONTAINER, one.name),
+    )
+    if not files:
+        sys.exit(f"  FAIL  no records under {directory}")
+
+    for path in files:
+        collection, rkey = path.parent.name, path.stem
+        # A create refuses a key already there, and these keys are fixed.
+        goat("record", "delete", "-c", collection, "-r", rkey)
+        written = goat(
+            "record", "create", "-r", rkey, "-",
+            input=path.read_text().replace(AUTHOR, did),
+        )
+        if written.returncode != 0:
+            sys.exit(f"  FAIL  {collection}/{rkey}: {written.stderr.strip()}")
+        uri = written.stdout.split()
+        print(f"  ok    {uri[0] if uri else f'{collection}/{rkey}'}")
+
+    print(f"\n{len(files)} records on {did}")
+
 # Needs a deployment rather than a checkout, which is why it is not in `check`.
 [doc('fetch a deployed client metadata document and hold it to its own URL')]
 [group('deploy')]

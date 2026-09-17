@@ -204,9 +204,9 @@ backend:
    imports a CSV, parsed and planned against what is held, then landed whole
    and drained into records at whatever the PDS will take. Measured end to end
    against a limited one. Deployment is what v0 still wants of it.
-6. Fixture records seeding a dev account without the UI. `goat` is the atproto
-   CLI and already writes them from an app password, so what is left is a
-   directory of JSON and a `just` recipe rather than a program.
+6. **Done** — fixture records seeding a dev account without the UI, as a
+   directory of JSON named by collection and record key, and `just seed`
+   driving `goat` from an app password. CI validates them with the lexicons.
 
 Jetstream and the query API arrive with Phase 3 (Explore), not before. That
 API is XRPC, and nothing else is — see `docs/atproto.md`.

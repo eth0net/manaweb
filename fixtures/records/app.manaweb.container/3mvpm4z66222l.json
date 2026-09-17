@@ -1,0 +1,7 @@
+{
+  "$type": "app.manaweb.container",
+  "name": "Trade binder",
+  "kind": "binder",
+  "note": "Sleeved, and the only place anything is graded.",
+  "createdAt": "2026-09-17T12:00:00.000Z"
+}
