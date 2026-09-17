@@ -187,8 +187,15 @@ verify-catalog origin="https://static.manaweb.app":
 
     def fetch(url, method="GET"):
         # An Origin makes the reply carry the CORS headers a browser would get.
+        # Cloudflare's browser integrity check answers urllib's own agent with
+        # a 403 and error code 1010, so this says who it is instead.
         request = urllib.request.Request(
-            url, method=method, headers={"Origin": "https://manaweb.app"}
+            url,
+            method=method,
+            headers={
+                "Origin": "https://manaweb.app",
+                "User-Agent": "manaweb-verify (+https://manaweb.app)",
+            },
         )
         try:
             return urllib.request.urlopen(request)
