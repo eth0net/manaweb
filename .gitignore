@@ -45,6 +45,9 @@ $RECYCLE.BIN/
 .Trash-*
 .nfs*
 
+# Claude Code: shared settings are committed, personal overrides are not
+.claude/settings.local.json
+
 # Editors
 .idea/
 *.swp
