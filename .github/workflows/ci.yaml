@@ -65,11 +65,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-        working-directory: tools/lexicon-check
       - run: bun run check
         working-directory: tools/lexicon-check
-      - run: bun install --frozen-lockfile
-        working-directory: tools/lex-gen
       - run: bun run gen --check
         working-directory: tools/lex-gen
 
@@ -79,6 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
       - run: bun run check
         working-directory: tools/prose-check
 
@@ -89,7 +87,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-        working-directory: web
       - run: bun run lint
         working-directory: web
       - run: bun run types

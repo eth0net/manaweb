@@ -1,11 +1,11 @@
 {
-  "name": "lexicon-check",
+  "name": "manaweb-lexicon-check",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "bun run check.ts"
   },
   "devDependencies": {
-    "@atproto/api": "^0.19.0"
+    "@atproto/api": "^0.20.0"
   }
 }

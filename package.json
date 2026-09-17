@@ -1,0 +1,11 @@
+{
+  "name": "manaweb",
+  "private": true,
+  "workspaces": [
+    "web",
+    "tools/*"
+  ],
+  "devDependencies": {
+    "wrangler": "^4.133.0"
+  }
+}

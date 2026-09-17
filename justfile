@@ -7,6 +7,10 @@ db := env("MANAWEB_DATABASE", "manaweb.db")
 default:
     @just --list
 
+[private]
+deps:
+    @bun install
+
 # every check CI runs that can run on one machine
 [group('checks')]
 check: rust deny spell prose lexicons web
@@ -46,24 +50,24 @@ deny:
 
 # prose said twice: a comment restating a doc, or a doc another (needs bun)
 [group('checks')]
-prose:
-    cd tools/prose-check && bun install && bun run check
+prose: deps
+    cd tools/prose-check && bun run check
 
 # validate the lexicons against atproto's own implementation (needs bun)
 [group('checks')]
-lexicons:
-    cd tools/lexicon-check && bun install && bun run check
-    cd tools/lex-gen && bun install && bun run gen --check
+lexicons: deps
+    cd tools/lexicon-check && bun run check
+    cd tools/lex-gen && bun run gen --check
 
 # rewrite the record types the client reads records with (needs bun)
 [group('dev')]
-lexicon-types:
-    cd tools/lex-gen && bun install && bun run gen
+lexicon-types: deps
+    cd tools/lex-gen && bun run gen
 
 # lint, typecheck, test and build the client (needs bun)
 [group('checks')]
-web:
-    cd web && bun install && bun run check
+web: deps
+    cd web && bun run check
 
 # Both default to loopback; pass 0.0.0.0 to either to reach it from a phone.
 [doc('export the catalog and serve it for local development')]
@@ -73,8 +77,8 @@ serve bind="127.0.0.1:8080":
 
 [doc("the client's dev server, fetching the catalog from `just serve`")]
 [group('dev')]
-client host="127.0.0.1":
-    cd web && bun install && bun run dev --host {{ host }}
+client host="127.0.0.1": deps
+    cd web && bun run dev --host {{ host }}
 
 # sync the card cache from Scryfall (~78MB), or from a file already on disk
 [group('dev')]
@@ -137,9 +141,9 @@ upload dir="catalog" bucket="manaweb-static":
 
     IMMUTABLE = "public, max-age=31536000, immutable"
     directory = pathlib.Path("{{ dir }}")
-    wrangler = pathlib.Path("web/node_modules/.bin/wrangler").resolve()
+    wrangler = pathlib.Path("node_modules/.bin/wrangler").resolve()
     if not wrangler.exists():
-        sys.exit("  FAIL  no wrangler: cd web && bun install")
+        sys.exit("  FAIL  no wrangler: run `bun install`")
 
     manifest = directory / "manifest.json"
     try:
