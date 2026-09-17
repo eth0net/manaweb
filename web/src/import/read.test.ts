@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
+import type { Locate } from "../catalog";
 import { BATCH, BYTES } from "../oauth/repo";
-import { MANABOX } from "./formats";
+import { type Format, MANABOX } from "./formats";
 import { read } from "./read";
 
 const NOW = "2026-09-13T00:00:00.000Z";
@@ -233,6 +234,85 @@ test("a tags column joins the flags that have their own", () => {
     NOW,
   );
   expect(stacks[0]?.tags).toEqual(["altered", "Infestation Sage"]);
+});
+
+// A binding with no id column, which is what leaves the set and number the
+// only thing naming a printing.
+const NUMBERED: Format = {
+  name: "Numbered",
+  binding: {
+    setCode: "Set code",
+    collectorNumber: "Collector number",
+    finish: "Foil",
+    quantity: "Quantity",
+    condition: "Condition",
+  },
+};
+
+// A catalog holding one printing, which is enough to tell a hit from a miss.
+const CATALOG: Locate = (keys) =>
+  new Map(
+    [...keys].filter((key) => key === "fdn/64").map((key) => [key, ONE]),
+  );
+
+// The row `row()` writes, moved to a printing the catalog above has not got.
+function elsewhere(): string {
+  return row().replace("FDN,Foundations,64", "MH3,Modern Horizons 3,12");
+}
+
+test("a file with no id column names its printings by set and number", () => {
+  const { stacks, skipped } = read(
+    [HEAD, row()].join("\n"),
+    NUMBERED,
+    NOW,
+    CATALOG,
+  );
+  expect(skipped).toEqual([]);
+  expect(stacks[0]?.scryfallId).toBe(ONE);
+});
+
+test("a printing the catalog hasn't got is skipped as the file spelled it", () => {
+  const { stacks, skipped } = read(
+    [HEAD, elsewhere(), row()].join("\n"),
+    NUMBERED,
+    NOW,
+    CATALOG,
+  );
+  expect(stacks).toHaveLength(1);
+  expect(skipped).toEqual([{ line: 2, reason: "no such print MH3 12" }]);
+});
+
+// Signed out, and before the catalog has loaded.
+test("no catalog leaves a file named that way with nothing to import", () => {
+  const { stacks, skipped } = read([HEAD, row()].join("\n"), NUMBERED, NOW);
+  expect(stacks).toEqual([]);
+  expect(skipped).toEqual([{ line: 2, reason: "no such print FDN 64" }]);
+});
+
+// The id has to land before stacks are folded together, or a file naming one
+// printing twice would write two records.
+test("rows resolving to one printing collapse as a named id would", () => {
+  const { stacks } = read(
+    [HEAD, row(), row()].join("\n"),
+    NUMBERED,
+    NOW,
+    CATALOG,
+  );
+  expect(stacks).toHaveLength(1);
+  expect(stacks[0]?.quantity).toBe(2);
+});
+
+test("a file missing the columns that name a printing yields nothing", () => {
+  const { stacks, skipped } = read(
+    "Name,Foil\nInfestation Sage,normal",
+    NUMBERED,
+    NOW,
+    CATALOG,
+  );
+  expect(stacks).toEqual([]);
+  expect(skipped).toEqual([
+    { line: 1, reason: "no Set code, Collector number, Quantity column" },
+  ]);
 });
 
 // Derived from a real 8,325-row export: its finishes, grades, quantities and

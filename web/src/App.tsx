@@ -91,7 +91,11 @@ export function App() {
 
             {here === "/collection" &&
               (path === IMPORT ? (
-                <Import session={signedIn} owning={collection} />
+                <Import
+                  session={signedIn}
+                  owning={collection}
+                  catalog={load.status === "ready" ? load.catalog : null}
+                />
               ) : signedIn ? (
                 <Collection
                   catalog={load.status === "ready" ? load.catalog : null}

@@ -146,6 +146,15 @@ export interface Print {
   flags: string[];
 }
 
+// How a file with no print ids names a printing, spelled the same on both
+// sides of a lookup.
+export function printKey(set: string, collectorNumber: string): string {
+  return `${set}/${collectorNumber}`.toLowerCase();
+}
+
+// One pass of the catalog answering every key an import is waiting on.
+export type Locate = (keys: Set<string>) => Map<string, string>;
+
 // Hotlinked from the id, so no URL is stored. Nothing is behind it when
 // `imageStatus` is `missing` or `placeholder`.
 export function image(id: string, size = "normal"): string {
@@ -359,6 +368,20 @@ export class Catalog {
       tally.set(set[0], (tally.get(set[0]) ?? 0) + 1);
     }
     return tally;
+  }
+
+  // Print ids for `set/collectorNumber` keys, which is what an import has to
+  // go on when the file carries none. No two printings share a pair.
+  locate(keys: Set<string>): Map<string, string> {
+    const found = new Map<string, string>();
+    if (keys.size === 0) return found;
+
+    for (const row of this.#prints.prints) {
+      const set = this.#prints.sets[row[1]] as SetRow;
+      const key = printKey(set[0], row[2]);
+      if (keys.has(key)) found.set(key, row[0]);
+    }
+    return found;
   }
 
   // The card and printing behind each of the given ids, in one scan as above.

@@ -29,8 +29,17 @@ export type Binding = Partial<Record<Field, string>>;
 
 export type Format = { name: string; binding: Binding };
 
-// A row with no printing, finish or count behind it is not a card.
-export const NEEDED: Field[] = ["scryfallId", "finish", "quantity"];
+// A row with no finish or count behind it is not a card.
+const NEEDED: Field[] = ["finish", "quantity"];
+
+// What a format has to find in a file to read a row at all. A printing is
+// named by its id, or by the set and number the catalog turns into one.
+export function needed(binding: Binding): Field[] {
+  const naming: Field[] = binding.scryfallId
+    ? ["scryfallId"]
+    : ["setCode", "collectorNumber"];
+  return [...naming, ...NEEDED];
+}
 
 // ManaBox's `Purchase price` is bound as what a copy was worth, which is the
 // asymmetry `docs/scryfall.md` settles. Binding it to `price` instead is the

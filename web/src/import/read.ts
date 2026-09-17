@@ -1,3 +1,4 @@
+import { type Locate, printKey } from "../catalog";
 import {
   COPIES,
   joins,
@@ -18,13 +19,17 @@ import {
   flag,
   grade,
   key,
-  NEEDED,
+  needed,
 } from "./formats";
 
 // A row nothing can be made of, and the line it sat on.
 export type Skipped = { line: number; reason: string };
 
 export type Read = { stacks: Owned[]; skipped: Skipped[] };
+
+// A row named by set and number, held for one pass of the catalog rather than
+// a lookup each.
+type Waiting = { one: Owned; line: number; key: string; said: string };
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MONEY = /^\d+(\.\d+)?$/;
@@ -35,21 +40,22 @@ export function header(text: string): string[] {
   return parse(text)[0] ?? [];
 }
 
-// todo(eth0net): identify a printing by set and collector number, for the
-// exports carrying no id of their own.
 export function read(
   text: string,
   format: Format,
   now = new Date().toISOString(),
+  locate?: Locate,
 ): Read {
   const rows = parse(text);
   const head = rows.shift();
   if (!head) return { stacks: [], skipped: [] };
 
+  const wanted = needed(format.binding);
   const found = columns(head, format.binding);
   // Named as the file would have spelled them, which is what anyone looking
   // at the file can act on.
-  const missing = NEEDED.filter((field) => !found.has(field))
+  const missing = wanted
+    .filter((field) => !found.has(field))
     .map((field) => format.binding[field] ?? field)
     .join(", ");
   if (missing) {
@@ -59,19 +65,24 @@ export function read(
     };
   }
 
-  const stacks: Owned[] = [];
+  let stacks: Owned[] = [];
   const skipped: Skipped[] = [];
+  const waiting: Waiting[] = [];
 
   rows.forEach((row, at) => {
     const line = at + 2;
     const cell = (field: Field) => (row[found.get(field) ?? -1] ?? "").trim();
 
     // A blank line arrives as one empty field rather than as nothing.
-    if (row.length < NEEDED.length) return;
+    if (row.length < wanted.length) return;
 
-    const id = cell("scryfallId");
-    if (!ID.test(id)) {
-      skipped.push({ line, reason: id ? `no such print ${id}` : "no print" });
+    const named = naming(cell, format.binding);
+    if (!named) {
+      skipped.push({ line, reason: "no print" });
+      return;
+    }
+    if (named.id && !ID.test(named.id)) {
+      skipped.push({ line, reason: `no such print ${named.id}` });
       return;
     }
 
@@ -88,7 +99,7 @@ export function read(
     }
 
     const one: Owned = {
-      scryfallId: id.toLowerCase(),
+      scryfallId: named.id.toLowerCase(),
       finish: how,
       quantity,
       createdAt: added(cell("createdAt"), now),
@@ -106,10 +117,49 @@ export function read(
     const lot = acquisition(quantity, cell);
     if (lot) one.acquisitions = [lot];
 
+    if (!one.scryfallId) {
+      waiting.push({ one, line, key: named.key, said: named.said });
+    }
     stacks.push(one);
   });
 
+  if (waiting.length > 0) {
+    const ids =
+      locate?.(new Set(waiting.map((row) => row.key))) ??
+      new Map<string, string>();
+    const lost = new Set<Owned>();
+
+    for (const row of waiting) {
+      const id = ids.get(row.key);
+      if (id) row.one.scryfallId = id;
+      else {
+        lost.add(row.one);
+        skipped.push({ line: row.line, reason: `no such print ${row.said}` });
+      }
+    }
+
+    stacks = stacks.filter((one) => !lost.has(one));
+    skipped.sort((a, b) => a.line - b.line);
+  }
+
   return { stacks: collapse(stacks), skipped };
+}
+
+// How this row names its printing: an id to use as it stands, or a key for
+// the catalog to answer and the spelling to report if it doesn't.
+function naming(
+  cell: (field: Field) => string,
+  binding: Binding,
+): { id: string; key: string; said: string } | undefined {
+  if (binding.scryfallId) {
+    const id = cell("scryfallId");
+    return id ? { id, key: "", said: id } : undefined;
+  }
+
+  const set = cell("setCode");
+  const number = cell("collectorNumber");
+  if (!set || !number) return undefined;
+  return { id: "", key: printKey(set, number), said: `${set} ${number}` };
 }
 
 // Where each bound field sits in a row, for the columns the file turns out to

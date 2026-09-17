@@ -1,5 +1,6 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useMemo, useState } from "react";
+import type { Catalog } from "../catalog";
 import type { Holdings } from "../collection/cards";
 import { Link } from "../router";
 import { detect, FORMATS, type Format } from "./formats";
@@ -57,9 +58,11 @@ function say(state: Exclude<State, { at: "none" }>): string {
 export function Import({
   session,
   owning,
+  catalog,
 }: {
   session: OAuthSession | null;
   owning: Holdings;
+  catalog: Catalog | null;
 }) {
   const [found, setFound] = useState<Taken | null>(null);
   const [problem, setProblem] = useState("");
@@ -96,7 +99,19 @@ export function Import({
       return;
     }
 
-    const got = read(text, format);
+    if (!format.binding.scryfallId && !catalog) {
+      setProblem(
+        "The catalog this file needs to name its cards is not loaded.",
+      );
+      return;
+    }
+
+    const got = read(
+      text,
+      format,
+      new Date().toISOString(),
+      catalog ? (keys) => catalog.locate(keys) : undefined,
+    );
     setFound({
       format,
       got,

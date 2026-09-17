@@ -182,6 +182,13 @@ one. ManaBox instead makes language an editable property of an entry, bulk
 editable — the same fact through a different affordance, and where a CSV import
 has to meet us.
 
+The client artifact drops the language, carrying only what Default Cards
+holds, and no two of its 108,749 paper printings share a set and collector
+number. So a file exporting neither print ids nor a language still resolves,
+which is the whole of what the browser does with a pair. Putting non-English
+printings in the artifact would end that, and is one more reason the
+translations are a part of their own.
+
 **Which makes this a v0 problem rather than a later one.** Default Cards
 carries 652 Japanese printings, 9 German and 5 Russian, so a German collection
 exported from ManaBox resolves almost nothing. Import correctness needs the
