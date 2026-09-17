@@ -25,9 +25,23 @@ manaweb-objects = { path = "crates/objects" }
 manaweb-scryfall = { path = "crates/scryfall" }
 
 async-compression = { version = "0.4.44", features = ["gzip", "tokio"] }
-axum = "0.8.9"
+# One route and a file service, so none of the extractors the defaults carry
+# — form, query, json, matched-path, original-uri — are reachable from here.
+axum = { version = "0.8.9", default-features = false, features = [
+  "http1",
+  "tokio",
+  "tracing",
+] }
 futures-util = { version = "0.3.34", default-features = false }
-reqwest = { version = "0.13.4", features = ["json", "stream"] }
+# `charset` decodes a response body by its declared encoding, which only
+# `text()` does and nothing here calls. `system-proxy` reads the OS proxy
+# settings; the environment variables are read without it.
+reqwest = { version = "0.13.4", default-features = false, features = [
+  "default-tls",
+  "http2",
+  "json",
+  "stream",
+] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["raw_value"] }
 sqlx = { version = "0.9.0", default-features = false, features = [

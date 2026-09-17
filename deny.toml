@@ -38,9 +38,6 @@ wildcards = "deny"
 # wildcards are still refused.
 allow-wildcard-paths = true
 skip = [
-  # macOS only. hyper-util pulls system-configuration 0.7, rustls-platform-verifier
-  # pulls security-framework 3.7, and they disagree. Gone when either bumps.
-  { crate = "core-foundation@0.9" },
   # The icu chain under url is mid-migration: displaydoc is on syn 3, yoke-derive
   # still on syn 2. Gone when synstructure releases against syn 3.
   { crate = "syn@2" },
