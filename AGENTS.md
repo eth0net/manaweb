@@ -206,7 +206,8 @@ backend:
 5. **Done** — the web client: OAuth, reads from own PDS, writes back, and
    imports a CSV, parsed and planned against what is held, then landed whole
    and drained into records at whatever the PDS will take. Measured end to end
-   against a limited one. Deployment is what v0 still wants of it.
+   against a limited one. Deployed to Pages, reading the catalog from the
+   bucket it is uploaded to.
 6. **Done** — fixture records seeding a dev account without the UI, as a
    directory of JSON named by collection and record key, and `just seed`
    driving `goat` from an app password. CI validates them with the lexicons.

@@ -154,7 +154,7 @@ impl Bucket {
         })
     }
 
-    /// Uploads the pair the manifest names, then the manifest.
+    /// Uploads the files the manifest names, then the manifest.
     ///
     /// The manifest goes last, so it never names an object that has not
     /// landed. A name already present is skipped rather than rewritten.
@@ -163,6 +163,8 @@ impl Bucket {
     ///
     /// Fails if the directory has no readable manifest, if it names a file it
     /// does not hold, or if an upload is refused.
+    // todo(eth0net): prune what a set has replaced. Nothing removes an old
+    // name, so every refresh leaves its predecessor in the bucket.
     pub async fn upload(&self, prefix: &str, dir: &Path) -> Result<Uploaded> {
         let manifest = read(&dir.join(MANIFEST)).await?;
         let named: Manifest = serde_json::from_slice(&manifest)?;
