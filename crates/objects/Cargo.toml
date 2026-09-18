@@ -19,6 +19,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
+futures-util.workspace = true
 reqwest.workspace = true
 object_store = { version = "0.14.2", default-features = false, features = ["aws"] }
 serde.workspace = true
@@ -28,5 +29,6 @@ tokio = { workspace = true, features = ["fs", "macros", "rt-multi-thread"] }
 tracing.workspace = true
 
 [dev-dependencies]
+chrono.workspace = true
 axum.workspace = true
 tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread"] }

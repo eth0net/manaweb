@@ -192,11 +192,21 @@ impl Settings {
         })
     }
 
-    /// Sends a written catalog to the bucket, if there is one.
+    /// Takes away what the last upload replaced, then sends a written catalog
+    /// to the bucket, if there is one.
     async fn upload(&self) -> Result<(), Box<dyn Error>> {
         let Some(bucket) = &self.bucket else {
             return Ok(());
         };
+
+        // Before the upload: what the manifest names now is what a client is
+        // fetching now, so this can only reach what the last upload replaced.
+        let swept = bucket.prune(CATALOG).await?;
+        tracing::info!(
+            removed = swept.removed.len(),
+            kept = swept.kept.len(),
+            "catalog pruned"
+        );
 
         let done = bucket.upload(CATALOG, &self.catalog).await?;
         tracing::info!(

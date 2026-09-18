@@ -1,4 +1,5 @@
-//! Uploads an artifact set by hand, the way the server does after a refresh.
+//! Prunes an artifact set and uploads it by hand, the way the server does
+//! after a refresh.
 //!
 //!     manaweb-upload <prefix> [dir]
 //!
@@ -33,6 +34,11 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let Some(bucket) = Bucket::from_env()? else {
         return Err("MANAWEB_S3_ENDPOINT is unset, so there is nowhere to send this".into());
     };
+
+    let swept = bucket.prune(&prefix).await?;
+    for name in &swept.removed {
+        println!("  gone  {prefix}/{name}");
+    }
 
     let done = bucket.upload(&prefix, &dir).await?;
     for name in &done.held {

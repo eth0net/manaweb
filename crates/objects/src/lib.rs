@@ -2,8 +2,8 @@
 //!
 //! An *artifact set* is a directory holding a `manifest.json` and the files it
 //! names, each under its own prefix in the bucket: the catalog today, a
-//! scanner index and precomputed recommendations later. Uploading is the only
-//! operation so far.
+//! scanner index and precomputed recommendations later. An upload adds to a
+//! set and a prune takes away, in that order and never the other.
 //!
 //! Configured entirely from the environment, and unconfigured means nothing
 //! is uploaded:
@@ -16,11 +16,13 @@
 //! | `MANAWEB_S3_SECRET` | unset |
 //! | `MANAWEB_S3_REGION` | `auto` |
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
+use futures_util::{StreamExt, TryStreamExt, stream};
 use object_store::aws::{AmazonS3, AmazonS3Builder};
 use object_store::path::Path as Key;
 use object_store::{
@@ -95,6 +97,21 @@ impl Manifest {
     }
 }
 
+/// How long a manifest must have stood before what it replaced can go. A
+/// client reads the manifest and then spends megabytes fetching the names it
+/// gave, so the run that takes those names away must never be the run that
+/// stopped naming them.
+const SETTLED: Duration = Duration::from_hours(24);
+
+/// One artifact set, as it went down.
+#[derive(Debug)]
+pub struct Pruned {
+    /// Gone from the bucket, named as the manifest would have.
+    pub removed: Vec<String>,
+    /// Left: named by the manifest, or too young to be sure of.
+    pub kept: Vec<String>,
+}
+
 /// One artifact set, as it went up.
 #[derive(Debug)]
 pub struct Uploaded {
@@ -163,8 +180,6 @@ impl Bucket {
     ///
     /// Fails if the directory has no readable manifest, if it names a file it
     /// does not hold, or if an upload is refused.
-    // todo(eth0net): prune what a set has replaced. Nothing removes an old
-    // name, so every refresh leaves its predecessor in the bucket.
     pub async fn upload(&self, prefix: &str, dir: &Path) -> Result<Uploaded> {
         let manifest = read(&dir.join(MANIFEST)).await?;
         let named: Manifest = serde_json::from_slice(&manifest)?;
@@ -182,15 +197,98 @@ impl Bucket {
             sent.push(name);
         }
 
-        self.put(&key(prefix, MANIFEST), manifest, REVALIDATE)
-            .await?;
-        sent.push(MANIFEST.to_owned());
+        // Rewriting a manifest nobody changed would be a write for nothing,
+        // and worse: a prune measures how long this one has stood, so a
+        // service restarting often would keep pushing that clock back.
+        let at = key(prefix, MANIFEST);
+        if sent.is_empty() && self.holds(&at, &manifest).await {
+            held.push(MANIFEST.to_owned());
+        } else {
+            self.put(&at, manifest, REVALIDATE).await?;
+            sent.push(MANIFEST.to_owned());
+        }
 
         Ok(Uploaded {
             version: named.version,
             sent,
             held,
         })
+    }
+
+    /// Removes what the set's own manifest no longer names.
+    ///
+    /// Belongs before an upload rather than after: what the manifest names is
+    /// what a client is being told to fetch, and a name this has stopped
+    /// carrying is one the previous upload replaced. A manifest that changed
+    /// within the last day takes nothing at all, since a client told about
+    /// the names it replaced may still be reading them.
+    ///
+    /// Reads the manifest from the bucket rather than from a directory, so
+    /// this answers for what is published rather than what was last built.
+    /// Only objects directly under `prefix` are considered, so one set never
+    /// reaches into another's.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the prefix holds no readable manifest, if the listing is
+    /// refused, or if a delete is.
+    pub async fn prune(&self, prefix: &str) -> Result<Pruned> {
+        let manifest = self.s3.get(&key(prefix, MANIFEST)).await?;
+        // A bucket clock running ahead of ours reads as no age at all, which
+        // holds everything rather than failing the sweep.
+        let stood = SystemTime::now()
+            .duration_since(SystemTime::from(manifest.meta.last_modified))
+            .unwrap_or_default();
+        let named: Manifest = serde_json::from_slice(&manifest.bytes().await?)?;
+        let mut keep: HashSet<String> = named.names()?.into_iter().collect();
+        keep.insert(MANIFEST.to_owned());
+
+        let at = prefix.trim_matches('/');
+        let at = (!at.is_empty()).then(|| Key::from(at));
+        let listing = self.s3.list_with_delimiter(at.as_ref()).await?;
+
+        let settled = stood >= SETTLED;
+        let (mut kept, mut going) = (Vec::new(), Vec::new());
+        for object in listing.objects {
+            let Some(name) = object.location.filename().map(str::to_owned) else {
+                continue;
+            };
+            if !settled || keep.contains(&name) {
+                kept.push(name);
+            } else {
+                going.push(object.location);
+            }
+        }
+
+        // One `DeleteObjects` call rather than one request each. A bucket
+        // without it wants `disable_bulk_delete` on the builder.
+        let gone: Vec<Key> = self
+            .s3
+            .delete_stream(stream::iter(going).map(Ok).boxed())
+            .try_collect()
+            .await?;
+        for key in &gone {
+            tracing::debug!(%key, "removed");
+        }
+
+        Ok(Pruned {
+            removed: gone
+                .iter()
+                .filter_map(|key| key.filename().map(str::to_owned))
+                .collect(),
+            kept,
+        })
+    }
+
+    /// Whether the bucket already holds exactly these bytes under `key`.
+    ///
+    /// A bucket that will not answer is treated as not holding them, since
+    /// the cost of being wrong is one write.
+    async fn holds(&self, key: &Key, body: &[u8]) -> bool {
+        match self.s3.get(key).await {
+            Ok(got) => got.bytes().await.is_ok_and(|there| there == body),
+            Err(_) => false,
+        }
     }
 
     async fn put(&self, key: &Key, body: Vec<u8>, cache: &str) -> Result<()> {

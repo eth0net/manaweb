@@ -25,46 +25,58 @@ type Log = Arc<Mutex<Vec<Seen>>>;
 
 /// Answers a HEAD for anything in `holding` and takes every PUT.
 async fn bucket(holding: Vec<String>) -> (SocketAddr, Log) {
+    holds(holding, String::new()).await
+}
+
+/// The same, answering a GET with `body` — what the bucket already holds.
+async fn holds(holding: Vec<String>, body: String) -> (SocketAddr, Log) {
     let log: Log = Arc::default();
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
     let address = listener.local_addr().unwrap();
 
-    let state = (log.clone(), holding);
-    let app = axum::Router::new()
-        .fallback(
-            |State((log, holding)): State<(Log, Vec<String>)>, request: Request| async move {
-                let head = |name: header::HeaderName| {
-                    request
-                        .headers()
-                        .get(name)
-                        .and_then(|one| one.to_str().ok())
-                        .unwrap_or_default()
-                        .to_owned()
-                };
-                let seen = Seen {
-                    method: request.method().to_string(),
-                    path: request.uri().path().to_owned(),
-                    content_type: head(header::CONTENT_TYPE),
-                    cache_control: head(header::CACHE_CONTROL),
-                };
-                let known = holding.iter().any(|one| seen.path.ends_with(one));
-                log.lock().unwrap().push(seen.clone());
+    let state = (log.clone(), holding, body);
+    let app =
+        axum::Router::new()
+            .fallback(
+                |State((log, holding, body)): State<(Log, Vec<String>, String)>,
+                 request: Request| async move {
+                    let head = |name: header::HeaderName| {
+                        request
+                            .headers()
+                            .get(name)
+                            .and_then(|one| one.to_str().ok())
+                            .unwrap_or_default()
+                            .to_owned()
+                    };
+                    let seen = Seen {
+                        method: request.method().to_string(),
+                        path: request.uri().path().to_owned(),
+                        content_type: head(header::CONTENT_TYPE),
+                        cache_control: head(header::CACHE_CONTROL),
+                    };
+                    let known = holding.iter().any(|one| seen.path.ends_with(one));
+                    log.lock().unwrap().push(seen.clone());
 
-                let status = if seen.method == "HEAD" && !known {
-                    StatusCode::NOT_FOUND
-                } else {
-                    StatusCode::OK
-                };
-                Response::builder()
-                    .status(status)
-                    .header(header::CONTENT_LENGTH, "0")
-                    .header(header::ETAG, "\"1\"")
-                    .header(header::LAST_MODIFIED, "Thu, 17 Sep 2026 12:00:00 GMT")
-                    .body(axum::body::Body::empty())
-                    .unwrap()
-            },
-        )
-        .with_state(state);
+                    let status = if seen.method == "HEAD" && !known {
+                        StatusCode::NOT_FOUND
+                    } else {
+                        StatusCode::OK
+                    };
+                    let sending = if seen.method == "GET" && known {
+                        body.clone()
+                    } else {
+                        String::new()
+                    };
+                    Response::builder()
+                        .status(status)
+                        .header(header::CONTENT_LENGTH, sending.len().to_string())
+                        .header(header::ETAG, "\"1\"")
+                        .header(header::LAST_MODIFIED, "Thu, 17 Sep 2026 12:00:00 GMT")
+                        .body(axum::body::Body::from(sending))
+                        .unwrap()
+                },
+            )
+            .with_state(state);
 
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
     (address, log)
@@ -129,6 +141,34 @@ async fn the_manifest_goes_last_and_is_the_only_one_not_immutable() {
     assert!(puts[0].cache_control.contains("immutable"));
     assert!(puts[1].cache_control.contains("immutable"));
     assert_eq!(puts[2].cache_control, "no-cache");
+}
+
+// The service uploads at startup as well as after a sync, and a prune reads
+// how long the manifest has stood, so a restart must not rewrite it.
+#[tokio::test]
+async fn a_set_that_has_not_moved_rewrites_nothing_at_all() {
+    let dir = std::env::temp_dir().join("manaweb-publish-settled");
+    exported(&dir);
+    let same = fs::read_to_string(dir.join("manifest.json")).unwrap();
+    let (address, seen) = holds(
+        vec![
+            "cards.abc.json".to_owned(),
+            "prints.def.json".to_owned(),
+            "manifest.json".to_owned(),
+        ],
+        same,
+    )
+    .await;
+
+    let done = client(address).upload("catalog", &dir).await.unwrap();
+
+    assert!(done.sent.is_empty(), "sent: {:?}", done.sent);
+    assert_eq!(done.held.len(), 3);
+    assert!(
+        !seen.lock().unwrap().iter().any(|one| one.method == "PUT"),
+        "a settled set is read, never written"
+    );
+    fs::remove_dir_all(dir).unwrap();
 }
 
 #[tokio::test]
