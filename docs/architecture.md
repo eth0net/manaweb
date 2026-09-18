@@ -65,6 +65,11 @@ wants `api` alongside. Each is a set of content-addressed files and a
 that file `manifest.json`, and the prefix is also what a prune can be scoped
 to once one exists.
 
+Moving a set to a different prefix is three steps and the order is the whole
+of it: upload under the new one, deploy the client that reads it, then delete
+what the old one held. A client already loaded fetches on its own schedule
+rather than on a deploy's, so anything else takes the files out from under it.
+
 **A Pages deployment is a snapshot of one directory**, so a commit-triggered
 deploy carrying the catalog would have to rebuild an 11MB artifact it has no
 input for, and one that didn't would delete it. R2 is object storage: a new
@@ -86,12 +91,16 @@ among them, so it needs a cache rule. Files upload uncompressed for the CDN to
 compress.
 
 **The server uploads its own catalog**, through `crates/objects` and an R2 API
-token it reads from the environment. The host runs a container image and holds
-no checkout, so there is no `just` and no wrangler out there to call — a dev
-tool is not a production runner. `manaweb-upload` is the same library behind a
-binary, for pushing a catalog by hand, which is what `just upload` now runs: a
-second implementation for local use would be the one nobody exercises until
-the weekly job fails.
+token it reads from the environment. The token is scoped to the one bucket and
+wants object read as well as write, the skip below being a HEAD. Its secret
+access key is the SHA-256 of the token value, which R2 shows once — so losing
+it costs a hash of the value rather than a new token.
+
+The host runs a container image and holds no checkout, so there is no `just`
+and no wrangler out there to call — a dev tool is not a production runner.
+`manaweb-upload` is the same library behind a binary, for pushing a set by
+hand, which is what `just upload` runs: a second implementation for local use
+would be the one nobody exercises until the weekly job fails.
 
 It publishes after a sync and again at startup, so restarting the service is
 how an upload that failed gets retried. A pair whose name is already in the
