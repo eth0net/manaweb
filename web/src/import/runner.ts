@@ -106,8 +106,7 @@ function announce(next: State): void {
   notify();
 }
 
-// The upload is the only part of an import held on one device, so it is the
-// only part worth asking about before a tab closes.
+// Closing the tab only costs an upload, so only an upload is worth asking about.
 let guarding = false;
 
 function guard(event: BeforeUnloadEvent): void {

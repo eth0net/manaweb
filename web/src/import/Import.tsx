@@ -27,9 +27,8 @@ type Taken = { format: Format; got: Read; file: string; digest: string };
 
 const NAMES = FORMATS.map((one) => one.name).join(", ");
 
-// An import outlives the page that started it, so it reports from wherever you
-// are — and a stopped one says so loudest, being the one nothing else would
-// ever mention again.
+// Reports from wherever you are, a stopped one loudest: it is the one nothing
+// else would ever mention again.
 export function ImportStatus({ path }: { path: string }) {
   const state = useImport();
   if (state.at === "none" || path === IMPORT) return null;
@@ -333,7 +332,7 @@ function clock(at: number): string {
   });
 }
 
-// What an import is quoted at before one has run. What it takes is whatever the
+// The quote `HOURLY` carries, put into words. What it takes is whatever the
 // PDS turns out to allow.
 function about(records: number): string {
   const minutes = Math.round((records / HOURLY) * 60);

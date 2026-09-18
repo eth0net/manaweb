@@ -22,8 +22,8 @@ export function Collection({
   path: string;
 }) {
   const key = path.startsWith(UNDER) ? path.slice(UNDER.length) : "";
-  // The total counts what an import has in the repo but not yet as records,
-  // because those are owned. What they are not is editable, so it says so.
+  // The total takes `waiting` in too, because those copies are owned. What
+  // they are not is editable, so it says so.
   const left = useWaiting().reduce((sum, one) => sum + one.quantity, 0);
 
   if (key) {

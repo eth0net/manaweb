@@ -112,7 +112,7 @@ test("an entry matching a card held joins it rather than starting one", () => {
   expect(wrote[0]?.value.quantity).toBe(5);
 });
 
-// A key from a client is that device's clock, and two of them collide.
+// Two devices draining at once would otherwise write the same key twice.
 test("a create leaves the key to the server", () => {
   const writes = drain(part({ ...of, entries: many(2) }), new Map(), NOW);
   const made = writes.filter((one) => one.action === "create");

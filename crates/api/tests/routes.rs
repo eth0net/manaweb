@@ -1,4 +1,4 @@
-//! The health check, and the exported catalog served for local development.
+//! What each route answers, and what it sends back with the answer.
 
 use std::path::PathBuf;
 use std::{env, fs};

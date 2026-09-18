@@ -85,8 +85,7 @@ async fn each_file_names_its_own_columns() {
     }
 }
 
-/// The client finds a card's printings by walking runs rather than by looking
-/// up an id, so the order of the two files is load-bearing.
+/// The run each card's printings sit in, which the client walks by position.
 #[tokio::test]
 async fn printings_group_into_the_runs_the_cards_claim() {
     let pool = seeded_with(CARDS).await;
