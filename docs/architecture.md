@@ -90,6 +90,27 @@ An R2 custom domain caches only certain file types by default and JSON isn't
 among them, so it needs a cache rule. Files upload uncompressed for the CDN to
 compress.
 
+**The two policies cost differently, and only one of them grows with users.**
+A content file is answered by the edge once it is warm, so the bucket sees it
+about once however many clients load it. The manifest revalidates instead —
+`cf-cache-status` says `REVALIDATED` on every request, measured against the
+deployed bucket — so each read travels there rather than stopping at the
+edge. Whether Cloudflare charges a revalidation as a read is not something
+their pricing page says, which is the first thing to confirm from the bucket's
+own metrics. Everything the server does is a fixed handful per run; this is
+the only figure that rises with the number of people using the app.
+
+At eight reads a day an active client comes to roughly 240 a month, against a
+free allowance of ten million, so `no-cache` stays: it is the conservative
+choice and the manifest is the one thing that tells a client the catalog has
+moved. **Watch the operation count rather than the bandwidth** — egress is
+free and the bytes are cached, so operations are the axis that moves, and the
+bucket's own metrics are where to read it. The lever, when it starts to
+matter, is a short `max-age` instead: five minutes of edge caching would
+collapse every client in that window into one read, and five minutes of
+staleness is nothing against a weekly rebuild, the more so because what a
+prune removes has been unnamed for a day by then.
+
 **The server uploads its own catalog**, through `crates/objects` and an R2 API
 token it reads from the environment. The token is scoped to the one bucket and
 wants object read as well as write, the skip below being a HEAD. Its secret
@@ -105,7 +126,20 @@ would be the one nobody exercises until the weekly job fails.
 It publishes after a sync and again at startup, so restarting the service is
 how an upload that failed gets retried. A pair whose name is already in the
 bucket is left alone, the names being content-addressed, so that retry costs
-one HEAD rather than 12MB.
+one HEAD rather than 12MB. A manifest nobody changed is left alone too, which
+matters for the reason below rather than for the write it saves.
+
+**Taking the replaced files away happens first, before the new ones go up.**
+Read the other way round it sounds backwards, but the manifest in the bucket
+at that moment is the one clients have been handed, so everything it omits
+was superseded a cycle ago and has had a week to go quiet. Pruning afterwards
+would instead take the generation a client was handed seconds earlier.
+
+A cycle is only as long as the gap between runs, though, and a restart makes
+that gap minutes. So nothing is taken while the manifest is under a day old,
+and that is why an unchanged one is never rewritten: each rewrite would push
+the clock back, and a service restarting daily would leave the bucket growing
+with nothing in the log to say why.
 
 Two origins also means every catalog fetch is cross-origin, so the bucket
 needs a CORS policy. `Access-Control-Allow-Origin: *` is right: the catalog is
@@ -209,6 +243,9 @@ for static artifacts, which a CDN fixes cheaply.
   perceptual hashes, ~25MB for embeddings.
 - Weekly deltas have no mechanism yet — computing them means keeping a previous
   catalog snapshot server-side, which sits awkwardly with a disposable DB.
+- Bucket operations, not bandwidth, are what a growing user base spends: the
+  manifest is read past the cache and the artifacts are not. Roughly 240 reads
+  a month per active client, against ten million free.
 
 | Users | Shape |
 |---|---|
