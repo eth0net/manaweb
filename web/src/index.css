@@ -103,6 +103,27 @@ nav a.here {
   color: var(--ink);
 }
 
+/* The two ways into the catalog, marked like the tab bar but sized to their
+   own words: they switch a view rather than a tab. */
+.modes {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0 0 0.75rem;
+}
+
+.modes a {
+  border-radius: 0.375rem;
+  color: var(--quiet);
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.625rem;
+  text-decoration: none;
+}
+
+.modes a.here {
+  background: var(--edge);
+  color: var(--ink);
+}
+
 /* The route's own box, so a list inside it still measures against the page. */
 .view {
   display: flex;
@@ -359,6 +380,83 @@ textarea {
   width: 100%;
 }
 
+/* One control rather than six buttons, bordered like the tools beside it. */
+.colors {
+  align-items: center;
+  border: 1px solid var(--edge);
+  border-radius: 0.375rem;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.375rem 0.5rem;
+}
+
+/* Dimmed until it is asked for, which is what makes the row read as switches
+   rather than as a cost. */
+.pip {
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  opacity: 0.35;
+  padding: 0.125rem;
+}
+
+.pip[aria-pressed="true"] {
+  opacity: 1;
+}
+
+/* Refused rather than unasked: lit, so it reads as a choice, and struck so it
+   doesn't read as wanted. */
+.pip.refused {
+  opacity: 1;
+  position: relative;
+}
+
+.pip.refused::after {
+  background: var(--warn);
+  content: "";
+  height: 2px;
+  left: 10%;
+  position: absolute;
+  top: 50%;
+  transform: rotate(-45deg);
+  width: 80%;
+}
+
+/* A number reads faster under its name than inside every option of a menu. */
+.span {
+  align-items: center;
+  color: var(--quiet);
+  display: inline-flex;
+  gap: 0.375rem;
+}
+
+/* A key and the way it runs, which are one choice in two presses. */
+.sort {
+  display: inline-flex;
+}
+
+/* Every control in the panel sits on its own line under its heading. */
+.panel select {
+  max-width: 100%;
+}
+
+.sort select {
+  border-bottom-right-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.sort .way {
+  border-bottom-left-radius: 0;
+  border-left: 0;
+  border-top-left-radius: 0;
+}
+
+.pip .mana {
+  height: 1.25rem;
+  margin: 0;
+  vertical-align: 0;
+}
+
 /* A circle whatever is behind it, so the control it anchors keeps its size
    between an account with a picture and one without. */
 .avatar {
@@ -497,9 +595,28 @@ button:disabled {
   color: var(--quiet);
 }
 
-/* Sits above the search it targets, so it reads as the sentence adds complete. */
-.destination {
-  margin: 0 0 0.75rem;
+/* Everything aimed at the list under it, wrapping as more of them arrive: one
+   row on a desktop, the search over its modifiers on a phone. */
+.tools {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* The one that grows, down to a basis narrow enough to keep a modifier beside
+   it before the row breaks. */
+.tools input[type="search"] {
+  flex: 1 1 12rem;
+}
+
+/* Bordered like the search and the select beside it, because it is the same
+   kind of thing: quiet text alone read as a label rather than a control. */
+.tool {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .places {
@@ -522,6 +639,18 @@ button:disabled {
 }
 
 /* The one adds land in, marked where a list has no selected state of its own. */
+/* Picked, in a list long enough that a press has to read from the top of it. */
+.sets [aria-pressed="true"] {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* 989 rows in a dialog, so the list scrolls under the filter rather than
+   carrying it off the top. */
+.panel .sets {
+  max-height: 50vh;
+}
+
 .places [aria-current="true"] {
   font-weight: 600;
   text-decoration: none;

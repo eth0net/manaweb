@@ -13,6 +13,7 @@ import { Nav } from "./Nav";
 import { useSession } from "./oauth/useSession";
 import { HOME, known, Link, replace, tab, usePath } from "./router";
 import { Search } from "./Search";
+import { SETS, SetView } from "./Sets";
 import { Soon } from "./Soon";
 import { useCatalog } from "./useCatalog";
 
@@ -41,6 +42,18 @@ export function App() {
     if (account.state.status !== "restoring" && !known(path)) replace(HOME);
   }, [account.state.status, path]);
 
+  const destination = signedIn && (
+    <>
+      <Destination
+        containers={containers}
+        owning={collection}
+        chosen={chosen}
+        onChoose={choose}
+      />
+      {collection.error && <span className="warn">{collection.error}</span>}
+    </>
+  );
+
   return (
     <main>
       <header>
@@ -61,26 +74,16 @@ export function App() {
         <CatalogUpdate status={status} />
         <ImportStatus path={path} />
 
-        {signedIn && here === "/cards" && (
-          <p className="destination">
-            <Destination
-              containers={containers}
-              owning={collection}
-              chosen={chosen}
-              onChoose={choose}
-            />
-            {collection.error && (
-              <span className="warn">{collection.error}</span>
-            )}
-          </p>
-        )}
-
         {/* Signed out leaves this null, which is what hides every add button. */}
         <Owning value={collection.ready ? collection : null}>
           <div className="view">
             {here === "/cards" &&
               (load.status === "ready" ? (
-                <Search catalog={load.catalog} />
+                path === SETS ? (
+                  <SetView catalog={load.catalog} tools={destination} />
+                ) : (
+                  <Search catalog={load.catalog} tools={destination} />
+                )
               ) : load.status === "loading" ? (
                 <p>{load.step}…</p>
               ) : (

@@ -20,9 +20,17 @@ export function Destination({
 
   return (
     <Modal
-      trigger="summary"
+      trigger="tool"
       title="Where cards go"
-      label={`→ ${here?.value.name ?? UNFILED.name}`}
+      label={
+        <>
+          <span className="quiet">Adding to</span>
+          {here?.value.name ?? UNFILED.name}
+          <span className="quiet" aria-hidden="true">
+            ▾
+          </span>
+        </>
+      }
     >
       <ul className="places">
         <li>
