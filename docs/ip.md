@@ -30,17 +30,21 @@ symbol at `svgs.scryfall.io`, open CORS and cached for a year. Hotlinked rather
 than redistributed, the same call as card images: we display Wizards' graphics
 under the policy below and never ship a copy of them.
 
-The disclaimer that obliges is in the app footer verbatim, with the detail
-behind a Licenses modal. Scryfall's guidelines also ask that the source of card
-data be identifiable, which the same footer does.
+The disclaimer that obliges is verbatim in the app's About panel, with the
+licenses under it. Scryfall's guidelines also ask that the source of card data
+be identifiable, which the same panel does. It stood in a footer until that
+footer was costing every phone screen four lines to say the same thing.
 
 **WotC Fan Content Policy.** Selling Wizards-related content needs their
 permission, and you "can't require payments, surveys, downloads, subscriptions,
 or email registration to access your Fan Content". Donations and ad revenue are
-explicitly permitted. The disclaimer must be carried verbatim wherever the
-project is named: unofficial Fan Content permitted under the Fan Content
-Policy, not approved/endorsed by Wizards, portions of the materials used are
-property of Wizards of the Coast, ©Wizards of the Coast LLC. The policy doesn't
+explicitly permitted. The disclaimer must be carried verbatim: unofficial Fan
+Content permitted under the Fan Content Policy, not approved/endorsed by
+Wizards, portions of the materials used are property of Wizards of the Coast,
+©Wizards of the Coast LLC. What the policy asks is that the note accompany the
+content; it sets no placement, so a panel a tap away answers it and an earlier
+reading of this file saying "wherever the project is named" asked for more
+than the policy does. The policy doesn't
 address software; an older Fan Site Policy is read by some as barring apps
 outright, which sits awkwardly against the many MTG apps nobody has bothered.
 Unresolved, not permission.

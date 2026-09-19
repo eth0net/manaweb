@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
-import { Account } from "./Account";
-import { CatalogStatus, CatalogUpdate } from "./CatalogStatus";
+import { CatalogUpdate } from "./CatalogStatus";
 import { Collection } from "./collection/Collection";
 import { useCollection } from "./collection/cards";
 import { useContainers } from "./collection/containers";
 import { Owning } from "./collection/context";
 import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
-import { Footer } from "./Footer";
 import { IMPORT, Import, ImportStatus } from "./import/Import";
 import { attach, useWaiting } from "./import/runner";
+import { Menu } from "./Menu";
 import { Nav } from "./Nav";
 import { useSession } from "./oauth/useSession";
 import { HOME, known, Link, replace, tab, usePath } from "./router";
@@ -51,10 +50,11 @@ export function App() {
             Manaweb
           </Link>
         </h1>
-        {load.status === "ready" && (
-          <CatalogStatus status={status} loaded={load} />
-        )}
-        <Account account={account} />
+        <Menu
+          account={account}
+          status={status}
+          loaded={load.status === "ready" ? load : null}
+        />
       </header>
 
       <div className="column">
@@ -114,7 +114,6 @@ export function App() {
       </div>
 
       <Nav path={here} />
-      <Footer />
     </main>
   );
 }

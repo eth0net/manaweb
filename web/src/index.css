@@ -26,8 +26,7 @@ body {
   margin: 0;
 }
 
-/* An app shell: the page itself doesn't scroll, the list inside it does. Two
-   scrolls put the footer below the fold, which is why it looked half gone.
+/* An app shell: the page itself doesn't scroll, the list inside it does.
    `dvh` rather than `vh` so mobile browser chrome doesn't cut it off. */
 main {
   box-sizing: border-box;
@@ -77,14 +76,6 @@ h1 {
 .mark img {
   height: 1.6em;
   width: 1.6em;
-}
-
-footer {
-  border-top: 1px solid var(--edge);
-  color: var(--quiet);
-  flex: none;
-  font-size: 0.75rem;
-  padding-top: 0.75rem;
 }
 
 nav {
@@ -139,18 +130,6 @@ nav a.here {
 
 .breakdown li > :last-child {
   font-variant-numeric: tabular-nums;
-}
-
-footer p {
-  margin: 0;
-}
-
-footer p + p {
-  margin-top: 0.25rem;
-}
-
-footer a {
-  color: inherit;
 }
 
 .query {
@@ -403,6 +382,13 @@ dialog::backdrop {
   padding: 1rem 1.25rem 1.25rem;
 }
 
+.panel h3 {
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  margin: 1.25rem 0 0.5rem;
+  text-transform: uppercase;
+}
+
 .panel h2 {
   font-size: 1rem;
   margin: 0 0 0.75rem;
@@ -630,7 +616,7 @@ dialog.wide {
     column-gap: 2.5rem;
     display: grid;
     grid-template-columns: 11rem minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
     max-width: 64rem;
   }
 
@@ -653,12 +639,7 @@ dialog.wide {
 
   .column {
     grid-column: 2;
-    grid-row: 2;
-  }
-
-  footer {
-    grid-column: 2;
-    grid-row: 3;
+    grid-row: 2 / -1;
   }
 }
 
