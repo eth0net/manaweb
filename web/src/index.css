@@ -3,6 +3,9 @@
   font-family: system-ui, sans-serif;
   line-height: 1.5;
 
+  /* Both marks the header carries, so they stay the same circle. */
+  --mark: 2rem;
+
   --ink: #1a1a1a;
   --paper: #fdfdfc;
   --quiet: #6b6b6b;
@@ -47,8 +50,10 @@ main {
   min-height: 0;
 }
 
+/* Centered rather than on the baseline: the marks at either end are the same
+   circle, and two rows of unequal text put them on different lines. */
 header {
-  align-items: baseline;
+  align-items: center;
   border-bottom: 1px solid var(--edge);
   display: flex;
   flex-wrap: wrap;
@@ -74,8 +79,8 @@ h1 {
 /* Decorative beside the name, and takes its own theme: it is an image rather
    than markup, so nothing here colors it. */
 .mark img {
-  height: 1.6em;
-  width: 1.6em;
+  height: var(--mark);
+  width: var(--mark);
 }
 
 nav {
@@ -354,7 +359,6 @@ textarea {
   width: 100%;
 }
 
-/* The header's own line: a plain button, so opening the panel can't reflow it. */
 /* A circle whatever is behind it, so the control it anchors keeps its size
    between an account with a picture and one without. */
 .avatar {
@@ -365,8 +369,8 @@ textarea {
   color: var(--quiet);
   display: inline-flex;
   flex: none;
-  font-size: 0.6875rem;
-  height: 1.5rem;
+  font-size: 0.875rem;
+  height: var(--mark);
   justify-content: center;
   object-fit: cover;
   overflow: hidden;
@@ -399,6 +403,7 @@ textarea {
   display: none;
 }
 
+/* The header's own line: a plain button, so opening the panel can't reflow it. */
 .summary {
   border: 0;
   color: var(--quiet);
