@@ -62,8 +62,22 @@ function declarations(source: string): string {
     }
   }
 
-  return `${kept.join("\n").trimEnd()}\n`;
+  // `BlobRef` is a class in `@atproto/lexicon`, which is the runtime half this
+  // drops. What arrives over the wire is the reference rather than the bytes,
+  // so the structural form is both what a reader gets and what compiles here.
+  const text = kept.join("\n").trimEnd();
+  if (/\bBlobRef\b/.test(text)) {
+    return `${BLOB}\n\n${text}\n`;
+  }
+  return `${text}\n`;
 }
+
+const BLOB = `export interface BlobRef {
+  $type: 'blob'
+  ref: { $link: string }
+  mimeType: string
+  size: number
+}`;
 
 async function sources(dir: string): Promise<Map<string, string>> {
   const found = new Map<string, string>();

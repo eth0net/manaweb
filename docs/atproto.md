@@ -227,7 +227,7 @@ Two independent PDS implementations enforce it and the qualified form is live
 in the wild, so the enumeration is not the finest grain available — it is the
 coarsest of three.
 
-Only the three collections v0 writes are declared, and only
+Only the collections v0 writes are declared, and only
 `app.manaweb.import` unqualified: it is created today and updated and deleted
 by the drain, and a scope narrowed now is a second consent prompt within the
 same feature. A scope for a record type nothing creates is authority held for
@@ -236,6 +236,13 @@ is for — which is a better moment to ask
 than a signup that quietly took it. Scopes are matched as exact strings, so a
 qualified form has to be written the same way in both places;
 `web/src/config.ts` and the document are held to each other by a test.
+
+**An upload is a resource of its own.** A `repo:` scope authorizes the record
+that points at a blob and not the blob, so storing a picture wants
+`blob:image/*` beside `repo:app.manaweb.profile`. The permission takes MIME
+globs, and the spec bars it from permission sets, so it is always asked for
+directly. `pds.e0n.sh` took it at PAR on 2026-09-19 — which `scopes_supported`
+could not have told us, listing neither it nor the `repo:` family.
 
 Which to request is a design choice, not something to read off the server.
 `scopes_supported` carries `atproto` and the transitional scopes and nothing

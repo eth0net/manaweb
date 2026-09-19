@@ -355,6 +355,50 @@ textarea {
 }
 
 /* The header's own line: a plain button, so opening the panel can't reflow it. */
+/* A circle whatever is behind it, so the control it anchors keeps its size
+   between an account with a picture and one without. */
+.avatar {
+  align-items: center;
+  aspect-ratio: 1;
+  background: var(--edge);
+  border-radius: 50%;
+  color: var(--quiet);
+  display: inline-flex;
+  flex: none;
+  font-size: 0.6875rem;
+  height: 1.5rem;
+  justify-content: center;
+  object-fit: cover;
+  overflow: hidden;
+}
+
+/* The trigger is a row rather than a word: the picture holds the target when
+   a handle is too long to sit beside it. */
+.summary:has(.avatar) {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A file input renders its own control and cannot be styled, so the label is
+   the button and the input behind it is never drawn. */
+.file {
+  border: 1px solid var(--edge);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  padding: 0.375rem 0.75rem;
+}
+
+.file input {
+  display: none;
+}
+
 .summary {
   border: 0;
   color: var(--quiet);

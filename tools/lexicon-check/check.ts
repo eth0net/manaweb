@@ -332,8 +332,8 @@ expect("a browser client authenticates with none", client.token_endpoint_auth_me
 expect("tokens are DPoP-bound", client.dpop_bound_access_tokens === true);
 expect("atproto comes first in scope", scopes[0] === "atproto");
 expect(
-  "no scope globs a prefix, which repo: does not support",
-  !scopes.some((scope) => scope.includes("*")),
+  "no repo: scope globs a prefix, which repo: does not support",
+  !scopes.some((scope) => scope.startsWith("repo:") && scope.includes("*")),
 );
 
 // The document asks for no more than it can write. A record type may exist

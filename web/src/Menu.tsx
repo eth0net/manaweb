@@ -1,8 +1,11 @@
+import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useEffect, useState } from "react";
+import { Avatar } from "./Avatar";
 import { published } from "./CatalogStatus";
 import type { Loaded } from "./catalog/load";
 import { CATALOG, SCOPES } from "./config";
 import { Modal } from "./Modal";
+import { bare, wear } from "./oauth/profile";
 import { type Repo, read } from "./oauth/records";
 import type { Session } from "./oauth/useSession";
 import type { Status } from "./useCatalog";
@@ -23,6 +26,7 @@ export function Menu({
   const { state, signIn, signOut } = account;
   const [repo, setRepo] = useState<Repo | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [worn, setWorn] = useState(0);
 
   useEffect(() => {
     if (state.status !== "in") {
@@ -50,7 +54,22 @@ export function Menu({
     <Modal
       trigger="summary"
       title="Manaweb"
-      label={session ? (repo?.handle ?? session.did) : "Sign in"}
+      label={
+        state.status === "in" ? (
+          <>
+            <span className="handle">{repo?.handle ?? state.session.did}</span>
+            {/* Keyed so wearing a new one reads it again: the trigger and
+                the control that changed it are separate readers. */}
+            <Avatar
+              key={worn}
+              session={state.session}
+              name={repo?.handle ?? state.session.did}
+            />
+          </>
+        ) : (
+          "Sign in"
+        )
+      }
       actions={
         session && (
           <button type="button" onClick={signOut}>
@@ -60,7 +79,12 @@ export function Menu({
       }
     >
       {state.status === "in" ? (
-        <Account session={state.session} repo={repo} failed={failed} />
+        <Account
+          session={state.session}
+          repo={repo}
+          failed={failed}
+          onWorn={() => setWorn((n) => n + 1)}
+        />
       ) : (
         <SignIn signIn={signIn} error={state.error} />
       )}
@@ -78,16 +102,19 @@ function Account({
   session,
   repo,
   failed,
+  onWorn,
 }: {
-  session: { did: string; serverMetadata: { issuer: string } };
+  session: OAuthSession;
   repo: Repo | null;
   failed: string | null;
+  onWorn: () => void;
 }) {
   const missing = repo ? SCOPES.filter((s) => !repo.granted.includes(s)) : [];
 
   return (
     <>
       <h3>Account</h3>
+      <Picture session={session} onWorn={onWorn} />
       <dl>
         <dt>DID</dt>
         <dd>{session.did}</dd>
@@ -115,6 +142,62 @@ function Account({
             : "…"}
         </dd>
       </dl>
+      {failed && <p className="warn">{failed}</p>}
+    </>
+  );
+}
+
+// Shrunk before it goes up, so a phone camera's output does not become what
+// every page load reads back.
+function Picture({
+  session,
+  onWorn,
+}: {
+  session: OAuthSession;
+  onWorn: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  const run = (what: () => Promise<unknown>) => {
+    setBusy(true);
+    setFailed(null);
+    what().then(
+      () => {
+        setBusy(false);
+        onWorn();
+      },
+      (error: unknown) => {
+        setBusy(false);
+        setFailed(error instanceof Error ? error.message : "failed");
+      },
+    );
+  };
+
+  return (
+    <>
+      <p className="actions">
+        <label className="file">
+          {busy ? "Working…" : "Choose a picture"}
+          <input
+            type="file"
+            accept="image/*"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) run(() => wear(session, file));
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => run(() => bare(session))}
+        >
+          Remove
+        </button>
+      </p>
       {failed && <p className="warn">{failed}</p>}
     </>
   );

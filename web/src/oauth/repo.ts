@@ -1,4 +1,5 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
+import type { BlobRef } from "../lexicons/app/manaweb/profile";
 
 // A record as it is written: `$type` is added below, and a plain Omit would
 // drop every named field past the open index signature a lexicon carries.
@@ -115,6 +116,22 @@ function after(response: Response): number {
   if (reset > 0) return Math.max(reset * 1000 - Date.now(), 0);
 
   return 60_000;
+}
+
+// Bytes rather than JSON, which is the one call here that does not send a
+// record. Its own scope too: `repo:` covers what names a blob, never the blob.
+export async function uploadBlob(
+  session: OAuthSession,
+  body: Blob,
+): Promise<BlobRef> {
+  const nsid = "com.atproto.repo.uploadBlob";
+  const response = await session.fetchHandler(`/xrpc/${nsid}`, {
+    method: "POST",
+    headers: { "content-type": body.type },
+    body,
+  });
+  const said = await unwrap<{ blob: BlobRef }>(response, nsid);
+  return said.blob;
 }
 
 // Every record in one collection, paged out in full.
