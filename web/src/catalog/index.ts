@@ -1,3 +1,4 @@
+import { matches, printed, type Query } from "./query";
 import { type Index, normalize, scores, search } from "./search";
 
 // `name` resolves against the manifest's own URL, so the catalog can move.
@@ -75,6 +76,23 @@ export type SetRow = [
   released: string,
 ];
 
+// Nothing to ask the printings, which most queries don't.
+const NONE: Print[] = [];
+
+// Common to mythic, which is what makes `r>=rare` an order rather than a name.
+const RARITY = ["common", "uncommon", "rare", "mythic"];
+
+// A power or toughness that isn't a number sorts last rather than as zero.
+function stat(card: Card, at: number): number {
+  const found = Number(card.stats?.split("/")[at]);
+  return Number.isFinite(found) ? found : Number.MAX_SAFE_INTEGER;
+}
+
+// Unranked is least played rather than most — see `docs/search.md`.
+function rank(card: Card): number {
+  return card.edhrecRank ?? Number.MAX_SAFE_INTEGER;
+}
+
 // Collector numbers aren't numbers: 10 follows 9, "329★" follows "329", and
 // The List prefixes them with a set code.
 const COLLECTOR = new Intl.Collator(undefined, { numeric: true });
@@ -134,6 +152,8 @@ export interface Print {
   id: string;
   set: string;
   setName: string;
+  // The set's day, which is the only date a printing has.
+  released: string;
   collectorNumber: string;
   finishes: string[];
   rarity: string;
@@ -315,24 +335,112 @@ export class Catalog {
     return this.#prints.prints.length;
   }
 
+  // Every subtype any card carries, which no column names: a type line is
+  // supertypes and types, then an em dash, then these.
+  #kinds: string[] | null = null;
+
+  subtypes(): string[] {
+    if (this.#kinds) return this.#kinds;
+
+    const found = new Set<string>();
+    for (const row of this.#cards.cards) {
+      const line = row[2];
+      if (line === null) continue;
+      for (const face of line.split("//")) {
+        const after = face.split("—")[1];
+        for (const word of after?.trim().split(/\s+/) ?? []) found.add(word);
+      }
+    }
+
+    this.#kinds = [...found].sort((a, b) => a.localeCompare(b));
+    return this.#kinds;
+  }
+
   // Every language some printing is in, commonest first.
   get languages(): string[] {
     return this.#prints.langs;
   }
 
-  // A language narrows to cards printed in it, which is not searching by a
-  // name in that language: "Counterspell" with `ja` finds 対抗呪文.
-  search(query: string, { limit = 50, lang = "" } = {}): Card[] {
-    const bit = lang ? this.#prints.langs.indexOf(lang) : -1;
+  // Names are ranked; terms only narrow — see `docs/search.md`. A query with
+  // no name at all is the whole catalog walked instead, which an order makes
+  // worth reading.
+  find(query: Query, { limit = 50 } = {}): Card[] {
+    // Nothing asked is nothing found, which is what an empty box shows and
+    // what a query of only unanswerable terms comes to.
+    if (!query.text && query.node === null) return [];
+
+    const wants = printed(query);
     const keep =
-      bit < 0
+      query.node === null
         ? undefined
         : (card: number) =>
-            ((this.#languages[card] as number) >> bit) % 2 === 1;
+            matches(query, this.card(card), wants ? this.prints(card) : NONE);
 
-    return search(this.#index, query, limit, keep).map((index) =>
-      this.card(index),
-    );
+    // An order sorts everything that matched, so the cap comes off the scan
+    // and goes on what is handed back.
+    const cap = query.order ? this.#cards.cards.length : limit;
+    const found = query.text
+      ? search(this.#index, query.text, cap, keep)
+      : this.#walk(keep, cap);
+
+    const cards = found.map((index) => this.card(index));
+    if (!query.order) return cards;
+
+    cards.sort(this.#by(query.order));
+    if (query.direction === "desc") cards.reverse();
+    return cards.slice(0, limit);
+  }
+
+  // Rows arrive by name, so a walk that sorts nothing is already alphabetical.
+  #walk(keep: ((card: number) => boolean) | undefined, cap: number): number[] {
+    const found: number[] = [];
+    const cards = this.#cards.cards.length;
+    for (let card = 0; card < cards && found.length < cap; card++) {
+      if (!keep || keep(card)) found.push(card);
+    }
+    return found;
+  }
+
+  // The printing a sort over sets or rarity reads, which is the one its row
+  // already shows.
+  #first(card: Card): Print | undefined {
+    return this.prints(card.index)[0];
+  }
+
+  #by(order: string): (a: Card, b: Card) => number {
+    switch (order) {
+      case "mv":
+      case "cmc":
+        return (a, b) => (a.cmc ?? 0) - (b.cmc ?? 0);
+      case "pow":
+        return (a, b) => stat(a, 0) - stat(b, 0);
+      case "tou":
+        return (a, b) => stat(a, 1) - stat(b, 1);
+      case "printings":
+        return (a, b) => b.printings - a.printings;
+      case "edhrec":
+        return (a, b) => rank(a) - rank(b);
+      case "released":
+        return (a, b) =>
+          (this.#first(b)?.released ?? "").localeCompare(
+            this.#first(a)?.released ?? "",
+          );
+      case "rarity":
+        return (a, b) =>
+          RARITY.indexOf(this.#first(a)?.rarity ?? "") -
+          RARITY.indexOf(this.#first(b)?.rarity ?? "");
+      case "set":
+        return (a, b) =>
+          (this.#first(a)?.set ?? "").localeCompare(this.#first(b)?.set ?? "");
+      case "cn":
+        return (a, b) =>
+          COLLECTOR.compare(
+            this.#first(a)?.collectorNumber ?? "",
+            this.#first(b)?.collectorNumber ?? "",
+          );
+      default:
+        return (a, b) => a.name.localeCompare(b.name);
+    }
   }
 
   card(index: number): Card {
@@ -409,23 +517,33 @@ export class Catalog {
     }));
   }
 
-  // Every printing in one set, in collector number order, with the card each
-  // belongs to. A scan of the whole file, which is a couple of milliseconds
-  // and beats an index built at load for a question most visits never ask.
-  setPrints(code: string): { card: number; print: Print }[] {
-    const set = this.#prints.sets.findIndex((one) => one[0] === code);
-    if (set < 0) return [];
+  // Every printing in these sets, newest set first and in collector number
+  // order within one, with the card each belongs to. A scan of the whole file,
+  // which is a couple of milliseconds and beats an index built at load for a
+  // question most visits never ask.
+  setPrints(codes: string[]): { card: number; print: Print }[] {
+    const rank = new Map(
+      this.#prints.sets
+        .filter((set) => codes.includes(set[0]))
+        .sort((a, b) => b[3].localeCompare(a[3]))
+        .map((set, at) => [set[0], at] as const),
+    );
+    if (rank.size === 0) return [];
 
     const found: { card: number; print: Print }[] = [];
     for (let at = 0; at < this.#prints.prints.length; at++) {
       const row = this.#prints.prints[at] as PrintRow;
-      if (row[1] === set) {
+      const set = this.#prints.sets[row[1]] as SetRow;
+      if (rank.has(set[0])) {
         found.push({ card: this.#owner(at), print: this.#print(row) });
       }
     }
 
-    found.sort((a, b) =>
-      COLLECTOR.compare(a.print.collectorNumber, b.print.collectorNumber),
+    found.sort(
+      (a, b) =>
+        (rank.get(a.print.set) as number) -
+          (rank.get(b.print.set) as number) ||
+        COLLECTOR.compare(a.print.collectorNumber, b.print.collectorNumber),
     );
     return found;
   }
@@ -465,6 +583,7 @@ export class Catalog {
       id: row[0],
       set: set[0],
       setName: set[1],
+      released: set[3],
       collectorNumber: row[2],
       finishes: decode(row[3], this.#prints.finishes),
       rarity: this.#prints.rarities[row[4]] as string,
