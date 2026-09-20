@@ -5,9 +5,11 @@ What can be built and charged for, and under what license it ships.
 - **AGPL-3.0-only** for the AppView — server, web UI, the running service.
 - **MIT** for `lexicons/`. NSID schemas are shared vocabulary and the point is
   other people adopting them; copyleft on a schema file discourages exactly
-  that. Same argument, weaker, for `crates/core`.
-- Per-crate `license` fields in each `Cargo.toml` carry the split. GitHub only
-  detects the root LICENSE, so the README explains it.
+  that. `crates/core` has the same argument going for it, weaker, and has not
+  been split out.
+- Every crate is AGPL, inheriting `license` from the workspace; the MIT half
+  is `lexicons/LICENSE`. GitHub only detects the root LICENSE, so the README
+  explains it.
 - Why AGPL rather than MIT/Apache like the rest of atproto: loosening a license
   later is trivial, tightening one forks projects (HashiCorp → OpenTofu, Redis
   → Valkey). Permissive would permanently foreclose a hosted option.
@@ -30,9 +32,9 @@ symbol at `svgs.scryfall.io`, open CORS and cached for a year. Hotlinked rather
 than redistributed, the same call as card images: we display Wizards' graphics
 under the policy below and never ship a copy of them.
 
-The disclaimer that obliges is verbatim in the app's About panel, with the
-licenses under it. Scryfall's guidelines also ask that the source of card data
-be identifiable, which the same panel does. It stood in a footer until that
+The disclaimer that obliges is verbatim in the account menu's Licenses
+section. Scryfall's guidelines also ask that the source of card data be
+identifiable, which the same section does. It stood in a footer until that
 footer was costing every phone screen four lines to say the same thing.
 
 **WotC Fan Content Policy.** Selling Wizards-related content needs their

@@ -13,10 +13,11 @@ reaches them. Un-sets, special editions and oversized cards stay searchable —
 Unfinity acorn cards are Legacy-legal, and someone with a 30th Anniversary Mox
 searching and finding nothing is a worse failure than a noisy result.
 
-The noise was mostly a grouping problem. Paper alone is 108,273 printings
-across 37,564 cards, so "Forest" returned 865 rows. One row per card, with a
-count, and a representative printing chosen by preferring booster printings
-from expansions and core sets, then nonfoil over a foil-only twin sharing its
+The noise was mostly a grouping problem. Paper alone runs to six figures of
+printings across tens of thousands of cards, so "Forest" returned hundreds of
+rows. One row per card, with a count, and a representative printing chosen by
+preferring booster printings from expansions and core sets, then nonfoil over
+a foil-only twin sharing its
 collector number. The order is total, ending in the printing id — the files
 are named after their own bytes, so a tie left to SQLite would rename them for
 nothing.
@@ -59,19 +60,20 @@ Emerald. Acceptable for now — the honest fix is our own signal, below.
 
 ## Browsing, sorting and filtering
 
-Not built. Worth recording that **the artifact already carries everything they
-need**, so none of it is a format change: type line, colors, color identity,
-mana cost, cmc, power and toughness, rarity, set, artist and layout are all
-there.
+Filtering and sorting are built, as the query language below rather than a UI
+of their own. **The artifact already carried everything they need** — type
+line, colors, color identity, mana cost, cmc, power and toughness, rarity,
+set, artist and layout — so neither was a format change.
 
-- **Filtering** on type, color, color identity, mana cost, mana value and
-  power, all of which are operators rather than a UI of their own — see the
-  query language below.
-- **Sorting** by name, cmc, rarity, printing count or popularity, which is a
-  different comparator over the same scan.
-- **A grid view** with the cell size or column count settable, since a wall of
-  card images is how everyone else presents a collection and the image URLs
-  derive from the print id.
+**Two places list cards, and they ask the same question differently.** A
+search ranks names across the whole catalog and shows one row per card; a set
+shows every printing it holds in collector order, and a term narrows that pile
+rather than searching it. The same parsed query drives both, so a filter means
+one thing in either.
+
+Still wanted: **a grid view** with the cell size or column count settable,
+since a wall of card images is how everyone else presents a collection and the
+image URLs derive from the print id.
 
 ### Grouping, and a card page
 
@@ -81,8 +83,8 @@ free:
 - **Ungrouped**, a row per printing, is a walk of the runs already built.
 - **By card** is what it does now.
 - **By art** needs `illustration_id`, which Scryfall carries and the cache
-  doesn't parse. It shouldn't ship as an id either: 108,273 UUIDs is 3.9MB raw
-  where a dense group number per printing is ~540KB, and nothing needs to
+  doesn't parse. It shouldn't ship as an id either: a UUID per paper printing
+  is about 3.9MB raw where a dense group number is ~540KB, and nothing needs to
   *name* an illustration — only to know which printings share one.
 
 A card page wants the larger art, every printing, and the full details. All of
@@ -93,8 +95,8 @@ images derive from the print id and the printings are the run.
 at full size, the name opens the details — the same split on a card page as in
 a result row, so the gesture means one thing everywhere.
 
-**Neither list pages.** An empty search box shows the 988 sets rather than
-paging blindly through 37,564 cards, and a set's printings — 5,584 of them for
+**Neither list pages.** An empty search box shows the sets rather than paging
+blindly through every card, and a set's printings — several thousand for
 The List — scroll inside a bounded box. `content-visibility: auto` leaves rows
 past the fold unlaid-out until they approach it, which is what makes that many
 rows cheap without a windowing library; `contain-intrinsic-size` keeps the
@@ -130,11 +132,64 @@ only a subset — so `m>3WU` is a subset relation rather than a numeric one,
 which is exactly what "at least this much red" needs and what a per-color
 number can't express.
 
-**The color modes are operators.** ManaBox offers four buttons — exact,
-inclusive, maximum, and Commander identity — and they are `c=`, `c>=`, `c<=`
-and `id<=`. So the controls and the query say the same thing twice, which is
-what makes prefilling work rather than being a trick: **the query string is the
-state and the controls are a view over it**, either one editing it.
+**The color modes are operators, except the one that isn't.** ManaBox offers
+four buttons — exact, inclusive, maximum, and Commander identity — and they are
+`c=`, `c>=`, `c<=` and `id<=`. **"Any of" is the fourth question and has no
+operator at all**: white *or* blue is `c:w or c:u`, which is why grouping had
+to exist before the pips could offer it. So the controls and the query say the
+same thing twice, which is what makes prefilling work rather than being a
+trick: **the query string is the state and the controls are a view over it**,
+either one editing it. A control reads the comparison back as well as the
+value, or pressing a pip on a `c<=wu` query would quietly widen it.
+
+**Two controls can share a key where the values can't be confused.** The pips
+name colors and the count is a number, so ManaBox's slider and its pips are one
+key and two terms, each rewriting only the shape it owns — which is what makes
+counting a control rather than something only the box can say. That slider is
+dual, and a range is a third thing again: two comparisons of the same key,
+`c>=2 c<=4`, so the comparison belongs to the term rather than to the key.
+Two selects rather than a slider, there being no such input and a phone
+handling a menu better than two overlapping thumbs. The same
+reading tells the three type controls apart: `t:legendary t:creature t:goblin`
+is one run of terms, and which control holds which word is read off the word,
+supertypes and types being closed sets and everything after the em dash being
+the rest.
+
+**Subtypes usually mean "any of", where a supertype and a type mean "and".**
+Goblin or Elf is a real question and legendary-and-creature is the only
+reading of two, so the choice sits on the subtypes alone rather than on all
+three. The vocabulary is scanned out of the type lines at first use: ~600
+words the artifact already ships, for no new column. Splitting a type line on
+its spaces makes two entries of Time Lord, the one subtype written as two
+words — cosmetic, because `t:time` is a substring match and finds it anyway.
+
+**A control reading the wrong term is the failure mode of all of this**, and
+it has one cause: a regex that sees a neighbor's term as its own. Four ways it
+happened — a comparison read as a value, where `c>=4` fell back to `c>` and
+took `=4`; a key inside a word, `is:foil` holding `s:foil`; a spelling the
+control doesn't write, so `set:lea` read as no set and picking one wrote a
+second term; and a quoted value split on its space. Every one of them was a pattern
+guessing at structure the parser already knew.
+
+**So a control edits by span.** The parser records where each term sat — every
+term, including the ones it drops from the tree, because `order:mv` filters
+nothing and a control still has to find it — and an edit cuts those offsets
+and writes the new term. There is no key-matching pattern left to get wrong:
+what a value may hold, where a key begins and which spelling was typed are all
+the tokenizer's answers rather than a regex's. A group mixing keys, which the
+old reading damaged, is now two spans belonging to two controls. What survives
+of the string surgery is tidying after a cut — an emptied group, a dangling
+`or` — which is small, structural and tested.
+
+A round-trip test holds the invariant: reading a control's state and writing
+it straight back asks the same question.
+
+**Refusing a color is the fifth question and needs no fifth control.** `-c:r`
+is a term like any other, so a pip carries three states rather than two —
+wanted, refused, neither — and each refusal is written alone, `-c:r -c:g`
+being neither where a group would ask something else. Counting instead of
+naming, `c=2` for two-color cards or `c>=3`, is typed: it wants the same key
+as the pips and there is no honest way for both to hold it.
 
 Three things fall out of that:
 
@@ -152,9 +207,44 @@ Three things fall out of that:
 ### What runs against the pair today
 
 Everything the artifact carries, which is most of it: `c:` and `id:` with
-their comparisons, `mv:`, `m:`, `t:`, `r:`, `s:`, `cn:`, `a:`, the layout and
-flag predicates, and names. Mana pips are parsed out of the cost string, so
-per-color filtering needs no new column.
+their comparisons, `mv:`, `m:`, `t:`, `pow:`, `tou:`, `r:`, `s:`, `cn:`, `a:`,
+`lang:`, `layout:`, `year:`, the flag predicates as `is:` and `not:`, and
+names. Mana pips are parsed out of the cost string, so per-color filtering
+needs no new column.
+
+`-` refuses a term, `or` takes either side, and parentheses group — which the
+set control needs, because a handful of sets is `(s:lea or s:2ed)` and there
+is no other way to write it. A group left open closes at the end rather than
+refusing the whole query, since a query is re-read on every keystroke and a
+half-typed one is the normal state.
+
+**A term is asked of a printing, because Scryfall's index holds printings and
+ours holds cards.** Every term is tested against one printing at a time and a
+card answers when one of them satisfies the whole query — so `s:lea r:rare`
+wants a single Alpha rare, not an Alpha printing and a rare one. The row then
+shows whichever printing answered, which is why searching a set illustrates
+the card with that set's art. A set view hands over the one row it is drawing,
+so the same query means the same thing in both places.
+
+**`r:` and `in:` are the two questions that split.** `r:rare` asks the
+printing under test; `in:rare` asks whether the card was ever printed that
+way, whichever printing is being tested. `in:` also takes a set or a language,
+and `in:paper` is always true because paper is all the artifact carries.
+
+**`is:commander` is a bit, not a derivation.** A deck is headed by a legendary
+creature or a legendary Spacecraft, and by anything whose text says so — 49
+cards say it, from the Commander 2014 planeswalkers to Unfinity's spell
+commanders, and every one of them means itself. The type half is a rules fact
+the exporter carries; the text half is why the bit is computed at export,
+where the oracle text is, rather than in a client that never sees it. Which is
+the pattern for the rest: a predicate needing text is one flag, not a part.
+
+`order:` takes name, mana value, power, toughness, rarity, release, set,
+collector number, printing count or popularity, and `dir:desc` turns it
+around. An order sorts everything that matched rather than the page of it that
+came back, so it lifts the cap off the scan and puts it on the result.
+Ordering by rarity or release reads the representative printing, being the one
+the row already shows.
 
 Wanting a part it doesn't have: `o:` and `kw:` need text, `usd:` needs prices
 (Phase 2), `f:` needs legality, and `lang:` is only as good as the languages
@@ -163,6 +253,28 @@ below.
 **`pow` and `tou` don't fully compare.** They arrive as the `stats` string, and
 Tarmogoyf is `*/1+*` — so a numeric filter has to treat a non-numeric power as
 unmatched rather than as zero, and say so.
+
+### Held to theirs
+
+`just check-scryfall-search` puts the same query to their API and to our
+catalog and compares the names. Outside `check`, because it needs their
+service and answers a question about the implementation rather than about a
+commit. It is how "borrow the syntax" stays true rather than becoming
+approximately true.
+
+The first run, over eighteen queries, put every divergence in one of three
+piles:
+
+- **Faces.** Scryfall matches a face; we hold one row per card. `Kytheon, Hero
+  of Akros // Gideon, Battle-Forged` is a one-mana white creature on its front
+  and neither to us, and every `A // B` miss is this. Closing it wants face
+  data in the artifact — the same column-or-part decision as oracle text, and
+  the largest single thing between us and their results.
+- **A stale artifact.** `is:commander` found nothing against a catalog built
+  before the flag existed. Worth knowing the check catches that.
+- **Cards they omit.** Crusade, Imprison, Invoke Prejudice and Jihad are
+  withdrawn as offensive and Scryfall leaves them out of search; we return
+  them. A divergence to decide on rather than fix by accident.
 
 ## Card languages
 
@@ -176,14 +288,14 @@ Three things get conflated, and only the middle one is a setting:
   print id.
 
 Nothing about the third reaches a record. `(set, collector number, lang)` is
-unique across all 117,630 printings, which is what `cards::printing_id` looks
+unique across every printing, which is what `cards::printing_id` looks
 up, so a language is a way of *finding* a print id rather than a field beside
 one. ManaBox instead makes language an editable property of an entry, bulk
 editable — the same fact through a different affordance, and where a CSV import
 has to meet us.
 
 The client artifact drops the language, carrying only what Default Cards
-holds, and no two of its 108,749 paper printings share a set and collector
+holds, and no two of its paper printings share a set and collector
 number. So a file exporting neither print ids nor a language still resolves,
 which is the whole of what the browser does with a pair. Putting non-English
 printings in the artifact would end that, and is one more reason the
@@ -197,7 +309,7 @@ languages before display ever does.
 What it takes, in order:
 
 1. **All Cards** — 392MB compressed, an estimated 590,000 printings from
-   Default Cards' 78MB for 117,628. Streamed and filtered to `lang <> 'en'`, so
+   Default Cards' 78MB. Streamed and filtered to `lang <> 'en'`, so
    nothing English is stored twice.
 2. **A translations table, not a second shredding.** Only what varies by
    language: the printing's own id, its oracle id, lang, set, collector number,

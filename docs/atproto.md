@@ -53,17 +53,18 @@ per copy, and as the thing that stops a re-import duplicating what is there.
 So coarser records are not forced, but import is a resumable background job
 that has to be honest about taking hours.
 
-**The upload is not paced at all.** 8,321 stacks pack into 42 parts, 1.89MB and
-129 points, which is three calls and a few seconds. What takes hours is turning
+**The upload is not paced at all.** 8,321 stacks pack into 42 parts, 1.89MB
+and 126 points at three a create, which is three calls and a few seconds. What takes hours is turning
 those parts into cards, and by then the collection is in the repo, replicated
 and readable. The ceiling stopped being what a person waits for and became what
 the app catches up on.
 
 **A lost answer needs no investigation.** Draining a part is one transaction
 that retires the part as it writes, and [`data-model.md`](data-model.md) covers
-why a second attempt at one cannot land. So a resume asks the PDS nothing, takes
-no lock, and chooses no key in advance — the three things the paced writer it
-replaces had to do.
+why a second attempt at one cannot land. So a resume asks the PDS nothing and
+chooses no key in advance, and the lock it takes is a Web Lock between this
+browser's own tabs rather than anything the PDS knows about — what the paced
+writer it replaces had to do, it no longer does.
 
 **Let the server pick record keys.** A TID is a millisecond clock plus five
 random bits of clock id, kept monotonic only within the process that mints it,
@@ -103,9 +104,9 @@ because the PDS holds the signing key.
 **Run against a limited PDS on 2026-09-16**, importing 4,336 ManaBox rows as
 4,333 stacks into a fresh account. The upload was three `applyWrites` calls and
 a few seconds; the drain then ran eight times back to back and stopped itself.
-Each drain charged exactly 598 points — 2674, 2076, 1478, 880, 282 remaining —
-which is 199 creates and the part's delete, so the arithmetic above is the
-server's arithmetic.
+A drain charged 598 points — 199 creates and the part's delete — and the
+remaining budget stepped down by that each time, 2674 to 2076 to 1478 to 880
+to 282, so the arithmetic above is the server's arithmetic.
 
 **The header names whichever bucket has least left, which hides the one you
 care about.** The first calls reported `3000;w=300`, the per-IP bucket, falling
@@ -136,7 +137,7 @@ nothing about what a limited one does. Set it deliberately to test the pacing.
 writes rather than charging per call, so 200 creates cost the same 600 points
 either way. What the batch buys is one atomic commit and one round-trip, and
 the body limit is 1,000,000 bytes — a stack carrying a full note, tags and
-history approaches 8KB, so 200 of those would not fit and a batch has to be cut
+history runs past 12KB, so 200 of those would not fit and a batch has to be cut
 by size as well as by count. Exceeding either limit is charged before it is
 refused, with no refund.
 
@@ -208,10 +209,9 @@ we write, which is all a client that writes only its own records needs. Reads
 need no scope, records being publicly fetchable.
 
 **They are granted, not merely accepted.** Signing in against `pds.e0n.sh` on
-2026-09-10 returned every one of the six requested, and its consent screen
-itemizes them: one row per collection, with create, update and delete marked
-separately. So a request for all five costs one legible screen rather than a
-vague one, which is the argument for asking once at sign-in instead of staging
+2026-09-10 returned every one requested, and its consent screen itemizes them:
+one row per collection, with create, update and delete marked separately. So
+asking for the lot costs one legible screen rather than a vague one, which is the argument for asking once at sign-in instead of staging
 the scopes behind the features that need them.
 
 `transition:generic` is the fallback for a server that refuses the granular
@@ -227,10 +227,10 @@ Two independent PDS implementations enforce it and the qualified form is live
 in the wild, so the enumeration is not the finest grain available — it is the
 coarsest of three.
 
-Only the collections v0 writes are declared, and only
-`app.manaweb.import` unqualified: it is created today and updated and deleted
-by the drain, and a scope narrowed now is a second consent prompt within the
-same feature. A scope for a record type nothing creates is authority held for
+Only the collections v0 writes are declared, and each unqualified rather than
+narrowed to the actions used today: `app.manaweb.import` is created now and
+updated and deleted by the drain, and a scope narrowed now is a second consent
+prompt within the same feature. A scope for a record type nothing creates is authority held for
 nothing, and the cost of adding one later is a consent prompt that says what it
 is for — which is a better moment to ask
 than a signup that quietly took it. Scopes are matched as exact strings, so a
@@ -373,10 +373,9 @@ the price of DIDs nothing else resolves — the browser client takes a
 uncrawled host on the public directory keeps the sign-in ordinary, which is
 worth more.
 
-**So two hosts, not three.** One uncrawled, holding the cast in
-`fixtures/README.md` and wiped whenever it suits; one crawled, holding a
-personal account and the two or three long-lived ones that prove federation
-works. A third for staging would be crawled to be worth having, and a crawled
+**So one host, not three.** `pds.e0n.sh` is crawled, and holds both the cast
+in `fixtures/README.md`, wiped whenever it suits, and the long-lived accounts
+that prove federation works. A third for staging would be crawled to be worth having, and a crawled
 host is indistinguishable from production to the network — it would spend the
 same public directory and the same firehose, protecting only our own disk,
 which separate accounts already do.

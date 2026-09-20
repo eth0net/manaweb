@@ -29,7 +29,7 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
   `jsonl_download_uri` and `compressed_size` — the older `download_uri` /
   `content_encoding` pair is gone.
 - **Card objects aren't uniformly shaped, and this bites on the first sync.**
-  `layout: reversible_card` (81 printings) has no top-level `oracle_id`, `cmc`,
+  `layout: reversible_card` has no top-level `oracle_id`, `cmc`,
   `mana_cost`, `type_line`, `oracle_text`, `colors` or `image_uris` — all on
   `card_faces`. Transform layouts have null top-level `mana_cost` and
   face-level images. So `oracle_id` cannot be `NOT NULL`, and the cache needs
@@ -39,14 +39,15 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
   weekly unattended sync shouldn't fail on a new value, and two undocumented
   layouts (`front_card`, `prepare`) turned up on the first real run. Colors
   are the exception: the game's rules close that set.
-- Measured on 2026-09-07: 117,630 printings, streamed and parsed in 2.4s. The
-  parse is not the expensive part of a refresh.
+- Measured on 2026-09-18: 118,239 printings, streamed and parsed in seconds.
+  The parse is not the expensive part of a refresh.
 - The bulk files include digital-only printings, tokens and art series. Which
   of those search surfaces is settled below; the cache keeps all of them,
   since a printing you can own has to be findable.
 - Refresh weekly — Scryfall says gameplay data needs fetching "once per week or
   right after set releases". The API also requires an accurate `User-Agent`
-  naming the app (`Manaweb/0.1`), explicitly not a library default.
+  naming the app, explicitly not a library default. `manaweb_scryfall::USER_AGENT`
+  is the only place it is spelled, and CI holds a tag to that same version.
 - Don't ship image URIs; they derive from the card id as
   `cards.scryfall.io/{size}/front/{id[0]}/{id[1]}/{id}.jpg`, the query string
   being a cache-buster. Keep `image_status` — `missing`/`placeholder` printings
@@ -183,11 +184,11 @@ Moxfield's `Last Modified` seeds `updatedAt`.
 ## Oracle and printing are two tables
 
 Which fields belong to a card rather than a printing was measured, not
-guessed: group all 117,630 printings by `oracle_id` and count the columns that
+guessed: group every printing by `oracle_id` and count the columns that
 disagree. Six never do — `color_identity`, `defense`, `edhrec_rank`,
-`game_changer`, `keywords`, `reserved`. Ten more disagree for 71 cards out of
-38,633, and every one of those 71 is a reversible printing sharing an id with
-a normal one, whose nulls are the whole disagreement.
+`game_changer`, `keywords`, `reserved`. Ten more disagree for 71 cards, and
+every one of those 71 is a reversible printing sharing an id with a normal
+one, whose nulls are the whole disagreement.
 
 So `name`, `type_line`, `mana_cost`, `cmc`, `oracle_text`, `colors`, `power`,
 `toughness`, `loyalty` and `defense` are card-level. `legalities` is not: 2% of
@@ -206,8 +207,8 @@ a printing arriving later can displace what earlier ones established.
 The two merge either way round rather than the later one starting over, or the
 file's order would decide what a card's type line is.
 
-Measured: the database goes from 94MB to 81MB, and the client's gameplay
-payload from 20.3MB to 7.5MB — the artifact is the real prize, being the
+Measured: the database drops by about an eighth and the client's gameplay
+payload by nearly two thirds — the artifact is the real prize, being the
 difference between hitting a 4-5MB target and missing it.
 
 `kind`, `paper`, `printings` and `default_print` are derived onto the card row
@@ -221,11 +222,12 @@ header, written uncompressed for a CDN to compress.
 
 | | rows | uncompressed | brotli |
 |---|---|---|---|
-| cards | 37,564 | 4.6MB | 1.28MB |
-| prints | 108,273 | 7.9MB | 2.71MB |
+| cards | 37,821 | 4.64MB | 1.29MB |
+| prints | 108,883 | 7.89MB | 2.73MB |
 
-Measured 2026-09-08: 3.99MB over the wire, at the top of the 4-5MB target in
-[`architecture.md`](architecture.md).
+Measured 2026-09-18: 4.01MB over the wire, at the top of the 4-5MB target in
+[`architecture.md`](architecture.md). It grows with the game, so treat the
+target as the thing to hold and this as the last time anyone looked.
 
 **Printings are grouped by card, in the cards file's order**, so a card's
 printings are the run of `printings` rows where the preceding counts end, and
@@ -233,7 +235,7 @@ the leading row is the printing search would show. That is why the pair carries
 one version and why the build refuses to publish runs that don't add up: an
 index read against the wrong ordering is wrong quietly.
 
-**Names are per card. Printed names are per printing** — 2,525 paper printings
+**Names are per card. Printed names are per printing** — the few paper printings
 carry one, 32KB in total, so a Japanese card is found by the name on its own
 printing and no per-language index is needed.
 
@@ -256,10 +258,11 @@ artist, the dearest at 175KB and the one to drop first.
 **A rare field can't be its own column.** Loyalty is on 316 cards and would
 spend a `null` on the other 37,248 — 186KB to say nothing. So power and
 toughness, loyalty and defense share one column: they never co-occur and print
-in the same corner, and the type line says which it is. Flags that are almost
-always false — reserved and game changer per card, promo, variation, full art,
-textless and oversized per printing — are bits in one integer, named by the
-header the way finishes are, so a flag added later needs no change in a client.
+in the same corner, and the type line says which it is. Booleans — reserved,
+game changer and whether it can head a deck per card, promo, variation, full
+art, textless and oversized per printing — are bits in one integer, named by
+the header the way finishes are, so a flag added later needs no change in a
+client.
 
 **Battles keep their defense on `card_faces`**, so only two cards carry one at
 the top level. Inside the fold it costs nothing, so it stays.
@@ -277,7 +280,7 @@ to hold it.
 
 | part | raw | brotli | when |
 |---|---|---|---|
-| cards, prints | 12.48MB | 3.99MB | always |
+| cards, prints | 12.53MB | 4.01MB | always |
 | text — oracle text, keywords | 5.4MB | ~1.5MB | opt-in: offline viewing, text search |
 | names, per language | | ~300KB each | opt-in: chosen at onboarding |
 | art | unbounded | unbounded | opt-in, per card, the service worker's |

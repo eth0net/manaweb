@@ -26,7 +26,7 @@ If it does, donations first, ads only if genuinely necessary, self-hosting free
 regardless. Both are permitted by the policies in [`ip.md`](ip.md). Not a
 business.
 
-## Phase 0 — Collection tracking (current focus)
+## Phase 0 — Collection tracking (done)
 
 - Manual search + CSV import only. No scanner, no live pricing.
 - Everything about the card cache is in [`scryfall.md`](scryfall.md); the
@@ -37,8 +37,8 @@ business.
 CLI reading a ManaBox CSV would still need a live session and would still write
 at 1,666 records an hour. It bought a connection that holds for five hours
 rather than a phone's, and parts took even that away: the browser has the file
-in the repo before anyone could open a terminal. Worth having once step 6's
-`goat` recipes exist; not worth building first.
+in the repo before anyone could open a terminal. `just seed` is the shape it
+would take; still nobody's want.
 
 ## Phase 1 — Scanner
 
@@ -107,6 +107,14 @@ damage, non-English printings — plus bulk scanning from uploaded photos.
 - If valuation is ever sold, re-source it — TCGplayer and Cardmarket run
   affiliate programs with commercial terms. Otherwise keep it free.
 - Valuation is collection entries × latest cached price. No new architecture.
+
+**What a sealed product holds is a different source.** Scryfall says whether a
+printing appears in boosters and nothing about which product or sheet it came
+off; MTGJSON publishes booster configurations and sealed contents, so knowing
+what a box can yield means a second feed and a part of its own. Wanted for
+splitting a sealed purchase across what comes out of it, and for answering
+"where do I open this" — not scheduled, and it earns a phase only once
+valuation exists to make either question worth asking.
 
 ## Phase 3 — Decks
 

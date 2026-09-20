@@ -11,9 +11,10 @@ what can be *built*, not only what can be charged for.
 `docs/` carries the reasoning, one file per subject: `roadmap.md` for phases,
 `data-model.md` for owned versus referenced and history, `architecture.md` for
 the AppView shape and storage, `scryfall.md` for the cache and the client
-artifact, `search.md` for querying it, `atproto.md` for lexicons and the PDS
-and OAuth limits, `ip.md` for the WotC and Scryfall constraints. This file is the condensed orientation for
-picking the project back up; each crate describes itself in its `Cargo.toml`.
+artifact, `search.md` for querying it, `configuration.md` for the environment,
+`atproto.md` for lexicons and the PDS and OAuth limits, `ip.md` for the WotC
+and Scryfall constraints. This file is the condensed orientation for picking
+the project back up; each crate describes itself in its `Cargo.toml`.
 
 Prose here and in `lexicons/` is read more often than it is written, so keep it
 short: the non-obvious fact and its one consequence. Two lines of comment is a
@@ -34,6 +35,17 @@ owns it, where that is a person rather than the code. A bare `todo:` is a fix
 nothing blocks and nobody owns, so prefer giving it an owner over leaving it —
 searching for one form finds a person's work, another a feature's, and `todo`
 alone finds every one of them before a release.
+
+A check lives in the thing it checks, as a test, wherever it can: the
+catalog's format is a Rust test beside the exporter rather than a tool. A
+standalone tool earns its place when the check spans both sides or needs
+someone else's implementation, and then it takes the toolchain of what it
+consumes rather than of what it asserts about — `lexicon-check` runs atproto's
+own validator and `scryfall-check` drives the client's own parser, so both are
+TypeScript whatever they are checking. Prefer Rust where a check is slow or
+settled, TypeScript where it moves with the client. A third toolchain is the
+thing to avoid: nobody should install one to run a check on work that never
+touches it.
 
 Spelling is American, matching the vocabulary the code already uses. `typos`
 enforces it; `typos.toml` says what it skips.
@@ -192,7 +204,7 @@ backend:
    that streams the real file.
 2. **Done** — card cache in `crates/core`: migrations, a full-replace sync
    fed by a `CardStream`, FTS5 name search, printing lookup for CSV import.
-   81MB for 117,630 printings. `legalities` is a lookup table, not a column.
+   `legalities` is a lookup table, not a column.
 3. **Done** — lexicons enumerated in `lexicons/`, validated in CI against
    atproto's own implementation plus records that must be refused.
    Deck, list and snapshot precede their implementation deliberately: the
@@ -207,7 +219,9 @@ backend:
    imports a CSV, parsed and planned against what is held, then landed whole
    and drained into records at whatever the PDS will take. Measured end to end
    against a limited one. Deployed to Pages, reading the catalog from the
-   bucket it is uploaded to.
+   bucket it is uploaded to. Search speaks most of Scryfall's syntax, held to
+   their own answers by `just check-scryfall-search`; a service worker holds
+   the shell offline and `web/public/_headers` carries the CSP.
 6. **Done** — fixture records seeding a dev account without the UI, as a
    directory of JSON named by collection and record key, and `just seed`
    driving `goat` from an app password. CI validates them with the lexicons.

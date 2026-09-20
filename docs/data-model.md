@@ -12,8 +12,9 @@ possession, or are they a reference?
 - **Collection entry** — a card you own, in exactly one container. Carries
   `scryfall_id`, finish, condition, quantity.
 - **Design** — card references you may or may not own. A *deck* is a design
-  with deck metadata (format, commander, sideboard); a *list* is one without
-  (wishlist, trade pile). Same entry shape, different parent.
+  with deck metadata (`format`); a *list* is one without (wishlist, trade
+  pile). Same entry shape, different parent. Commander and sideboard are not
+  deck fields but entry ones — an entry's `section`.
 
 "Design vs built" for decks and "collection vs list" for cards are one axis
 asked twice, so they share a mechanism rather than becoming four concepts.
@@ -40,9 +41,10 @@ Consequences:
 - **Design entries are keyed `(oracle_id, scryfall_id?, finish?)`**, so diffs
   and fork provenance have stable identity rather than array positions. The key
   also handles two entries for one card intended as different printings.
-- **Owned cards are keyed differently**: `(scryfall_id, finish, condition)`
-  within a container. No `language`: every language of a printing has its own
-  Scryfall id (m10 #146 has nine), so the field could only contradict it.
+- **Owned cards are keyed differently**: by everything said about those
+  copies in particular, which is spelled out under Stack identity below. No
+  `language`: every language of a printing has its own Scryfall id (m10 #146
+  has nine), so the field could only contradict it.
 - The keys share no fields, and owned cards carry no `oracle_id`, so matching a
   design entry to owned cards routes through the card cache to resolve
   `scryfall_id → oracle_id`. That join is the heart of the design-vs-built
@@ -98,9 +100,9 @@ field, scanning and typing being one intent by two inputs.
 
 Routes settle before the bar does, because a shared deck link outlives any
 arrangement of tabs. `/cards`, `/collection/:container`, `/decks/:deck` and
-`/lists/:list` are the commitment; their order along the bottom is not. A set
-is `/cards?set=`, and a set deep enough to deserve `/cards/:set` is a decision
-to make when something links to one.
+`/lists/:list` are the commitment; their order along the bottom is not.
+Browsing sets earned a place of its own, `/cards/sets` and `/cards/sets/:set`,
+because a set is somewhere you go rather than a filter you set.
 
 **A tab's own button is two things.** From another tab it returns you where you
 left this one; from inside it, it takes you to the top. The name in the header
@@ -118,9 +120,9 @@ one proves not to be enough.
 
 Neither has a lexicon, and both are Phase 3.
 
-**A follow of ours, not Bluesky's.** The OAuth grant is `repo:app.manaweb.*`
-and nothing more, so writing `app.bsky.graph.follow` would mean asking for
-Bluesky access again — see [`atproto.md`](atproto.md). It is the right answer
+**A follow of ours, not Bluesky's.** The OAuth grant names our own
+collections and nothing else, so writing `app.bsky.graph.follow` would mean
+asking for Bluesky access again — see [`atproto.md`](atproto.md). It is the right answer
 socially too, since following someone for their decks should not follow them
 anywhere else. Reading that graph to seed suggestions costs nothing.
 
@@ -317,9 +319,9 @@ of its own and the drain merges the part into that, because what an entry joins
 is decided when it drains. So the row carries a minus and no plus, and adding
 goes through the card the way it always did.
 
-**The collection reads both shapes as one**, matching a part's entry to a
-written record by the identity the merge rule already uses, so an entry needs
-no address of its own. Editing a card that has not been written yet rewrites
+**One identity spans both shapes**, matching a part's entry to a written
+record by the rule the merge already uses, so an entry needs no address of its
+own. Editing a card that has not been written yet rewrites
 its part: a delete then costs two points and the card is never created at all,
 against three to create it and one to remove it afterwards.
 
@@ -399,7 +401,8 @@ the last N states, so "that version was good" is reachable retrospectively.
 
 ### Named snapshots
 
-A "save version" button writing a separate record: named, unbounded, complete.
+A "save version" button writing a separate record: named, complete, and
+capped at 2,000 entries.
 The only thing that delivers restore, since a bounded tail can't reach past its
 window. A 100-card list is 5-10KB, so a dozen per deck is nothing.
 
@@ -416,7 +419,8 @@ the window — say so, since that's the prompt that gets someone to name one.
 A fork is a new deck copied from a source, either current state or a named
 snapshot. Branch-versus-copy is **one optional field**, not a history copy:
 
-- **Fork** records `forkedFrom` (at-uri + cid, plus snapshot name if any). The
+- **Fork** records `forkedFrom`: a strongRef to the source, and the at-uri of
+  a snapshot where it was forked from one. The
   UI can show provenance, diff against the parent, list siblings.
 - **Copy** records nothing. An independent deck starting from the same list.
 

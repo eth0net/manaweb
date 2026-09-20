@@ -9,16 +9,21 @@ game toolkit later.
 
 ## Status
 
-Pre-v0, and it runs. `crates/scryfall` streams Scryfall's bulk data,
-`crates/core` shreds 117,630 printings of 38,633 cards into an 81MB SQLite
-file, and the `manaweb` binary exports the 3.67MB catalog a browser needs.
-The lexicons are validated against atproto's own implementation in CI, along
-with the OAuth client metadata document. No client yet.
+Pre-v0, and it runs end to end. `crates/scryfall` streams Scryfall's bulk
+data, `crates/core` shreds every paper printing into SQLite, and the `manaweb`
+binary exports the catalog a browser needs and uploads it. The client signs in
+over OAuth, reads and writes records in your own PDS, imports a ManaBox CSV,
+and searches the catalog offline with most of [Scryfall's query
+syntax](docs/search.md). The lexicons are validated against atproto's own
+implementation in CI, along with the OAuth client metadata document.
+
+Not there yet: the scanner, pricing, decks and Explore. See
+[the roadmap](docs/roadmap.md).
 
 ## Stack
 
-- Rust workspace — `axum` API, SQLite, a Jetstream firehose consumer and a
-  Scryfall bulk-data sync, all in one binary.
+- Rust workspace — `axum` API, SQLite and a Scryfall bulk-data sync, all in
+  one binary. The Jetstream firehose consumer arrives with Explore.
 - TypeScript PWA in `web/`, built with Bun and deployed to a CDN alongside the
   catalog artifact. Nothing a browser fetches comes from the binary.
 
@@ -30,11 +35,34 @@ manaweb/
     api/                 routes and handlers
     appview/             the `manaweb` binary
     core/                card cache, and the catalog it exports
+    objects/             the bucket, and the `manaweb-upload` tool
     scryfall/            bulk-data fetch/parse
   docs/                  roadmap, and the reasoning behind each decision
+  fixtures/              records that seed a dev account
   lexicons/              NSID JSON schemas
+  tools/                 checks that span both sides, and the seeder
   web/                   the client, and its OAuth client metadata document
 ```
+
+`just --list` is the whole workflow. [Configuration](docs/configuration.md)
+lists what the binary and the tools read from the environment.
+
+## Running it
+
+The server needs no arguments and reads its configuration from the
+environment — [`configuration.md`](docs/configuration.md) lists all of it.
+
+```sh
+docker build -t manaweb .
+docker run --rm -p 8080:8080 -v manaweb-data:/data manaweb
+```
+
+`/data` holds the card cache and the exported catalog, owned by uid 10001, so
+a bind mount has to be owned by that id to be writable. `ENTRYPOINT` is the
+binary and `serve` is the default command, so `docker run manaweb version`
+reaches a one-off without knowing where anything lives.
+
+From a checkout, `just serve` does the same thing without the container.
 
 ## Contributing
 

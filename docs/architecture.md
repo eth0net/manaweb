@@ -10,7 +10,8 @@ client metadata document we serve. Our server never proxies a write.
   browser, so they're not ours to lose. Store the DPoP key as a non-extractable
   `CryptoKey` and mean the CSP, because XSS becomes token compromise. Two
   Scryfall hosts have to be in `img-src`: `cards.scryfall.io` for card images
-  and `svgs.scryfall.io` for mana symbols.
+  and `svgs.scryfall.io` for mana symbols. `connect-src` cannot be narrowed
+  past `https:` — the host a session talks to is whichever PDS the user is on.
 - **rkeys are ordinary TIDs.** Deterministic rkeys only helped a stateless
   server that had to find a record without a lookup; a local-first client holds
   its own stack-key → rkey index. It also dodges an ugly choice: a
@@ -71,7 +72,7 @@ what the old one held. A client already loaded fetches on its own schedule
 rather than on a deploy's, so anything else takes the files out from under it.
 
 **A Pages deployment is a snapshot of one directory**, so a commit-triggered
-deploy carrying the catalog would have to rebuild an 11MB artifact it has no
+deploy carrying the catalog would have to rebuild an artifact it has no
 input for, and one that didn't would delete it. R2 is object storage: a new
 pair uploads without removing the old, which is what lets a client mid-load
 finish against the pair its manifest named.
@@ -146,6 +147,28 @@ needs a CORS policy. `Access-Control-Allow-Origin: *` is right: the catalog is
 public data derived from Scryfall, whose own API sends the same. `just serve`
 sends it too, or the dev loop fails at the first fetch and only in a browser.
 
+## What the browser holds, and what it is allowed to reach
+
+Three caches, and they are not the same thing. IndexedDB holds the catalog,
+which is megabytes on the other origin and the reason manual search costs no
+round trip. The HTTP cache holds the hashed assets for a year, which
+`_headers` says. The service worker holds the shell — the document, the two
+hashed files, the icon and the web app manifest — so a reload deep in the app
+works with no network at all.
+
+It deliberately holds nothing else. Caching the catalog there would be a
+second copy of what IndexedDB already has, under a policy that cannot see
+whether the manifest moved. Every route is the same document, so a navigation
+falls back to `index.html`; the hashed files are read from the cache first
+because nothing can change under those names; everything else is fetched and
+only falls back. The cache is named for a hash of the shell it holds, so a
+deploy takes the whole of the last one rather than expiring entries.
+
+`_headers` also carries the CSP. Pages is the only thing that reads that file,
+which would leave the dev server the one place the policy is not enforced, so
+the dev server parses it and sends the same headers. A policy that only
+production has is a policy found in production.
+
 ## Preview deployments
 
 Two Pages behaviors decide what a preview can do:
@@ -191,10 +214,11 @@ Keeping whole card objects would put the bulk file's uncompressed bulk on a
 small VPS disk — and several gigabytes of it if All Cards ever lands. Shred
 what's queried, keep `card_faces` as JSON, discard the rest.
 
-Measured on 2026-09-07: the cache shreds to an 81MB file including the FTS5
-index, written in about 5 seconds — [`scryfall.md`](scryfall.md) holds the row
-counts. Two columns earn normalizing. Legalities repeat ~480 bytes on every printing for only 611
-distinct combinations, which inline was 47% of the database; the rest of what
+Measured on 2026-09-18: the cache shreds to an 88MB file including the FTS5
+index, written in seconds — [`scryfall.md`](scryfall.md) holds the row
+counts. Two columns earn normalizing. Legalities repeat ~480 bytes on every
+printing for only 613 distinct combinations, which inline was 47% of the
+database; the rest of what
 a card's rules say is its own table, for the reasons in
 [`scryfall.md`](scryfall.md). The sync truncates the WAL when it commits,
 which otherwise sits at roughly the size of the database again.
@@ -213,7 +237,7 @@ arriving with Explore won't, being activity we only ever saw go past. A record
 written and deleted between two of our reads leaves nothing behind to re-read,
 and the replay window bounds how far a reconnect recovers. Put that in a second
 SQLite file rather than adding tables to the cache — free now, a schema split
-later — so any durability it needs applies to a small file rather than an 81MB
+later — so any durability it needs applies to a small file rather than the
 derived one.
 
 The accounts we index are not that. A collection filter is network-wide, so a
@@ -236,8 +260,8 @@ the firehose. Per-user cost is a few index rows and a trickle of events —
 nobody edits a collection thousands of times a day. What scales is bandwidth
 for static artifacts, which a CDN fixes cheaply.
 
-- Client artifact: **3.99MB brotli**, 12.5MB before compression, for 37,564
-  cards and 108,273 paper printings. Measured, and served by a CDN rather than
+- Client artifact: a few megabytes over the wire, sized in
+  [`scryfall.md`](scryfall.md). Served by a CDN rather than
   by us; the shape is in [`scryfall.md`](scryfall.md).
 - Scanner index: an estimate, so treat it as one — maybe under 1MB for
   perceptual hashes, ~25MB for embeddings.
@@ -260,9 +284,8 @@ line by line, and the scanner index build must not run on the VPS at all.
 What would break flat costs, likeliest first: a server-side scanner fallback,
 Explore's network-wide indexing, then price history's unbounded storage.
 
-- PWA + service worker: cache the catalog in IndexedDB so manual search is
-  client-side, not a round-trip per keystroke. Biggest lever for keeping the
-  server light.
+- Cache the catalog in IndexedDB so manual search is client-side, not a
+  round-trip per keystroke. Biggest lever for keeping the server light.
 
 ## If atproto goes away
 
