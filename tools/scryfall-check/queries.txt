@@ -1,0 +1,33 @@
+# One query a line, run against both. Comments and blank lines are skipped.
+# Keep each narrow: every result is compared by name, so a query matching
+# thousands is slow and tells you nothing a small one doesn't.
+
+# Colors, and the four ways of asking
+c=wu t:instant mv=2
+c>=uw -c:r t:enchantment mv<=2
+c<=w t:creature mv=1 r:mythic
+c:m t:artifact mv=2
+id<=esper t:instant mv=1
+c=2 t:creature mv=1
+
+# Mana, as symbols rather than a total
+m>1GG t:creature mv=4 r:rare
+m=WW t:creature
+
+# Stats, and the ones that aren't numbers
+pow>tou t:creature mv=1 c:g
+pow>=8 t:creature mv<=5
+
+# Types
+t:legendary t:creature t:dragon mv=4
+(t:goblin or t:elf) t:legendary mv=2
+
+# Printings, and the difference between r: and in:
+s:lea r:rare t:creature
+in:lea t:land
+a:"christopher rush" t:instant
+year<=1994 t:enchantment r:rare
+
+# Flags computed at export
+is:commander c=5
+is:reserved t:land
