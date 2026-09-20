@@ -2,7 +2,9 @@
   "name": "manaweb-lex-gen",
   "private": true,
   "type": "module",
-  "scripts": { "gen": "bun run gen.ts" },
+  "scripts": {
+    "gen": "bun run gen.ts"
+  },
   "dependencies": {
     "@atproto/api": "^0.20.0",
     "@atproto/lex-cli": "^0.10.13"

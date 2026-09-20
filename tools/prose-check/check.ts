@@ -107,7 +107,8 @@ for (const file of docs) {
     if (!seen.has(run)) seen.set(run, file);
   }
 }
-if (!failed) console.log(`  ok    ${docs.length} files, none repeating another`);
+if (!failed)
+  console.log(`  ok    ${docs.length} files, none repeating another`);
 
 // A comment block is a run of comment lines, reported by where it starts.
 const COMMENT = /^\s*(?:\/\/\/?|\*|\/\*)\s?(.*?)\s*(?:\*\/)?$/;
@@ -119,7 +120,8 @@ let repeats = 0;
 for (const file of scan(SOURCE).sort()) {
   // Generated from `lexicons/`, whose descriptions the docs are free to
   // repeat: one owner still, just not this copy of it.
-  if (file.includes("node_modules") || file.includes("src/lexicons/")) continue;
+  if (file.includes("node_modules") || file.includes("src/lexicons/"))
+    continue;
 
   const lines = readFileSync(file, "utf8").split("\n");
   let block: string[] = [];

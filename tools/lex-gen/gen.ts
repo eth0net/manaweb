@@ -8,11 +8,17 @@
 // Schemas we reference but do not own come from `@atproto/api`, which carries
 // every official one, so nothing is copied into this repo to go stale.
 
-import { lexicons } from "@atproto/api";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
+import { lexicons } from "@atproto/api";
 
 const ROOT = dirname(dirname(import.meta.dir));
 const SOURCE = join(ROOT, "lexicons");
@@ -98,7 +104,8 @@ try {
   for (const nsid of borrowed()) {
     // Keyed by lexicon URI rather than by NSID.
     const doc = lexicons.docs.get(`lex:${nsid}`);
-    if (!doc) throw new Error(`${nsid} is referenced and @atproto/api has none`);
+    if (!doc)
+      throw new Error(`${nsid} is referenced and @atproto/api has none`);
     await writeFile(join(docs, `${nsid}.json`), JSON.stringify(doc));
   }
 
@@ -125,10 +132,14 @@ try {
     const names = new Set([...written.keys(), ...held.keys()]);
     const wrong = [...names].filter((n) => written.get(n) !== held.get(n));
     if (wrong.length > 0) {
-      console.error(`stale, rerun \`just lexicon-types\`:\n  ${wrong.join("\n  ")}`);
+      console.error(
+        `stale, rerun \`just lexicon-types\`:\n  ${wrong.join("\n  ")}`,
+      );
       process.exit(1);
     }
-    console.log(`  ok    ${written.size} files match \`${relative(ROOT, SOURCE)}\``);
+    console.log(
+      `  ok    ${written.size} files match \`${relative(ROOT, SOURCE)}\``,
+    );
   } else {
     rmSync(TARGET, { recursive: true, force: true });
     for (const [path, source] of written) {

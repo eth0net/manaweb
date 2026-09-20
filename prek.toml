@@ -51,9 +51,9 @@ hooks = [
 [[repos]]
 repo = "local"
 hooks = [
-  { id = "biome", name = "biome check", entry = "cd web && bun run lint", language = "system", files = '^web/', pass_filenames = false, require_serial = true },
-  { id = "tsc", name = "tsc", entry = "cd web && bun run types", language = "system", files = '^web/', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
-  { id = "bun-test", name = "bun test", entry = "cd web && bun test", language = "system", files = '^web/', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
+  { id = "biome", name = "biome check", entry = "bun run lint", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true },
+  { id = "tsc", name = "tsc", entry = "bun run types", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
+  { id = "bun-test", name = "bun test", entry = "bun test", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
 ]
 
 # Spans both sides, so it isn't scoped to either toolchain's files. 40ms, which

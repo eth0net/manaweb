@@ -15,3 +15,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+
+  # One bun workspace at the root covers `web/` and every `tools/` package.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]

@@ -4,6 +4,11 @@
   "workspaces": {
     "": {
       "name": "manaweb",
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.12",
+        "@types/bun": "^1.4.2",
+        "typescript": "^7.0.2",
+      },
     },
     "tools/lex-gen": {
       "name": "manaweb-lex-gen",
@@ -21,6 +26,12 @@
     "tools/prose-check": {
       "name": "manaweb-prose-check",
     },
+    "tools/scryfall-check": {
+      "name": "manaweb-scryfall-check",
+    },
+    "tools/seed": {
+      "name": "manaweb-seed",
+    },
     "web": {
       "name": "manaweb-web",
       "dependencies": {
@@ -30,12 +41,9 @@
         "react-dom": "^19.2.8",
       },
       "devDependencies": {
-        "@biomejs/biome": "^2.5.12",
-        "@types/bun": "^1.4.2",
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.7",
         "@vitejs/plugin-react": "^6.1.1",
-        "typescript": "^7.0.2",
         "vite": "^8.2.2",
       },
     },
@@ -310,6 +318,10 @@
     "manaweb-lexicon-check": ["manaweb-lexicon-check@workspace:tools/lexicon-check"],
 
     "manaweb-prose-check": ["manaweb-prose-check@workspace:tools/prose-check"],
+
+    "manaweb-scryfall-check": ["manaweb-scryfall-check@workspace:tools/scryfall-check"],
+
+    "manaweb-seed": ["manaweb-seed@workspace:tools/seed"],
 
     "manaweb-web": ["manaweb-web@workspace:web"],
 
