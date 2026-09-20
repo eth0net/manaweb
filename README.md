@@ -53,9 +53,11 @@ The server needs no arguments and reads its configuration from the
 environment — [`configuration.md`](docs/configuration.md) lists all of it.
 
 ```sh
-docker build -t manaweb .
-docker run --rm -p 8080:8080 -v manaweb-data:/data manaweb
+docker run --rm -p 8080:8080 -v manaweb-data:/data ghcr.io/eth0net/manaweb
 ```
+
+Tagged `X.Y.Z`, `X.Y` and `latest`, published from the tag it was built at.
+`docker build -t manaweb .` builds the same image from a checkout.
 
 `/data` holds the card cache and the exported catalog, owned by uid 10001, so
 a bind mount has to be owned by that id to be writable. `ENTRYPOINT` is the
