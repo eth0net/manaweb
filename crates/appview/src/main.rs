@@ -39,6 +39,11 @@ const CATALOG: &str = "catalog";
 /// Scryfall asks for gameplay data no more than once a week.
 const REFRESH: Duration = Duration::from_hours(7 * 24);
 
+/// What `manaweb <command>` takes. The image's entrypoint is the binary and
+/// its command is `serve`, so a one-off reaches the same binary without the
+/// operator knowing where it lives.
+const USAGE: &str = "usage: manaweb [serve|version]";
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
@@ -46,6 +51,22 @@ async fn main() {
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
+
+    match env::args().nth(1).as_deref() {
+        None | Some("serve") => {}
+        Some("version" | "--version" | "-V") => {
+            println!("manaweb {}", env!("CARGO_PKG_VERSION"));
+            return;
+        }
+        Some("help" | "--help" | "-h") => {
+            println!("{USAGE}");
+            return;
+        }
+        Some(other) => {
+            eprintln!("unknown command: {other}\n{USAGE}");
+            process::exit(2);
+        }
+    }
 
     if let Err(error) = run().await {
         tracing::error!("{error}");
