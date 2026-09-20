@@ -1,0 +1,8 @@
+{
+  "name": "manaweb-seed",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "bun run seed.ts"
+  }
+}

@@ -2,8 +2,8 @@
 //!
 //! An *artifact set* is a directory holding a `manifest.json` and the files it
 //! names, each under its own prefix in the bucket: the catalog today, a
-//! scanner index and precomputed recommendations later. An upload adds to a
-//! set and a prune takes away, in that order and never the other.
+//! scanner index and precomputed recommendations later. A prune takes the
+//! replaced files away before the new ones go up, never after.
 //!
 //! Configured entirely from the environment, and unconfigured means nothing
 //! is uploaded:
@@ -15,6 +15,8 @@
 //! | `MANAWEB_S3_KEY_ID` | unset |
 //! | `MANAWEB_S3_SECRET` | unset |
 //! | `MANAWEB_S3_REGION` | `auto` |
+
+pub mod verify;
 
 use std::collections::{BTreeMap, HashSet};
 use std::env;

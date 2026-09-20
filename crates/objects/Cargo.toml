@@ -15,6 +15,12 @@ publish = false
 name = "manaweb-upload"
 path = "src/main.rs"
 
+# Holds a deployment to what a browser needs, which only a deployment can
+# answer for.
+[[bin]]
+name = "manaweb-verify"
+path = "src/bin/verify.rs"
+
 [lints]
 workspace = true
 
