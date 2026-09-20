@@ -13,7 +13,7 @@ deps:
 
 # every check CI runs that can run on one machine
 [group('checks')]
-check: rust deny spell prose lexicons web
+check: rust deny spell prose lexicons ts
 
 # the Rust side, needing nothing but a cargo toolchain
 [group('checks')]
@@ -53,6 +53,14 @@ deny:
 prose: deps
     cd tools/prose-check && bun run check
 
+# Deliberately outside `check`: it asks whether our search agrees with the
+# syntax we borrowed, which is a question about the implementation rather than
+# about a commit, and it needs their service to answer.
+[doc("hold our search to Scryfall's answers (needs bun, network, a catalog)")]
+[group('checks')]
+check-scryfall-search: deps
+    cd tools/scryfall-check && bun run check
+
 # validate the lexicons against atproto's own implementation (needs bun)
 [group('checks')]
 lexicons: deps
@@ -64,10 +72,12 @@ lexicons: deps
 lexicon-types: deps
     cd tools/lex-gen && bun run gen
 
-# lint, typecheck, test and build the client (needs bun)
+# lint, typecheck and test every TypeScript in the repo, then build the
+# client. The tools import the client's own modules, so one scope covers both.
+[doc('lint, typecheck and test the TypeScript (needs bun)')]
 [group('checks')]
-web: deps
-    cd web && bun run check
+ts: deps
+    bun run check
 
 # Both default to loopback; pass 0.0.0.0 to either to reach it from a phone.
 [doc('export the catalog and serve it for local development')]
@@ -85,120 +95,22 @@ client host="127.0.0.1": deps
 sync file="":
     cargo run --release -p manaweb-core --example sync -- {{ db }} {{ file }}
 
-# build the client artifact and report its size, optionally writing the files
+# report the client artifact's size, writing its files to a directory if given
 [group('dev')]
-catalog out="":
-    cargo run --release -p manaweb-core --example catalog -- {{ db }} {{ out }}
+catalog dir="":
+    cargo run --release -p manaweb-core --example catalog -- {{ db }} {{ dir }}
 
-# Every at-uri in the fixtures names the primary author, and is rewritten to
-# whichever account this writes to. `goat account login` first.
-[doc('seed a dev account with the fixture records (needs goat)')]
+# `goat` holds the session and does the writing; the recipe only says what.
+[doc('seed a dev account with the fixture records (needs bun and goat)')]
 [group('dev')]
-[script('python3')]
-seed handle dir="fixtures/records":
-    import pathlib, shutil, subprocess, sys
-
-    AUTHOR = "did:plc:rk2rhs4yvucutbrd2aoi5gci"
-    CONTAINER = "app.manaweb.container"
-    directory = pathlib.Path("{{ dir }}")
-    if not shutil.which("goat"):
-        sys.exit("  FAIL  no goat: go install github.com/bluesky-social/goat@latest")
-
-    def goat(*args, **rest):
-        return subprocess.run(
-            ["goat", *args], capture_output=True, text=True, **rest
-        )
-
-    found = goat("resolve", "--did", "{{ handle }}")
-    if found.returncode != 0:
-        sys.exit(f"  FAIL  {{ handle }}: {found.stderr.strip()}")
-    did = found.stdout.strip()
-
-    # goat writes to whoever it is logged in as, and the handle only decides
-    # whose DID the records name. Mismatched, that lands one account's records
-    # in another's repo pointing at the first, and nothing reports it.
-    signed = goat("account", "check-auth")
-    if signed.returncode != 0:
-        sys.exit(f"  FAIL  {signed.stderr.strip()}. Run `goat account login`")
-    session = next(
-        (
-            line.removeprefix("DID:").strip()
-            for line in signed.stdout.splitlines()
-            if line.startswith("DID:")
-        ),
-        "",
-    )
-    if session != did:
-        sys.exit(f"  FAIL  logged in as {session}, not {{ handle }} ({did})")
-
-    # Containers first, so anything reading as this lands sees a card's place
-    # before the card naming it.
-    files = sorted(
-        directory.glob("*/*.json"),
-        key=lambda one: (one.parent.name != CONTAINER, one.name),
-    )
-    if not files:
-        sys.exit(f"  FAIL  no records under {directory}")
-
-    for path in files:
-        collection, rkey = path.parent.name, path.stem
-        # A create refuses a key already there, and these keys are fixed.
-        goat("record", "delete", "-c", collection, "-r", rkey)
-        written = goat(
-            "record", "create", "-r", rkey, "-",
-            input=path.read_text().replace(AUTHOR, did),
-        )
-        if written.returncode != 0:
-            sys.exit(f"  FAIL  {collection}/{rkey}: {written.stderr.strip()}")
-        uri = written.stdout.split()
-        print(f"  ok    {uri[0] if uri else f'{collection}/{rkey}'}")
-
-    print(f"\n{len(files)} records on {did}")
+seed handle dir="fixtures/records": deps
+    cd tools/seed && bun run seed {{ handle }} {{ dir }}
 
 # Needs a deployment rather than a checkout, which is why it is not in `check`.
 [doc('fetch a deployed client metadata document and hold it to its own URL')]
 [group('deploy')]
-[script('python3')]
 verify-oauth url="https://manaweb.app/oauth/client-metadata.json":
-    import json, sys, urllib.error, urllib.request
-
-    url = "{{ url }}"
-    # Named for the same reason `verify-catalog` names itself.
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "manaweb-verify (+https://manaweb.app)"}
-    )
-    try:
-        response = urllib.request.urlopen(request)
-    except urllib.error.HTTPError as error:
-        response = error  # an HTTPError is the response, and 404 is a finding
-    except urllib.error.URLError as error:
-        sys.exit(f"  FAIL  {url} unreachable: {error.reason}")
-
-    with response:
-        status = response.status
-        kind = response.headers.get_content_type()
-        body = response.read()
-
-    # A single-page fallback answers 200 with HTML for a path it doesn't have,
-    # so "did it deploy" and "is it JSON" are one question.
-    problems = []
-    if status != 200:
-        problems.append(f"status {status}, must be exactly 200")
-    if kind != "application/json":
-        problems.append(f"content-type {kind}, must be application/json")
-
-    try:
-        client_id = json.loads(body).get("client_id")
-    except ValueError as error:
-        problems.append(f"not JSON: {error}")
-    else:
-        if client_id != url:
-            problems.append(f"client_id is {client_id}, must equal the URL fetched")
-
-    for problem in problems:
-        print(f"  FAIL  {problem}")
-    print("\nFAILED" if problems else "  ok    served as its own client_id")
-    sys.exit(1 if problems else 0)
+    cargo run --release -p manaweb-objects --bin manaweb-verify -- oauth {{ url }}
 
 # The same upload the server runs after a refresh, so a bug in it cannot wait
 # for the weekly job to show itself. Credentials come from the environment.
@@ -211,69 +123,20 @@ upload prefix="catalog" dir="catalog":
 # Cloudflare rather than on an object, so a checkout cannot answer for them.
 [doc('fetch a deployed catalog and hold it to the headers a client needs')]
 [group('deploy')]
-[script('python3')]
 verify-catalog origin="https://static.manaweb.app/catalog":
-    import json, sys, urllib.error, urllib.request
+    cargo run --release -p manaweb-objects --bin manaweb-verify -- catalog {{ origin }}
 
-    base = "{{ origin }}".rstrip("/")
-    problems = []
-
-    def fetch(url, method="GET"):
-        # An Origin makes the reply carry the CORS headers a browser would get.
-        # Cloudflare's browser integrity check answers urllib's own agent with
-        # a 403 and error code 1010, so this says who it is instead.
-        request = urllib.request.Request(
-            url,
-            method=method,
-            headers={
-                "Origin": "https://manaweb.app",
-                "User-Agent": "manaweb-verify (+https://manaweb.app)",
-            },
-        )
-        try:
-            return urllib.request.urlopen(request)
-        except urllib.error.HTTPError as error:
-            return error
-        except urllib.error.URLError as error:
-            sys.exit(f"  FAIL  {url} unreachable: {error.reason}")
-
-    with fetch(f"{base}/manifest.json") as response:
-        status, headers = response.status, response.headers
-        body = response.read()
-
-    if status != 200:
-        problems.append(f"manifest.json: status {status}, must be 200")
-    if headers.get_content_type() != "application/json":
-        problems.append(f"manifest.json: content-type {headers.get_content_type()}")
-    if headers.get("access-control-allow-origin") != "*":
-        problems.append(
-            "manifest.json: no CORS, so every catalog fetch fails in a browser"
-        )
-    if "no-cache" not in (headers.get("cache-control") or ""):
-        problems.append(
-            f"manifest.json: cache-control {headers.get('cache-control')!r}, "
-            "must be no-cache or a stale one pins the client to an old pair"
-        )
-
-    named = {}
-    try:
-        named = json.loads(body)
-    except ValueError as error:
-        problems.append(f"manifest.json: not JSON: {error}")
-
-    for part in ("cards", "prints"):
-        name = named.get(part, {}).get("name")
-        if not name:
-            continue
-        with fetch(f"{base}/{name}", method="HEAD") as response:
-            if response.status != 200:
-                problems.append(f"{name}: status {response.status}, named but not served")
-            elif "immutable" not in (response.headers.get("cache-control") or ""):
-                problems.append(f"{name}: cache-control is not immutable")
-            else:
-                print(f"  ok    {name}  cached {response.headers.get('cf-cache-status')}")
-
-    for problem in problems:
-        print(f"  FAIL  {problem}")
-    print("\nFAILED" if problems else f"  ok    {named.get('version')} served")
-    sys.exit(1 if problems else 0)
+# The manifest is the one place a version is written; CI holds the tag to it.
+[doc('bump the workspace version, check, commit and tag it')]
+[group('deploy')]
+release version:
+    @test -z "$(git status --porcelain)" || { echo "tree is dirty"; exit 1; }
+    awk '!done && /^version = / { sub(/=.*/, "= \"{{ version }}\""); done = 1 } 1' \
+        Cargo.toml > Cargo.toml.next && mv Cargo.toml.next Cargo.toml
+    cargo check --quiet --all-targets
+    just check
+    git add Cargo.toml Cargo.lock
+    # Nothing to commit where the manifest already reads this, which is the
+    # normal shape when the bump landed with the work.
+    @git diff --cached --quiet || git commit -s -m "chore: {{ version }}"
+    git tag -as v{{ version }} -m "v{{ version }}"

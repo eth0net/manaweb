@@ -80,21 +80,19 @@ jobs:
       - run: bun run check
         working-directory: tools/prose-check
 
-  web:
-    name: web
+  typescript:
+    name: typescript
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
+      # One scope for the client and the tools: the tools import the client's
+      # own modules, so a change to those has to typecheck against both.
       - run: bun run lint
-        working-directory: web
       - run: bun run types
-        working-directory: web
       - run: bun test
-        working-directory: web
       - run: bun run build
-        working-directory: web
 
   msrv:
     name: minimum supported rust version
@@ -111,3 +109,20 @@ jobs:
           toolchain: ${{ steps.msrv.outputs.version }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --locked
+
+  container:
+    name: container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # The slowest job here, and still cheaper than hearing from someone else
+      # that the image never built. It proves the entrypoint, not the service.
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: manaweb:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: docker run --rm manaweb:ci version
