@@ -12,7 +12,7 @@ use std::time::Instant;
 
 use manaweb_core::cards::{self, Search};
 use manaweb_core::open;
-use manaweb_scryfall::{BulkKind, CardStream, Client};
+use manaweb_scryfall::{BulkKind, CardStream, Client, USER_AGENT};
 use tokio::fs::File;
 
 #[tokio::main]
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let local = args.next();
 
     let pool = open(&db).await?;
-    let client = Client::new("Manaweb/0.1 (+https://manaweb.app)")?;
+    let client = Client::new(USER_AGENT)?;
 
     // The index is 3KB, so it's cheap even when the file is already on disk.
     let bulk = client.bulk_data(BulkKind::DefaultCards).await?;

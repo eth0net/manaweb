@@ -26,7 +26,7 @@ use std::{env, process};
 
 use manaweb_core::{cards, catalog};
 use manaweb_objects::Bucket;
-use manaweb_scryfall::{BulkKind, Client};
+use manaweb_scryfall::{BulkKind, Client, USER_AGENT};
 use sqlx::SqlitePool;
 use tokio::net::TcpListener;
 use tokio::time::{MissedTickBehavior, interval};
@@ -38,13 +38,6 @@ const CATALOG: &str = "catalog";
 
 /// Scryfall asks for gameplay data no more than once a week.
 const REFRESH: Duration = Duration::from_hours(7 * 24);
-
-/// Scryfall's terms require a user agent of the app's own, not a library's.
-const USER_AGENT: &str = concat!(
-    "Manaweb/",
-    env!("CARGO_PKG_VERSION"),
-    " (+https://manaweb.app)"
-);
 
 #[tokio::main]
 async fn main() {

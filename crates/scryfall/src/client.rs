@@ -6,6 +6,15 @@ use crate::{BulkData, BulkIndex, BulkKind, CardStream, Error, Result};
 
 const API: &str = "https://api.scryfall.com";
 
+/// The `User-Agent` Scryfall's terms ask for: the app's own, not a library's.
+///
+/// Built from the crate version, so a release cannot leave it behind.
+pub const USER_AGENT: &str = concat!(
+    "Manaweb/",
+    env!("CARGO_PKG_VERSION"),
+    " (+https://manaweb.app)"
+);
+
 /// A Scryfall HTTP client.
 ///
 /// There is no `Default`: Scryfall's terms require a `User-Agent` of the

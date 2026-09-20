@@ -10,11 +10,11 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::time::Instant;
 
-use manaweb_scryfall::{BulkKind, Client};
+use manaweb_scryfall::{BulkKind, Client, USER_AGENT};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let client = Client::new("Manaweb/0.1 (+https://manaweb.app)")?;
+    let client = Client::new(USER_AGENT)?;
     let bulk = client.bulk_data(BulkKind::DefaultCards).await?;
     println!(
         "{}, updated {}, {:.0}MB compressed",

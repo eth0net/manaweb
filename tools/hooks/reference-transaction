@@ -1,0 +1,32 @@
+#!/bin/sh
+# Refuses a version tag the manifest disagrees with, before the tag exists.
+#
+# prek cannot do this: a tag-only push runs no hooks at all, and a push
+# carrying both a branch and a tag names only the branch. Install with
+# `just hooks`; CI checks the same thing for a tag pushed from elsewhere.
+
+[ "$1" = "prepared" ] || exit 0
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+head=$(git rev-parse --verify --quiet HEAD) || exit 0
+
+while read -r _old new ref; do
+    case "$ref" in refs/tags/v*) ;; *) continue ;; esac
+    # A deletion is all zeros, and has no manifest to disagree with.
+    case "$new" in *[!0]*) ;; *) continue ;; esac
+
+    # Only a tag on the commit being released. A fetch brings someone else's
+    # tags in through this same hook, and those are not ours to judge.
+    at=$(git rev-parse --verify --quiet "$new^{commit}") || continue
+    [ "$at" = "$head" ] || continue
+
+    want=${ref#refs/tags/v}
+    held=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$root/Cargo.toml" | head -1)
+    [ "$want" = "$held" ] && continue
+
+    echo "refusing v$want: Cargo.toml reads $held" >&2
+    echo "  \`just release $want\` bumps, checks and tags together." >&2
+    exit 1
+done
+
+exit 0

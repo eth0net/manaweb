@@ -12,7 +12,7 @@ mod stream;
 
 pub use bulk::{BulkData, BulkIndex, BulkKind};
 pub use card::{Card, Color, Prices};
-pub use client::Client;
+pub use client::{Client, USER_AGENT};
 pub use error::Error;
 pub use stream::CardStream;
 
