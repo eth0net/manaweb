@@ -77,6 +77,10 @@ worth switching for.
   possibility.
 - Proxies and alters defeat any scanner and always will. Accepted limitation.
 
+**It waits on an illustration group per printing**, which the cache does not
+parse and the artifact does not carry — see [`scryfall.md`](scryfall.md).
+Without it an art match names a card, and picking the printing is the feature.
+
 **The index is a build-time artifact, not a runtime service.** Building it
 means pulling ~100k images (~10GB) and hashing them, which is hours on 1 vCPU.
 Build locally, publish the artifact, serve it statically, same as `web/dist`.

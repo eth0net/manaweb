@@ -281,13 +281,59 @@ to hold it.
 | part | raw | brotli | when |
 |---|---|---|---|
 | cards, prints | 12.53MB | 4.01MB | always |
-| text — oracle text, keywords | 5.4MB | ~1.5MB | opt-in: offline viewing, text search |
+| text — oracle text | 5.70MB | 0.57MB | opt-in: offline viewing, text search |
 | names, per language | | ~300KB each | opt-in: chosen at onboarding |
 | art | unbounded | unbounded | opt-in, per card, the service worker's |
 
 Raw matters as much as brotli: one is the download and the other is what the
-device keeps. Text is a third again on the wire and not far off half on disk,
+device keeps. Text is nearly half again on disk and a seventh on the wire,
 which is small in absolute terms and still a choice worth offering.
+
+## Three features are waiting on one decision
+
+Faces block agreeing with Scryfall on a two-sided card, oracle text blocks
+`o:` and `kw:`, and an illustration group per printing blocks the scanner:
+its whole approach is art narrowing to the printings that share one, with the
+collector line picking among those. Each asks the same thing — base pair, or
+opt-in part — and answering it three times is how a format stops cohering.
+
+Measured 2026-09-20, each built as the file it would be and compressed the way
+the CDN compresses:
+
+| candidate | rows | raw | brotli | on a 4.01MB base |
+|---|---|---|---|---|
+| faces, the fields the rules read | 3,295 cards | 0.67MB | 0.10MB | +2.5% |
+| illustration group | 108,883 printings | 0.63MB | 0.04MB | +1.0% |
+| keywords | 37,821 cards | 0.35MB | 0.05MB | +1.2% |
+| oracle text | 37,821 cards | 5.70MB | 0.57MB | +14% |
+
+**The estimate for text was three times too pessimistic** — 0.57MB against
+the 1.5MB guessed at before anyone built the file. Oracle text is the most
+repetitive thing we ship and brotli eats it. The table above is the corrected
+version.
+
+**Faces, illustration groups and keywords earn the base pair.** Together they
+are 0.19MB, which puts the download at 4.20MB and leaves the 4-5MB target
+alone. None of them is a feature someone might not want: without faces a
+two-sided card answers no question about its colors or its types, and without
+a group number an art match names a card where a scanner needs a printing.
+Only 3,295 cards have faces at all, which is why the dominant class of
+divergence costs a tenth of a megabyte to close.
+
+**Oracle text stays opt-in**, being a seventh of the base for two features
+that a collection tracker does not need. Cheap enough now that the question is
+worth revisiting if a third feature ever wants it.
+
+**Bytes are the cheap part.** Only the group number needs the cache to change:
+`illustration_id` is parsed nowhere today, so it wants a column, a migration
+and a line in the sync. Faces and keywords are already held. The work that
+matters is in the client, where a term has to be satisfied by a card or by any
+one of its faces — a change to how the tree is walked, not a column to read.
+
+**Settle it before the scanner index exists, not after.** That artifact is
+gigabytes pulled at a throttle and hours of hashing, and what it keys on is
+the printings an illustration group names. Deciding first costs nothing;
+deciding after costs the rebuild.
 
 **cards and prints are one part in two files**, always fetched together:
 printings are grouped by card in the cards file's order, so either alone is
