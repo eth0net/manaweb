@@ -24,7 +24,12 @@ const KINDS: [&str; 3] = ["card", "token", "artSeries"];
 
 /// Bit `i` of a card's `flags`. Rare enough to be worthless as columns, where
 /// each would spend a `null` on all 37,000 rows to say something about 500.
-const CARD_FLAGS: [&str; 2] = ["reserved", "gameChanger"];
+///
+/// `commander` is computed here because it needs the oracle text, which the
+/// client artifact doesn't carry — one bit instead of a part. The two types
+/// that head a deck are a rules fact rather than a derivation; a Spacecraft
+/// says nothing about it and neither does a creature.
+const CARD_FLAGS: [&str; 3] = ["reserved", "gameChanger", "commander"];
 
 /// The same for a printing: what makes this copy of a card not the plain one.
 const PRINT_FLAGS: [&str; 5] = ["promo", "variation", "fullArt", "textless", "oversized"];
@@ -64,7 +69,7 @@ struct CardHeader<'a> {
     version: &'a str,
     fields: [&'static str; 12],
     kinds: [&'static str; 3],
-    flags: [&'static str; 2],
+    flags: [&'static str; 3],
 }
 
 /// The same for printings, plus the tables its integer columns index into.
@@ -256,6 +261,11 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
                     ELSE defense
                 END,
                 reserved | (coalesce(game_changer, 0) << 1)
+                         | (CASE WHEN kind = 0 AND (
+                                type_line LIKE 'Legendary%Creature%'
+                                OR type_line LIKE 'Legendary%Spacecraft%'
+                                OR oracle_text LIKE '%can be your commander%'
+                            ) THEN 1 ELSE 0 END << 2)
          FROM oracle WHERE paper ORDER BY name, id",
     )
     .fetch(pool);

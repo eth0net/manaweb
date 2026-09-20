@@ -181,13 +181,39 @@ async fn one_column_carries_power_loyalty_or_defense() {
     }
 }
 
+/// Heading a deck needs the oracle text, which the client never sees, so the
+/// bit is set here.
+#[tokio::test]
+async fn a_legendary_creature_is_flagged_as_a_commander() {
+    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let file = read(&built.cards.json);
+    let names: Vec<String> = serde_json::from_value(file["flags"].clone()).unwrap();
+    let bit = 1 << names.iter().position(|one| one == "commander").unwrap();
+
+    let flags = |name: &str| {
+        rows(&file, "cards")
+            .into_iter()
+            .find(|row| row[1] == name)
+            .unwrap_or_else(|| panic!("the fixture holds {name}"))[11]
+            .as_u64()
+            .unwrap()
+    };
+
+    assert_eq!(flags("Admiral Beckett Brass") & bit, bit);
+    // A legend on the back of a land is not one, the front being what is cast.
+    assert_eq!(
+        flags("Balamb Garden, SeeD Academy // Balamb Garden, Airborne") & bit,
+        0,
+    );
+}
+
 /// Flags are a bitmask over the file's own `flags` list, on both files.
 #[tokio::test]
 async fn flags_survive_as_a_bitmask() {
     let built = catalog::build(&seeded_with(SPARSE).await).await.unwrap();
     let file = read(&built.cards.json);
     let names: Vec<String> = serde_json::from_value(file["flags"].clone()).unwrap();
-    assert_eq!(names, ["reserved", "gameChanger"]);
+    assert_eq!(names, ["reserved", "gameChanger", "commander"]);
 
     let cradle = rows(&file, "cards")
         .into_iter()
