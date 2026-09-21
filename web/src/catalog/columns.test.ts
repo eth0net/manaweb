@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { PrintColumns } from "./columns";
+import {
+  CARD_FIELDS,
+  CardColumns,
+  PRINT_FIELDS,
+  PrintColumns,
+} from "./columns";
 
 const tables = {
   version: "v",
-  fields: [],
+  fields: PRINT_FIELDS,
   finishes: ["a"],
   flags: ["a"],
   rarities: ["a"],
@@ -36,5 +41,29 @@ describe("a column too narrow for its table", () => {
   });
   test("and today's tables fit", () => {
     expect(() => new PrintColumns(0, with_("layouts", 25))).not.toThrow();
+  });
+
+  test("the cards file has two of its own", () => {
+    const cards = { version: "v", fields: CARD_FIELDS, kinds: [], flags: [] };
+    const many = (held: number) => Array.from({ length: held }, String);
+    expect(() => new CardColumns(0, { ...cards, kinds: many(300) })).toThrow(
+      "exceed 255",
+    );
+    expect(() => new CardColumns(0, { ...cards, flags: many(9) })).toThrow(
+      "exceed 8",
+    );
+    expect(() => new CardColumns(0, cards)).not.toThrow();
+  });
+});
+
+describe("a file whose columns are not the ones this client reads", () => {
+  test("is refused rather than read at the wrong index", () => {
+    expect(
+      () =>
+        new PrintColumns(0, {
+          ...(tables as object),
+          fields: ["id"],
+        } as never),
+    ).toThrow("prints holds id");
   });
 });

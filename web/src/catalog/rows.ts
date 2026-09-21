@@ -53,7 +53,7 @@ function here(bytes: Uint8Array, at: number, mark: Uint8Array): boolean {
 // Where the row starting at `from` ends, or -1 past the last. A generator
 // here costs an object per row, which is the allocation this file exists to
 // avoid.
-export function ends(bytes: Uint8Array, from: number): number {
+function ends(bytes: Uint8Array, from: number): number {
   let depth = 0;
   let quoted = false;
 

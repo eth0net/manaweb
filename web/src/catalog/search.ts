@@ -3,7 +3,7 @@
 
 export interface Index {
   names: string[];
-  kinds: number[];
+  kinds: ArrayLike<number>;
   // Lower is better, from `scores`.
   scores: Float64Array;
   // How many kinds the file declares, buckets being one per tier per kind.
@@ -11,19 +11,22 @@ export interface Index {
 }
 
 // One popularity number per card, lower being better. An unranked card — every
-// token, art series and basic land — is scored from its reprints instead.
+// token, art series and basic land, negative in the column — is scored from
+// its reprints instead.
 export function scores(
-  ranks: (number | null)[],
-  printings: number[],
+  ranks: ArrayLike<number>,
+  printings: ArrayLike<number>,
 ): Float64Array {
   let worst = 0;
-  for (const rank of ranks) {
-    if (rank !== null && rank > worst) worst = rank;
+  for (let card = 0; card < ranks.length; card++) {
+    const rank = ranks[card] as number;
+    if (rank > worst) worst = rank;
   }
 
   const scores = new Float64Array(ranks.length);
   for (let card = 0; card < ranks.length; card++) {
-    scores[card] = ranks[card] ?? worst / (printings[card] as number);
+    const rank = ranks[card] as number;
+    scores[card] = rank < 0 ? worst / (printings[card] as number) : rank;
   }
   return scores;
 }

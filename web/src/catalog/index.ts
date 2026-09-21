@@ -1,4 +1,4 @@
-import { PrintColumns } from "./columns";
+import { CardColumns, PrintColumns } from "./columns";
 import { matches, printed, type Query } from "./query";
 import { type Index, normalize, scores, search } from "./search";
 
@@ -18,7 +18,7 @@ export interface Manifest {
 
 // Positional rows, in the order each file's own `fields` names them. Kept
 // raw: only what reaches the screen is materialized.
-type CardRow = [
+export type CardRow = [
   oracleId: string,
   name: string,
   typeLine: string | null,
@@ -47,16 +47,16 @@ export type PrintRow = [
   flags: number,
 ];
 
-interface CardFile {
+// A file's header, which is everything in it but the rows.
+export interface CardTables {
   version: string;
   fields: string[];
   kinds: string[];
   flags: string[];
-  cards: CardRow[];
 }
 
 // Every integer column on a print row indexes one of these, commonest first.
-export interface PrintFile {
+export interface PrintTables {
   version: string;
   fields: string[];
   finishes: string[];
@@ -67,11 +67,7 @@ export interface PrintFile {
   langs: string[];
   artists: string[];
   sets: SetRow[];
-  prints: PrintRow[];
 }
-
-// The header alone: what a print column's integers index.
-export type PrintTables = Omit<PrintFile, "prints">;
 
 export type SetRow = [
   code: string,
@@ -100,36 +96,6 @@ function rank(card: Card): number {
 // Collector numbers aren't numbers: 10 follows 9, "329★" follows "329", and
 // The List prefixes them with a set code.
 const COLLECTOR = new Intl.Collator(undefined, { numeric: true });
-
-// Rows are positional, so a column read at the wrong index is plausible data.
-const CARD_FIELDS = [
-  "oracleId",
-  "name",
-  "typeLine",
-  "manaCost",
-  "cmc",
-  "colors",
-  "colorIdentity",
-  "kind",
-  "printings",
-  "edhrecRank",
-  "stats",
-  "flags",
-];
-
-const PRINT_FIELDS = [
-  "id",
-  "set",
-  "collectorNumber",
-  "finishes",
-  "rarity",
-  "layout",
-  "imageStatus",
-  "lang",
-  "printedName",
-  "artist",
-  "flags",
-];
 
 export interface Card {
   index: number;
@@ -248,14 +214,6 @@ export function words(name: string): string {
   return name.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 }
 
-function columns(file: string, held: string[], read: string[]) {
-  if (held.join() !== read.join()) {
-    throw new Error(
-      `${file} holds ${held.join()}, this client reads ${read.join()}`,
-    );
-  }
-}
-
 // A bitmask against the list the file names it with.
 function decode(mask: number, names: string[]): string[] {
   return names.filter((_, bit) => mask & (1 << bit));
@@ -263,11 +221,8 @@ function decode(mask: number, names: string[]): string[] {
 
 export class Catalog {
   readonly version: string;
-  #cards: CardFile;
-  // The header tables only, which the columns carry: holding the parsed rows
-  // as well would keep the thing they replace alive.
-  #prints: PrintTables;
-  #cols: PrintColumns;
+  #cards: CardColumns;
+  #prints: PrintColumns;
   // Where each card's run of printings starts, with the total on the end.
   #offsets: Int32Array;
   #index: Index;
@@ -276,77 +231,71 @@ export class Catalog {
   // How many printings each set holds, tallied on the same pass.
   #setSizes: Int32Array;
 
-  // The files as fetched. Printings are read a batch at a time, so their
-  // parsed form never exists whole beside the columns it becomes — see
+  // The files as fetched, each read a batch at a time so its parsed form
+  // never exists whole beside the columns it becomes — see
   // `docs/architecture.md`.
   static read(cards: Uint8Array, prints: Uint8Array): Catalog {
-    return new Catalog(
-      JSON.parse(new TextDecoder().decode(cards)) as CardFile,
-      PrintColumns.read(prints),
-    );
+    return new Catalog(CardColumns.read(cards), PrintColumns.read(prints));
   }
 
-  constructor(cards: CardFile, cols: PrintColumns) {
-    const prints = cols.tables;
-    if (cards.version !== prints.version) {
+  constructor(cards: CardColumns, prints: PrintColumns) {
+    const version = cards.tables.version;
+    if (version !== prints.tables.version) {
       throw new Error(
-        `catalog halves disagree: ${cards.version} and ${prints.version}`,
+        `catalog halves disagree: ${version} and ${prints.tables.version}`,
       );
     }
 
-    columns("cards", cards.fields, CARD_FIELDS);
-    columns("prints", prints.fields, PRINT_FIELDS);
-
-    this.version = cards.version;
+    this.version = version;
     this.#cards = cards;
     this.#prints = prints;
-    this.#cols = cols;
 
-    this.#offsets = new Int32Array(cards.cards.length + 1);
+    this.#offsets = new Int32Array(cards.rows + 1);
     let offset = 0;
-    for (let i = 0; i < cards.cards.length; i++) {
+    for (let i = 0; i < cards.rows; i++) {
       this.#offsets[i] = offset;
-      offset += (cards.cards[i] as CardRow)[8];
+      offset += cards.printings[i] as number;
     }
-    this.#offsets[cards.cards.length] = offset;
+    this.#offsets[cards.rows] = offset;
 
     // A total that disagrees would shift every card past the first bad one.
-    if (offset !== this.#cols.rows) {
+    if (offset !== this.#prints.rows) {
       throw new Error(
-        `catalog claims ${offset} printings and holds ${this.#cols.rows}`,
+        `catalog claims ${offset} printings and holds ${this.#prints.rows}`,
       );
     }
 
-    this.#languages = new Int32Array(cards.cards.length);
-    this.#setSizes = new Int32Array(prints.sets.length);
-    for (let card = 0; card < cards.cards.length; card++) {
+    this.#languages = new Int32Array(cards.rows);
+    this.#setSizes = new Int32Array(prints.tables.sets.length);
+    for (let card = 0; card < cards.rows; card++) {
       let langs = 0;
       const end = this.#offsets[card + 1] as number;
       for (let at = this.#offsets[card] as number; at < end; at++) {
-        langs |= 1 << (this.#cols.lang[at] as number);
-        const set = this.#cols.set[at] as number;
+        langs |= 1 << (this.#prints.lang[at] as number);
+        const set = this.#prints.set[at] as number;
         this.#setSizes[set] = (this.#setSizes[set] as number) + 1;
       }
       this.#languages[card] = langs;
     }
 
+    const names: string[] = new Array(cards.rows);
+    for (let card = 0; card < cards.rows; card++) {
+      names[card] = normalize(cards.name(card));
+    }
     this.#index = {
-      names: cards.cards.map((row) => normalize(row[1])),
-      kinds: cards.cards.map((row) => row[7]),
-      scores: scores(
-        cards.cards.map((row) => row[9]),
-        cards.cards.map((row) => row[8]),
-      ),
-      kindCount: cards.kinds.length,
+      names,
+      kinds: cards.kind,
+      scores: scores(cards.edhrecRank, cards.printings),
+      kindCount: cards.tables.kinds.length,
     };
   }
 
   get cards(): number {
-    return this.#cards.cards.length;
+    return this.#cards.rows;
   }
 
   get printings(): number {
-    return this.#cols.rows;
+    return this.#prints.rows;
   }
 
   // Every subtype any card carries, which no column names: a type line is
@@ -357,8 +306,8 @@ export class Catalog {
     if (this.#kinds) return this.#kinds;
 
     const found = new Set<string>();
-    for (const row of this.#cards.cards) {
-      const line = row[2];
+    for (let card = 0; card < this.#cards.rows; card++) {
+      const line = this.#cards.typeLine(card);
       if (line === null) continue;
       for (const face of line.split("//")) {
         const after = face.split("—")[1];
@@ -372,7 +321,7 @@ export class Catalog {
 
   // Every language some printing is in, commonest first.
   get languages(): string[] {
-    return this.#prints.langs;
+    return this.#prints.tables.langs;
   }
 
   // Names are ranked; terms only narrow — see `docs/search.md`. A query with
@@ -392,7 +341,7 @@ export class Catalog {
 
     // An order sorts everything that matched, so the cap comes off the scan
     // and goes on what is handed back.
-    const cap = query.order ? this.#cards.cards.length : limit;
+    const cap = query.order ? this.#cards.rows : limit;
     const found = query.text
       ? search(this.#index, query.text, cap, keep)
       : this.#walk(keep, cap);
@@ -408,7 +357,7 @@ export class Catalog {
   // Rows arrive by name, so a walk that sorts nothing is already alphabetical.
   #walk(keep: ((card: number) => boolean) | undefined, cap: number): number[] {
     const found: number[] = [];
-    const cards = this.#cards.cards.length;
+    const cards = this.#cards.rows;
     for (let card = 0; card < cards && found.length < cap; card++) {
       if (!keep || keep(card)) found.push(card);
     }
@@ -458,22 +407,27 @@ export class Catalog {
   }
 
   card(index: number): Card {
-    const row = this.#cards.cards[index];
-    if (!row) throw new RangeError(`no card ${index}`);
+    const cols = this.#cards;
+    if (index < 0 || index >= cols.rows) {
+      throw new RangeError(`no card ${index}`);
+    }
+    const cmc = cols.cmc[index] as number;
+    const colors = cols.colors[index] as number;
+    const rank = cols.edhrecRank[index] as number;
     return {
       index,
-      oracleId: row[0],
-      name: row[1],
-      typeLine: row[2],
-      manaCost: row[3],
-      cmc: row[4],
-      colors: row[5],
-      colorIdentity: row[6],
-      kind: this.#cards.kinds[row[7]] as string,
-      printings: row[8],
-      edhrecRank: row[9],
-      stats: row[10],
-      flags: decode(row[11], this.#cards.flags),
+      oracleId: cols.oracleId(index),
+      name: cols.name(index),
+      typeLine: cols.typeLine(index),
+      manaCost: cols.manaCost(index),
+      cmc: Number.isNaN(cmc) ? null : cmc,
+      colors: colors === CardColumns.NO_COLORS ? null : colors,
+      colorIdentity: cols.colorIdentity[index] as number,
+      kind: cols.tables.kinds[cols.kind[index] as number] as string,
+      printings: cols.printings[index] as number,
+      edhrecRank: rank === CardColumns.UNRANKED ? null : rank,
+      stats: cols.stats(index),
+      flags: decode(cols.flags[index] as number, cols.tables.flags),
     };
   }
 
@@ -484,9 +438,10 @@ export class Catalog {
     const tally = new Map<string, number>();
     if (wanted.size === 0) return tally;
 
-    for (let at = 0; at < this.#cols.rows; at++) {
-      if (!wanted.has(this.#cols.id(at))) continue;
-      const set = this.#prints.sets[this.#cols.set[at] as number] as SetRow;
+    const cols = this.#prints;
+    for (let at = 0; at < cols.rows; at++) {
+      if (!wanted.has(cols.id(at))) continue;
+      const set = cols.tables.sets[cols.set[at] as number] as SetRow;
       tally.set(set[0], (tally.get(set[0]) ?? 0) + 1);
     }
     return tally;
@@ -498,10 +453,11 @@ export class Catalog {
     const found = new Map<string, string>();
     if (keys.size === 0) return found;
 
-    for (let at = 0; at < this.#cols.rows; at++) {
-      const set = this.#prints.sets[this.#cols.set[at] as number] as SetRow;
-      const key = printKey(set[0], this.#cols.number(at));
-      if (keys.has(key)) found.set(key, this.#cols.id(at));
+    const cols = this.#prints;
+    for (let at = 0; at < cols.rows; at++) {
+      const set = cols.tables.sets[cols.set[at] as number] as SetRow;
+      const key = printKey(set[0], cols.number(at));
+      if (keys.has(key)) found.set(key, cols.id(at));
     }
     return found;
   }
@@ -512,8 +468,8 @@ export class Catalog {
     const found = new Map<string, { card: Card; print: Print }>();
     if (wanted.size === 0) return found;
 
-    for (let at = 0; at < this.#cols.rows; at++) {
-      const id = this.#cols.id(at);
+    for (let at = 0; at < this.#prints.rows; at++) {
+      const id = this.#prints.id(at);
       if (!wanted.has(id)) continue;
       found.set(id, {
         card: this.card(this.#owner(at)),
@@ -525,7 +481,7 @@ export class Catalog {
 
   // Every set with a paper printing, and how many each holds.
   sets(): { set: SetRow; printings: number }[] {
-    return this.#prints.sets.map((set, at) => ({
+    return this.#prints.tables.sets.map((set, at) => ({
       set,
       printings: this.#setSizes[at] as number,
     }));
@@ -537,7 +493,7 @@ export class Catalog {
   // question most visits never ask.
   setPrints(codes: string[]): { card: number; print: Print }[] {
     const rank = new Map(
-      this.#prints.sets
+      this.#prints.tables.sets
         .filter((set) => codes.includes(set[0]))
         .sort((a, b) => b[3].localeCompare(a[3]))
         .map((set, at) => [set[0], at] as const),
@@ -545,8 +501,9 @@ export class Catalog {
     if (rank.size === 0) return [];
 
     const found: { card: number; print: Print }[] = [];
-    for (let at = 0; at < this.#cols.rows; at++) {
-      const set = this.#prints.sets[this.#cols.set[at] as number] as SetRow;
+    const cols = this.#prints;
+    for (let at = 0; at < cols.rows; at++) {
+      const set = cols.tables.sets[cols.set[at] as number] as SetRow;
       if (rank.has(set[0])) {
         found.push({ card: this.#owner(at), print: this.#print(at) });
       }
@@ -565,7 +522,7 @@ export class Catalog {
   // keeping an owner per printing.
   #owner(print: number): number {
     let low = 0;
-    let high = this.#cards.cards.length - 1;
+    let high = this.#cards.rows - 1;
     while (low < high) {
       const mid = (low + high + 1) >> 1;
       if ((this.#offsets[mid] as number) <= print) low = mid;
@@ -591,8 +548,9 @@ export class Catalog {
   }
 
   #print(at: number): Print {
-    const cols = this.#cols;
-    const set = this.#prints.sets[cols.set[at] as number] as SetRow;
+    const cols = this.#prints;
+    const tables = cols.tables;
+    const set = tables.sets[cols.set[at] as number] as SetRow;
     const artist = cols.artist[at] as number;
     return {
       id: cols.id(at),
@@ -600,17 +558,16 @@ export class Catalog {
       setName: set[1],
       released: set[3],
       collectorNumber: cols.number(at),
-      finishes: decode(cols.finishes[at] as number, this.#prints.finishes),
-      rarity: this.#prints.rarities[cols.rarity[at] as number] as string,
-      layout: this.#prints.layouts[cols.layout[at] as number] as string,
-      imageStatus: this.#prints.imageStatuses[
+      finishes: decode(cols.finishes[at] as number, tables.finishes),
+      rarity: tables.rarities[cols.rarity[at] as number] as string,
+      layout: tables.layouts[cols.layout[at] as number] as string,
+      imageStatus: tables.imageStatuses[
         cols.imageStatus[at] as number
       ] as string,
-      lang: this.#prints.langs[cols.lang[at] as number] as string,
+      lang: tables.langs[cols.lang[at] as number] as string,
       printedName: cols.printedName(at),
-      artist:
-        artist === 0xffff ? null : (this.#prints.artists[artist] ?? null),
-      flags: decode(cols.flags[at] as number, this.#prints.flags),
+      artist: artist === 0xffff ? null : (tables.artists[artist] ?? null),
+      flags: decode(cols.flags[at] as number, tables.flags),
     };
   }
 }

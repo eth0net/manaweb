@@ -1,16 +1,54 @@
-// The printings file, held as one array per column rather than an object per
-// row. Positional rows cost five or six times their own bytes once parsed,
-// and every column a query filters on is already an integer — see
+// Each file held as one array per column rather than an object per row.
+// Positional rows cost five or six times their own bytes once parsed, and
+// every column a query filters on is already an integer — see
 // `docs/architecture.md`. The strings sit beside them in one run each, read
 // out by index.
 
-import type { PrintRow, PrintTables } from ".";
+import type { CardRow, CardTables, PrintRow, PrintTables } from ".";
 import { chunks, count, split } from "./rows";
 import { Runs, Uuids } from "./strings";
 
 // Rows enough to keep the parse worthwhile and few enough that what they
 // allocate is collectable while the file is still being read.
 const BATCH = 4096;
+
+// Rows are positional, so a column read at the wrong index is plausible data.
+export const CARD_FIELDS = [
+  "oracleId",
+  "name",
+  "typeLine",
+  "manaCost",
+  "cmc",
+  "colors",
+  "colorIdentity",
+  "kind",
+  "printings",
+  "edhrecRank",
+  "stats",
+  "flags",
+];
+
+export const PRINT_FIELDS = [
+  "id",
+  "set",
+  "collectorNumber",
+  "finishes",
+  "rarity",
+  "layout",
+  "imageStatus",
+  "lang",
+  "printedName",
+  "artist",
+  "flags",
+];
+
+function fields(file: string, held: string[], read: string[]): void {
+  if (held.join() !== read.join()) {
+    throw new Error(
+      `${file} holds ${held.join()}, this client reads ${read.join()}`,
+    );
+  }
+}
 
 // A column too narrow for its own table wraps rather than failing, so each
 // says what it can take. The two bitmasks are the tight ones: a byte is eight
@@ -40,6 +78,7 @@ export class PrintColumns {
   #filled = 0;
 
   constructor(rows: number, tables: PrintTables) {
+    fields("prints", tables.fields, PRINT_FIELDS);
     fits("sets", tables.sets.length, 0xffff);
     // 0xffff is the artist a printing does not name.
     fits("artists", tables.artists.length, 0xfffe);
@@ -118,5 +157,116 @@ export class PrintColumns {
 
   printedName(at: number): string | null {
     return this.#printedNames.get(at) ?? null;
+  }
+}
+
+export class CardColumns {
+  readonly rows: number;
+  readonly tables: CardTables;
+  // Un-cards have halves and Gleemax has a million, so this is no integer.
+  // NaN is the card that carries none, a reversible one having faces instead.
+  readonly cmc: Float64Array;
+  // Five bits, so 0xff is the card whose colors are on its faces rather than
+  // the card with none.
+  readonly colors: Uint8Array;
+  readonly colorIdentity: Uint8Array;
+  readonly kind: Uint8Array;
+  readonly printings: Int32Array;
+  // -1 is unranked, which every token, art series and basic land is.
+  readonly edhrecRank: Int32Array;
+  readonly flags: Uint8Array;
+
+  static readonly NO_COLORS = 0xff;
+  static readonly UNRANKED = -1;
+
+  #oracleIds: Uuids;
+  #names: Runs;
+  #typeLines: Runs;
+  #manaCosts: Runs;
+  #stats: Runs;
+  #filled = 0;
+
+  constructor(rows: number, tables: CardTables) {
+    fields("cards", tables.fields, CARD_FIELDS);
+    fits("kinds", tables.kinds.length, 0xff);
+    fits("card flags", tables.flags.length, 8);
+
+    this.rows = rows;
+    this.tables = tables;
+    this.cmc = new Float64Array(rows);
+    this.colors = new Uint8Array(rows);
+    this.colorIdentity = new Uint8Array(rows);
+    this.kind = new Uint8Array(rows);
+    this.printings = new Int32Array(rows);
+    this.edhrecRank = new Int32Array(rows);
+    this.flags = new Uint8Array(rows);
+    this.#oracleIds = new Uuids(rows);
+    this.#names = new Runs(rows, 20);
+    this.#typeLines = new Runs(rows, 24);
+    this.#manaCosts = new Runs(rows, 10);
+    // A loyalty, a defense, or a power and a toughness.
+    this.#stats = new Runs(rows, 4);
+  }
+
+  static read(bytes: Uint8Array): CardColumns {
+    const held = split(bytes, "cards");
+    const tables = JSON.parse(held.header) as CardTables;
+    const cols = new CardColumns(count(held.rows), tables);
+    for (const batch of chunks<CardRow>(held.rows, BATCH)) cols.take(batch);
+    return cols.close();
+  }
+
+  take(rows: CardRow[]): void {
+    for (const row of rows) {
+      const i = this.#filled++;
+      if (i >= this.rows) throw new Error(`more cards than ${this.rows}`);
+      this.#oracleIds.push(row[0]);
+      this.#names.push(row[1]);
+      this.#typeLines.push(row[2]);
+      this.#manaCosts.push(row[3]);
+      this.cmc[i] = row[4] ?? Number.NaN;
+      this.colors[i] = row[5] ?? CardColumns.NO_COLORS;
+      this.colorIdentity[i] = row[6];
+      this.kind[i] = row[7];
+      this.printings[i] = row[8];
+      this.edhrecRank[i] = row[9] ?? CardColumns.UNRANKED;
+      this.#stats.push(row[10]);
+      this.flags[i] = row[11];
+    }
+  }
+
+  close(): this {
+    if (this.#filled !== this.rows) {
+      throw new Error(`${this.#filled} cards against ${this.rows} counted`);
+    }
+    for (const run of [
+      this.#names,
+      this.#typeLines,
+      this.#manaCosts,
+      this.#stats,
+    ]) {
+      run.close();
+    }
+    return this;
+  }
+
+  oracleId(at: number): string {
+    return this.#oracleIds.get(at);
+  }
+
+  name(at: number): string {
+    return this.#names.get(at) as string;
+  }
+
+  typeLine(at: number): string | null {
+    return this.#typeLines.get(at);
+  }
+
+  manaCost(at: number): string | null {
+    return this.#manaCosts.get(at);
+  }
+
+  stats(at: number): string | null {
+    return this.#stats.get(at);
   }
 }

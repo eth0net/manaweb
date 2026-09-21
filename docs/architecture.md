@@ -174,10 +174,12 @@ name index built over them.
 
 **Columns the query filters on are already integers**, so those belong in
 typed arrays: set, rarity, layout, language, finishes and the flag word come
-to 1.5MB across every printing, against 46.5MB for the same rows as objects.
-Holding the strings beside them as one run of characters with an offset array
-brings the whole file to 7.2MB, six and a half times smaller, and filtering
-gets quicker rather than slower because the hot loop stops chasing pointers.
+to 1.1MB across every printing, against 46.5MB for the same rows as objects.
+Holding the strings beside them as one run of UTF-8 bytes with an offset array
+brings that file to 5.8MB and the cards, which are the same shape, to 4.4MB.
+The pair is then smaller in memory than the 12.4MB it occupies on disk, and
+filtering gets quicker rather than slower because the hot loop stops chasing
+pointers.
 
 The cost is at load: parsing the file whole and then building columns peaks
 higher than either, so the file is read in slices of rows instead. It is an

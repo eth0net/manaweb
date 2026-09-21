@@ -35,7 +35,7 @@ function index(cards: Row[]): { index: Index; names: string[] } {
       names: sorted.map(([name]) => normalize(name)),
       kinds: sorted.map(([, kind]) => kind),
       scores: scores(
-        sorted.map(([, , , rank]) => rank ?? null),
+        sorted.map(([, , , rank]) => rank ?? -1),
         sorted.map(([, , printings]) => printings),
       ),
       kindCount: 3,
