@@ -4,6 +4,12 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { headers } from "./vite/headers";
 
+// Only the dev server sends one; the build has no inline script to allow.
+const NONCE = createHash("sha256")
+  .update(String(Date.now()))
+  .digest("hex")
+  .slice(0, 22);
+
 // The shell is what the build emits plus what the document names, and the
 // version is a hash of that list, so an unchanged build keeps its cache.
 function worker(): Plugin {
@@ -31,6 +37,7 @@ function worker(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), worker(), headers()],
-});
+export default defineConfig(({ command }) => ({
+  ...(command === "serve" ? { html: { cspNonce: NONCE } } : {}),
+  plugins: [react(), worker(), headers(NONCE)],
+}));

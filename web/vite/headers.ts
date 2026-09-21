@@ -21,8 +21,22 @@ export function parse(text: string, path = "/*"): Header[] {
     });
 }
 
-export function headers(from = "public/_headers"): Plugin {
-  const wanted = parse(readFileSync(from, "utf8"));
+// The dev server's own scripts are inline — React Refresh's preamble above
+// everything else — so they are let through by nonce rather than by opening
+// `script-src` to anything inline.
+export function nonced(value: string, nonce: string): string {
+  return value.replace(/script-src ([^;]*)/, `script-src $1 'nonce-${nonce}'`);
+}
+
+export function headers(nonce: string, from = "public/_headers"): Plugin {
+  const wanted = parse(readFileSync(from, "utf8")).map(
+    ([name, value]): Header => [
+      name,
+      name.toLowerCase() === "content-security-policy"
+        ? nonced(value, nonce)
+        : value,
+    ],
+  );
 
   return {
     name: "manaweb-headers",

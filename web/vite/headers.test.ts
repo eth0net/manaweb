@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse } from "./headers";
+import { nonced, parse } from "./headers";
 
 const FILE = `# a comment
 /assets/*
@@ -35,5 +35,29 @@ describe("reading a Pages headers file", () => {
     const held = parse(readFileSync(where, "utf8"));
     expect(held.map(([name]) => name)).toContain("Content-Security-Policy");
     expect(held[0]?.[1]).toContain("https://cards.scryfall.io");
+  });
+});
+
+describe("letting the dev server's own scripts through", () => {
+  test("the nonce joins script-src and nothing else", () => {
+    const held = nonced(
+      "default-src 'self'; script-src 'self'; img-src 'self' data:",
+      "abc123",
+    );
+    expect(held).toBe(
+      "default-src 'self'; script-src 'self' 'nonce-abc123'; img-src 'self' data:",
+    );
+  });
+
+  test("and the real policy takes one", () => {
+    const where = join(import.meta.dir, "..", "public", "_headers");
+    const [, policy] = parse(readFileSync(where, "utf8"))[0] as [
+      string,
+      string,
+    ];
+    expect(nonced(policy, "abc123")).toContain(
+      "script-src 'self' 'nonce-abc123'",
+    );
+    expect(policy).not.toContain("unsafe-inline'; script");
   });
 });
