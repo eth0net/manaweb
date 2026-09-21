@@ -209,8 +209,20 @@ Four tokens carry the whole thing: `--web`, `--core`, `--facet` and `--glow`,
 set on the `svg` element so a page that inlines it can override them. A token
 takes `url(#id)` as readily as a color, so a gradient preset needs the gradient
 in `defs` and nothing else — the shape of a theme is already a row of four
-values, whatever kind each one is. What a full composer adds to that is a
-background layer and a switch for the glow.
+values, whatever kind each one is.
+
+`just icons` is the composer that follows from that. It resolves the tokens to
+concrete fills, since the renderer reads no custom properties, then adds a
+background and an inset, and writes every raster the app ships from the one
+drawing.
+
+Two of those exist for Android alone. A launcher crops a home screen icon to
+whatever shape it uses and guarantees only the middle 80%, and it fills a
+themed icon from the wallpaper after throwing away every color in it — so one
+raster is inset on an opaque background and another is the silhouette, and
+neither is what a browser tab wants. iOS takes its icon once, when the app is
+added, and the dark alternative is offered through a media query the same way
+the favicon's already is. Whether Safari reads it there is untested.
 
 **A composed app icon is a shipped one, not a chosen one.** iOS fixes a PWA's
 icon when it is added to the home screen, and a native app's alternates have to
