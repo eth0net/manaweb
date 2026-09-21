@@ -43,6 +43,11 @@ The key pair is the only secret here, and it belongs in whatever the host
 already uses — a password manager, a systemd credential, a container secret.
 Not in the repo: `.env` is ignored and `.env.example` carries no values.
 
+All four have to arrive as values. Where they are kept as references for
+something to resolve, handing that file to the process unresolved exports the
+reference itself, and the failure is a URI parse error from inside the S3
+client rather than anything naming the cause.
+
 Scope the R2 token to the one bucket, and give it object read as well as
 write — the upload HEADs a name before sending it. See
 [`architecture.md`](architecture.md) for why.

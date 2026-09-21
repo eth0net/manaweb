@@ -66,10 +66,17 @@ wants `api` alongside. Each is a set of content-addressed files and a
 that file `manifest.json`, and the prefix is also what a prune can be scoped
 to once one exists.
 
-Moving a set to a different prefix is three steps and the order is the whole
-of it: upload under the new one, deploy the client that reads it, then delete
-what the old one held. A client already loaded fetches on its own schedule
-rather than on a deploy's, so anything else takes the files out from under it.
+Changing what a set holds is three steps and the order is the whole of it:
+upload the new files, deploy the client that reads them, then delete what the
+old ones held. A client already loaded fetches on its own schedule rather than
+on a deploy's, so anything else takes the files out from under it.
+
+That order binds a format change as much as a move, and a push deploys the
+client on its own. When colors became a bitmask the client went out first,
+read the bucket's older file and showed every card as colorless without
+erroring — the field names it checks had not changed, only the types behind
+them. Each header table is now checked too, so the same skew refuses to load
+instead.
 
 **A Pages deployment is a snapshot of one directory**, so a commit-triggered
 deploy carrying the catalog would have to rebuild an artifact it has no
