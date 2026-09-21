@@ -335,31 +335,49 @@ gigabytes pulled at a throttle and hours of hashing, and what it keys on is
 the printings an illustration group names. Deciding first costs nothing;
 deciding after costs the rebuild.
 
-**cards and prints are one part in two files**, always fetched together:
-printings are grouped by card in the cards file's order, so either alone is
-useless. An optional part keys by row index into the cards file, which makes it
-valid against that file and no other — the content-addressed names are what
-enforce that, and every part repeats the version in its header so a mismatched
-set fails loudly instead of reading the wrong rows.
+### None of it scales the same way with language
 
-**Oracle text isn't the search default**, but offline card viewing needs it,
-which makes it one opt-in rather than two features. Text search is a different
-query over the same part, and free once someone has it.
+Those figures are measured against the cache, which holds Default Cards and
+is therefore 97.6% English. What each one does when every language arrives is
+not the same answer, and Scryfall's own counts on 2026-09-20 say which:
 
-**A language pack needs All Cards.** Default Cards carries 2,635 non-English
-paper printings across 1,360 cards — 2.4% of printings, so there is no language
-data in it to ship. Until All Cards (~392MB) is ingested, a language choice
-resolves per card from Scryfall's API into IndexedDB, which is already what
-happens for a non-English printing. A built pack is the better answer once All
-Cards lands, being one fetch rather than thousands.
+| | English | every language | ratio |
+|---|---|---|---|
+| paper printings | 98,578 | 521,724 | 5.3× |
+| distinct cards | 32,992 | ~33,000 | 1× |
+| distinct artworks | 48,478 | 48,478 | 1× |
 
-**Art is different in kind**: not a file we build but Scryfall's CDN per card,
-unbounded, and wanting a budget and an eviction policy rather than a manifest
-entry.
+**Cards and artworks do not scale, printings do.** A Japanese printing is
+another printing of a card we already hold, sharing its art; Japanese covers
+30,567 of the 32,992 cards. So the cards file stays the size it is, the
+illustration index stays the size it is, and only the prints file multiplies —
+2.73MB becoming something near 14MB, which no budget survives.
 
-**The manifest generalizes when the second part exists**, not before — from a
-fixed pair to a set of named parts. It is rebuilt on every export, so the shape
-costs nothing to change later and would be dead weight now.
+**The scanner does not need them anyway.** What it reads off a card is the
+art, the set code, the collector number and the language glyph, and those
+three together name a printing outright. Turning that name into an id is one
+call to Scryfall, which is already how a non-English printing is resolved
+today and already cached per device. A thousand scanned Japanese cards is a
+hundred seconds of that, once, against fourteen megabytes every user would
+carry whether or not they own a single one.
+
+**So a language pack, and the useful one is printings rather than text.** Each
+major language runs 15,000 to 62,000 paper printings, so Japanese comes to
+roughly 1.7MB — worth choosing when a collection is substantially in one
+language, and worth nothing to anyone else. Text scales by card instead, so a
+pack per language is near the English 0.57MB whatever the language, and all of
+them at once would be some eight megabytes of text in languages its reader
+cannot read. Per language, opt-in, both of them.
+
+Either pack has to be built from All Cards, which is unrelated to this
+decision and wanted anyway — see below.
+
+**Settled: names for every language ride in the base, text and scanning do
+not.** A name is 26 bytes and eight languages of them come to 6.3MB, less than
+English text alone, and they are what a scanner has to read on a card printed
+before collector numbers existed. Text and the scan index are packs, one per
+language, chosen at onboarding from the app's own language and added to by
+anyone who wants another.
 
 ## Open questions
 
