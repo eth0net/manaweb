@@ -22,7 +22,11 @@ export async function load(step: (of: string) => void): Promise<Loaded> {
   ]);
 
   step("Indexing");
-  const catalog = new Catalog(parse(cards.bytes), parse(prints.bytes));
+  const decoder = new TextDecoder();
+  const catalog = Catalog.read(
+    decoder.decode(cards.bytes),
+    decoder.decode(prints.bytes),
+  );
 
   // Cached only now the pair it names is, or a later offline load would read a
   // manifest pointing at files this device never fetched.

@@ -1,4 +1,5 @@
 import { matches, printed, type Query } from "./query";
+import { chunks, count, split } from "./rows";
 import { type Index, normalize, scores, search } from "./search";
 
 // `name` resolves against the manifest's own URL, so the catalog can move.
@@ -92,30 +93,45 @@ class Columns {
   // 2% of printings carry one, so a map beats a column of nulls.
   #printedNames: Map<number, string>;
 
-  constructor(rows: PrintRow[]) {
-    this.rows = rows.length;
-    this.set = new Uint16Array(rows.length);
-    this.finishes = new Uint8Array(rows.length);
-    this.rarity = new Uint8Array(rows.length);
-    this.layout = new Uint8Array(rows.length);
-    this.imageStatus = new Uint8Array(rows.length);
-    this.lang = new Uint8Array(rows.length);
-    this.flags = new Uint8Array(rows.length);
-    this.artist = new Uint16Array(rows.length);
-    this.#numberAt = new Uint32Array(rows.length + 1);
+  // Filled a batch at a time, so the rows a batch parsed can go before the
+  // next one arrives.
+  #idParts: string[] = [];
+  #numberParts: string[] = [];
+  #filled = 0;
+
+  constructor(rows: number) {
+    this.rows = rows;
+    this.set = new Uint16Array(rows);
+    this.finishes = new Uint8Array(rows);
+    this.rarity = new Uint8Array(rows);
+    this.layout = new Uint8Array(rows);
+    this.imageStatus = new Uint8Array(rows);
+    this.lang = new Uint8Array(rows);
+    this.flags = new Uint8Array(rows);
+    this.artist = new Uint16Array(rows);
+    this.#numberAt = new Uint32Array(rows + 1);
     this.#printedNames = new Map();
+    this.#ids = "";
+    this.#numbers = "";
+  }
 
-    const ids: string[] = [];
-    const numbers: string[] = [];
-    let at = 0;
+  static of(rows: PrintRow[]): Columns {
+    const held = new Columns(rows.length);
+    held.take(rows);
+    return held.close();
+  }
 
-    for (const [i, row] of rows.entries()) {
+  take(rows: PrintRow[]): void {
+    let at = this.#numberAt[this.#filled] as number;
+    for (const row of rows) {
+      const i = this.#filled++;
+      if (i >= this.rows) throw new Error(`more printings than ${this.rows}`);
       if (row[0].length !== Columns.ID) {
         throw new Error(`printing ${i} has a ${row[0].length}-character id`);
       }
-      ids.push(row[0]);
+      this.#idParts.push(row[0]);
       this.set[i] = row[1];
-      numbers.push(row[2]);
+      this.#numberParts.push(row[2]);
       at += row[2].length;
       this.#numberAt[i + 1] = at;
       this.finishes[i] = row[3];
@@ -127,9 +143,19 @@ class Columns {
       this.artist[i] = row[9] ?? 0xffff;
       this.flags[i] = row[10];
     }
+  }
 
-    this.#ids = ids.join("");
-    this.#numbers = numbers.join("");
+  close(): this {
+    if (this.#filled !== this.rows) {
+      throw new Error(
+        `${this.#filled} printings against ${this.rows} counted`,
+      );
+    }
+    this.#ids = this.#idParts.join("");
+    this.#numbers = this.#numberParts.join("");
+    this.#idParts = [];
+    this.#numberParts = [];
+    return this;
   }
 
   // Held as one run each, so reading one out allocates. Every caller that
@@ -353,7 +379,21 @@ export class Catalog {
   // How many printings each set holds, tallied on the same pass.
   #setSizes: Int32Array;
 
-  constructor(cards: CardFile, prints: PrintFile) {
+  // Rows in batches, so the parsed form of the file never exists whole beside
+  // the columns it becomes — see `docs/architecture.md`.
+  static read(cards: string, prints: string): Catalog {
+    const held = split(prints, "prints");
+    const tables = JSON.parse(held.header) as Omit<PrintFile, "prints">;
+    const cols = new Columns(count(held.rows));
+    for (const batch of chunks<PrintRow>(held.rows, 4096)) cols.take(batch);
+    return new Catalog(JSON.parse(cards) as CardFile, tables, cols.close());
+  }
+
+  constructor(
+    cards: CardFile,
+    prints: PrintFile | Omit<PrintFile, "prints">,
+    cols?: Columns,
+  ) {
     if (cards.version !== prints.version) {
       throw new Error(
         `catalog halves disagree: ${cards.version} and ${prints.version}`,
@@ -374,9 +414,9 @@ export class Catalog {
 
     this.version = cards.version;
     this.#cards = cards;
-    const { prints: rows, ...tables } = prints;
+    const { prints: rows, ...tables } = prints as PrintFile;
     this.#prints = tables;
-    this.#cols = new Columns(rows);
+    this.#cols = cols ?? Columns.of(rows);
 
     this.#offsets = new Int32Array(cards.cards.length + 1);
     let offset = 0;
