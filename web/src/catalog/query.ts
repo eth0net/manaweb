@@ -1,6 +1,7 @@
 // Scryfall's syntax, not one of ours — see `docs/search.md` for why and for
 // which terms the artifact can answer.
 
+import { COLORS } from "./columns";
 import type { Card, Print } from "./index";
 import { normalize } from "./search";
 
@@ -248,8 +249,6 @@ const KEYS = new Set([
   "not",
   "year",
 ]);
-
-const COLORS = "WUBRG";
 
 // Written out, and the guild and shard names players use for them.
 const NAMED: Record<string, string> = {

@@ -422,6 +422,15 @@ costs nothing to change later and would be dead weight now.
 is the better model, but the column has nowhere to land, so import and export
 both need a defined mapping rather than silent loss. See the comparison above.
 
+**The artifact has no format version.** Its `version` is the bulk file's
+timestamp, so it says when the data was read and nothing about how it is
+written. When colors became a bitmask, an older file loaded without complaint
+and every card came back colorless: the client checks the field names, which
+had not changed, not the types behind them. Each header table the client reads
+is now checked against what it expects, which catches that case and the next
+one like it, but a version of its own would say so directly rather than
+inferring it from a table's absence.
+
 **Repeated tokens.** Tokens from different sets carry different oracle ids,
 so grouping doesn't collapse them: searching "goblin" still returns five rows
 of Goblin token. Grouping them wants a key that isn't `oracle_id` — name plus

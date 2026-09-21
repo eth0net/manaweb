@@ -12,6 +12,10 @@ import { Runs, Uuids } from "./strings";
 // allocate is collectable while the file is still being read.
 const BATCH = 4096;
 
+// Bit `i` of a card's colors and color identity. The cards file names the
+// same order, and is checked against this rather than trusted.
+export const COLORS = "WUBRG";
+
 // Rows are positional, so a column read at the wrong index is plausible data.
 export const CARD_FIELDS = [
   "oracleId",
@@ -188,6 +192,14 @@ export class CardColumns {
 
   constructor(rows: number, tables: CardTables) {
     fields("cards", tables.fields, CARD_FIELDS);
+    // The table arrived with the bitmask, so a file without it is the older
+    // format, whose colors are strings a byte column reads as zero.
+    if (!tables.colors) {
+      throw new Error(
+        "cards file predates the color bitmask, so re-export it",
+      );
+    }
+    fields("card colors", tables.colors, [...COLORS]);
     fits("kinds", tables.kinds.length, 0xff);
     fits("card flags", tables.flags.length, 8);
 

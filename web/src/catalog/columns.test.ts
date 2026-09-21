@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   CARD_FIELDS,
   CardColumns,
+  COLORS,
   PRINT_FIELDS,
   PrintColumns,
 } from "./columns";
@@ -44,7 +45,13 @@ describe("a column too narrow for its table", () => {
   });
 
   test("the cards file has two of its own", () => {
-    const cards = { version: "v", fields: CARD_FIELDS, kinds: [], flags: [] };
+    const cards = {
+      version: "v",
+      fields: CARD_FIELDS,
+      kinds: [],
+      colors: [...COLORS],
+      flags: [],
+    };
     const many = (held: number) => Array.from({ length: held }, String);
     expect(() => new CardColumns(0, { ...cards, kinds: many(300) })).toThrow(
       "exceed 255",
@@ -53,6 +60,20 @@ describe("a column too narrow for its table", () => {
       "exceed 8",
     );
     expect(() => new CardColumns(0, cards)).not.toThrow();
+  });
+});
+
+describe("a cards file from before the color bitmask", () => {
+  test("is refused rather than read as colorless", () => {
+    const old = {
+      version: "v",
+      fields: CARD_FIELDS,
+      kinds: [],
+      flags: [],
+    } as never;
+    expect(() => new CardColumns(0, old)).toThrow(
+      "predates the color bitmask",
+    );
   });
 });
 

@@ -52,6 +52,8 @@ export interface CardTables {
   version: string;
   fields: string[];
   kinds: string[];
+  // The bit each color takes in the two color columns.
+  colors: string[];
   flags: string[];
 }
 

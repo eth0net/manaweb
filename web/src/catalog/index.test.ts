@@ -20,6 +20,7 @@ const CARDS = JSON.stringify({
     "flags",
   ],
   kinds: ["card", "token"],
+  colors: ["W", "U", "B", "R", "G"],
   flags: ["reserved", "gameChanger"],
   // biome-ignore format: a positional row reads as a row
   cards: [
