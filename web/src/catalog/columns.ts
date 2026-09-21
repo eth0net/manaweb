@@ -6,6 +6,7 @@
 
 import type { PrintRow, PrintTables } from ".";
 import { chunks, count, split } from "./rows";
+import { Runs, Uuids } from "./strings";
 
 // Rows enough to keep the parse worthwhile and few enough that what they
 // allocate is collectable while the file is still being read.
@@ -32,18 +33,10 @@ export class PrintColumns {
   // No artist is 0xffff, there being no negative index to spare.
   readonly artist: Uint16Array;
 
-  // Every id is a 36-character uuid, so one stride replaces an offset array.
-  static readonly ID = 36;
-  #ids: string;
-  #numbers: string;
-  #numberAt: Uint32Array;
+  #ids: Uuids;
+  #numbers: Runs;
   // 2% of printings carry one, so a map beats a column of nulls.
   #printedNames: Map<number, string>;
-
-  // Filled a batch at a time, so the rows a batch parsed can go before the
-  // next one arrives.
-  #idParts: string[] = [];
-  #numberParts: string[] = [];
   #filled = 0;
 
   constructor(rows: number, tables: PrintTables) {
@@ -69,10 +62,10 @@ export class PrintColumns {
     this.lang = new Uint8Array(rows);
     this.flags = new Uint8Array(rows);
     this.artist = new Uint16Array(rows);
-    this.#numberAt = new Uint32Array(rows + 1);
+    this.#ids = new Uuids(rows);
+    // Digits mostly, with room for a star or the set code The List prefixes.
+    this.#numbers = new Runs(rows, 5);
     this.#printedNames = new Map();
-    this.#ids = "";
-    this.#numbers = "";
   }
 
   // The file read straight into columns: its rows are counted, then parsed a
@@ -86,18 +79,12 @@ export class PrintColumns {
   }
 
   take(rows: PrintRow[]): void {
-    let at = this.#numberAt[this.#filled] as number;
     for (const row of rows) {
       const i = this.#filled++;
       if (i >= this.rows) throw new Error(`more printings than ${this.rows}`);
-      if (row[0].length !== PrintColumns.ID) {
-        throw new Error(`printing ${i} has a ${row[0].length}-character id`);
-      }
-      this.#idParts.push(row[0]);
+      this.#ids.push(row[0]);
       this.set[i] = row[1];
-      this.#numberParts.push(row[2]);
-      at += row[2].length;
-      this.#numberAt[i + 1] = at;
+      this.#numbers.push(row[2]);
       this.finishes[i] = row[3];
       this.rarity[i] = row[4];
       this.layout[i] = row[5];
@@ -115,24 +102,18 @@ export class PrintColumns {
         `${this.#filled} printings against ${this.rows} counted`,
       );
     }
-    this.#ids = this.#idParts.join("");
-    this.#numbers = this.#numberParts.join("");
-    this.#idParts = [];
-    this.#numberParts = [];
+    this.#numbers.close();
     return this;
   }
 
-  // Held as one run each, so reading one out allocates. Every caller that
-  // does it in a loop is a scan the comment above it calls one-off.
+  // Held as bytes, so reading one out decodes it. Every caller that does it
+  // in a loop is a scan the comment above it calls one-off.
   id(at: number): string {
-    return this.#ids.substr(at * PrintColumns.ID, PrintColumns.ID);
+    return this.#ids.get(at);
   }
 
   number(at: number): string {
-    return this.#numbers.slice(
-      this.#numberAt[at] as number,
-      this.#numberAt[at + 1] as number,
-    );
+    return this.#numbers.get(at) as string;
   }
 
   printedName(at: number): string | null {
