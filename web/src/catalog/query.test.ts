@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card, Print } from ".";
-import { answering, matches, type Node, parse, printed } from "./query";
+import { answering, bits, matches, type Node, parse, printed } from "./query";
 
 // How many terms a parse came to, whatever shape they were grouped into.
 function count(node: Node | null): number {
@@ -18,8 +18,8 @@ function card(fields: Partial<Card> = {}): Card {
     typeLine: "Instant",
     manaCost: "{R}",
     cmc: 1,
-    colors: "R",
-    colorIdentity: "R",
+    colors: bits("R"),
+    colorIdentity: bits("R"),
     kind: "card",
     printings: 1,
     edhrecRank: 100,
@@ -91,7 +91,11 @@ describe("parse", () => {
 
 describe("grouping", () => {
   const bolt = card();
-  const bear = card({ colors: "G", colorIdentity: "G", manaCost: "{1}{G}" });
+  const bear = card({
+    colors: bits("G"),
+    colorIdentity: bits("G"),
+    manaCost: "{1}{G}",
+  });
 
   test("`or` takes either side", () => {
     expect(keeps("c:r or c:u", bolt)).toBe(true);
@@ -116,9 +120,9 @@ describe("grouping", () => {
 
 describe("colors", () => {
   const bolt = card();
-  const jace = card({ colors: "U", colorIdentity: "U" });
-  const gold = card({ colors: "WU", colorIdentity: "WU" });
-  const ring = card({ colors: "", colorIdentity: "" });
+  const jace = card({ colors: bits("U"), colorIdentity: bits("U") });
+  const gold = card({ colors: bits("WU"), colorIdentity: bits("WU") });
+  const ring = card({ colors: bits(""), colorIdentity: bits("") });
 
   test("`c:` is at least, not exactly", () => {
     expect(keeps("c:r", bolt)).toBe(true);
@@ -151,13 +155,13 @@ describe("colors", () => {
   });
 
   test("four-color names read both ways round", () => {
-    const four = card({ colors: "UBRG", colorIdentity: "UBRG" });
+    const four = card({ colors: bits("UBRG"), colorIdentity: bits("UBRG") });
     expect(keeps("c=glint", four)).toBe(true);
     expect(keeps("c=chaos", four)).toBe(true);
   });
 
   test("a card whose colors are on its faces answers neither way", () => {
-    const faced = card({ colors: null, colorIdentity: "WU" });
+    const faced = card({ colors: null, colorIdentity: bits("WU") });
     expect(keeps("c:c", faced)).toBe(false);
     expect(keeps("c<=wu", faced)).toBe(false);
     expect(keeps("id<=wu", faced)).toBe(true);

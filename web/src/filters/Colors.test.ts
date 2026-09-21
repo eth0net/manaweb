@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "../catalog/index";
-import { matches, parse } from "../catalog/query";
+import { bits, matches, parse } from "../catalog/query";
 import { KEY, write } from "../terms";
 import { LETTERS } from "./Colors";
 
-const bolt = { colors: "R", colorIdentity: "R" } as Card;
-const sol = { colors: "", colorIdentity: "" } as Card;
-const faceless = { colors: null, colorIdentity: "UR" } as Card;
+const bolt = { colors: bits("R"), colorIdentity: bits("R") } as Card;
+const sol = { colors: 0, colorIdentity: 0 } as Card;
+const faceless = { colors: null, colorIdentity: bits("UR") } as Card;
 
 describe("refusing a color", () => {
   test("each stands alone, so two of them is neither", () => {

@@ -22,6 +22,10 @@ const FINISHES: [&str; 3] = ["nonfoil", "foil", "etched"];
 /// `kind` on a card row indexes this. Search ranks in the same order.
 const KINDS: [&str; 3] = ["card", "token", "artSeries"];
 
+/// Bit `i` of a card's `colors` and `colorIdentity`, in the order the rules
+/// name them.
+const COLORS: [&str; 5] = ["W", "U", "B", "R", "G"];
+
 /// Bit `i` of a card's `flags`. Rare enough to be worthless as columns, where
 /// each would spend a `null` on all 37,000 rows to say something about 500.
 ///
@@ -69,6 +73,7 @@ struct CardHeader<'a> {
     version: &'a str,
     fields: [&'static str; 12],
     kinds: [&'static str; 3],
+    colors: [&'static str; 5],
     flags: [&'static str; 3],
 }
 
@@ -228,8 +233,8 @@ type CardRow = (
     Option<String>,
     Option<String>,
     Option<f64>,
-    Option<String>,
-    String,
+    Option<i64>,
+    i64,
     i64,
     i64,
     Option<i64>,
@@ -243,6 +248,7 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
             version,
             fields: CARD_FIELDS,
             kinds: KINDS,
+            colors: COLORS,
             flags: CARD_FLAGS,
         },
         "cards",
@@ -252,7 +258,18 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
         // Power and toughness, loyalty and defense are mutually exclusive and
         // print in the same corner, so they share one column; the type line
         // says which it is.
-        "SELECT id, name, type_line, mana_cost, cmc, colors, color_identity,
+        "SELECT id, name, type_line, mana_cost, cmc,
+                CASE WHEN colors IS NULL THEN NULL ELSE
+                    (instr(colors, 'W') > 0)
+                    | ((instr(colors, 'U') > 0) << 1)
+                    | ((instr(colors, 'B') > 0) << 2)
+                    | ((instr(colors, 'R') > 0) << 3)
+                    | ((instr(colors, 'G') > 0) << 4) END,
+                  (instr(color_identity, 'W') > 0)
+                | ((instr(color_identity, 'U') > 0) << 1)
+                | ((instr(color_identity, 'B') > 0) << 2)
+                | ((instr(color_identity, 'R') > 0) << 3)
+                | ((instr(color_identity, 'G') > 0) << 4),
                 kind, printings, edhrec_rank,
                 CASE
                     WHEN power IS NOT NULL

@@ -379,6 +379,43 @@ before collector numbers existed. Text and the scan index are packs, one per
 language, chosen at onboarding from the app's own language and added to by
 anyone who wants another.
 
+### Colors are stored as the wrong thing
+
+Five bits say what a canonical WUBRG string says, in one integer rather than a
+string to scan, and a query comparing two color sets becomes a bitwise test
+instead of a character walk. The rules close the set at five, so the column
+can never need a sixth. A card with no face of its own keeps its null, which
+is the one thing a mask cannot spell.
+
+The query language is unaffected: `c:rg` is still letters, because that is
+what a person types. Only what the row holds changes.
+
+**cards and prints are one part in two files**, always fetched together:
+printings are grouped by card in the cards file's order, so either alone is
+useless. An optional part keys by row index into the cards file, which makes it
+valid against that file and no other — the content-addressed names are what
+enforce that, and every part repeats the version in its header so a mismatched
+set fails loudly instead of reading the wrong rows.
+
+**Oracle text isn't the search default**, but offline card viewing needs it,
+which makes it one opt-in rather than two features. Text search is a different
+query over the same part, and free once someone has it.
+
+**A language pack needs All Cards.** Default Cards carries 2,635 non-English
+paper printings across 1,360 cards — 2.4% of printings, so there is no language
+data in it to ship. Until All Cards (~392MB) is ingested, a language choice
+resolves per card from Scryfall's API into IndexedDB, which is already what
+happens for a non-English printing. A built pack is the better answer once All
+Cards lands, being one fetch rather than thousands.
+
+**Art is different in kind**: not a file we build but Scryfall's CDN per card,
+unbounded, and wanting a budget and an eviction policy rather than a manifest
+entry.
+
+**The manifest generalizes when the second part exists**, not before — from a
+fixed pair to a set of named parts. It is rebuilt on every export, so the shape
+costs nothing to change later and would be dead weight now.
+
 ## Open questions
 
 **Trade quantity.** Two of the trackers we import from carry one. A trade list

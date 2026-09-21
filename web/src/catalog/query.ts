@@ -560,36 +560,48 @@ function compares(mine: number | null, other: number, op: Op): boolean {
   }
 }
 
+// A color is a bit, in the order the cards file's header names them.
+export function bits(letters: string): number {
+  let mask = 0;
+  for (const one of letters) mask |= 1 << COLORS.indexOf(one);
+  return mask;
+}
+
+function many(mask: number): number {
+  let held = 0;
+  for (let bit = mask; bit !== 0; bit &= bit - 1) held++;
+  return held;
+}
+
 // `c:` is "at least", which is what makes it the useful default; `c=2` counts
 // colors instead of naming them.
-function colored(op: Op, value: string, mine: string): boolean {
+function colored(op: Op, value: string, mine: number): boolean {
   const count = Number(value);
   if (Number.isFinite(count) && value.trim() !== "") {
-    return compares(mine.length, count, op);
+    return compares(many(mine), count, op);
   }
 
   if (value.toLowerCase() === "m" || value.toLowerCase() === "multicolor") {
-    return mine.length > 1;
+    return many(mine) > 1;
   }
 
-  const wanted = letters(value);
+  const wanted = masked(value);
   if (wanted === null) return false;
-  if (wanted === "") return nothing(op, mine);
+  if (wanted === 0) return nothing(op, mine);
 
-  const held = (color: string) => mine.includes(color);
-  const covers = [...wanted].every(held);
-  const inside = [...mine].every((color) => wanted.includes(color));
+  const covers = (mine & wanted) === wanted;
+  const inside = (mine & ~wanted) === 0;
 
   switch (op) {
     case ":":
     case ">=":
       return covers;
     case ">":
-      return covers && mine.length > wanted.length;
+      return covers && many(mine) > many(wanted);
     case "<=":
       return inside;
     case "<":
-      return inside && mine.length < wanted.length;
+      return inside && many(mine) < many(wanted);
     case "!=":
       return !(covers && inside);
     default:
@@ -599,27 +611,27 @@ function colored(op: Op, value: string, mine: string): boolean {
 
 // Colorless is the empty set, so every operator is spelled out rather than
 // falling out of subset and superset — see `docs/search.md`.
-function nothing(op: Op, mine: string): boolean {
+function nothing(op: Op, mine: number): boolean {
   switch (op) {
     case ">=":
       return true;
     case ">":
     case "!=":
-      return mine.length > 0;
+      return mine !== 0;
     case "<":
       return false;
     default:
-      return mine.length === 0;
+      return mine === 0;
   }
 }
 
 // Null where the value names no colors at all, which asks for nothing rather
 // than for colorless.
-function letters(value: string): string | null {
+function masked(value: string): number | null {
   const named = NAMED[value.toLowerCase()];
-  if (named !== undefined) return named;
+  if (named !== undefined) return bits(named);
   const found = [...value.toUpperCase()].filter((one) => COLORS.includes(one));
   return found.length > 0 && found.length === [...value].length
-    ? found.join("")
+    ? bits(found.join(""))
     : null;
 }
