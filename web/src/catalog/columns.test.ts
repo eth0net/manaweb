@@ -32,6 +32,7 @@ describe("a column too narrow for its table", () => {
     expect(() => new PrintColumns(0, with_("artists", 70000))).toThrow(
       "exceed 65534",
     );
+    expect(() => new PrintColumns(0, with_("langs", 32))).toThrow("exceed 31");
   });
   test("and today's tables fit", () => {
     expect(() => new PrintColumns(0, with_("layouts", 25))).not.toThrow();

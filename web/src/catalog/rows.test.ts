@@ -1,57 +1,61 @@
 import { describe, expect, test } from "bun:test";
 import { chunks, count, split } from "./rows";
 
-const FILE =
-  '{"version":"v1","langs":["en"],"prints":[[1,"a"],[2,"b"],[3,"c"]]}';
+const bytes = (text: string) => new TextEncoder().encode(text);
+const text = (of: Uint8Array) => new TextDecoder().decode(of);
+
+const FILE = bytes(
+  '{"version":"v1","langs":["en"],"prints":[[1,"a"],[2,"b"],[3,"c"]]}',
+);
 
 describe("splitting a file from its rows", () => {
   test("the header comes back as an object of its own", () => {
     const { header, rows } = split(FILE, "prints");
     expect(JSON.parse(header)).toEqual({ version: "v1", langs: ["en"] });
-    expect(rows).toBe('[1,"a"],[2,"b"],[3,"c"]');
+    expect(text(rows)).toBe('[1,"a"],[2,"b"],[3,"c"]');
   });
 
   test("and a file without that array says so", () => {
     expect(() => split(FILE, "cards")).toThrow("no cards array");
-    expect(() => split(String.raw`{"a":1,"prints":[[1]]`, "prints")).toThrow(
-      "does not end ]}",
-    );
+    expect(() =>
+      split(bytes(String.raw`{"a":1,"prints":[[1]]`), "prints"),
+    ).toThrow("does not end ]}");
   });
 });
 
 describe("reading rows in batches", () => {
-  const rows = (text: string, each: number) => [...chunks(text, each)];
+  const rows = (of: string, each: number) => [...chunks(bytes(of), each)];
 
   test("every batch but the last holds the size asked for", () => {
-    const { rows: text } = split(FILE, "prints");
-    expect(rows(text, 2)).toEqual([
+    const held = text(split(FILE, "prints").rows);
+    expect(rows(held, 2)).toEqual([
       [
         [1, "a"],
         [2, "b"],
       ],
       [[3, "c"]],
     ]);
-    expect(rows(text, 3)).toEqual([
+    expect(rows(held, 3)).toEqual([
       [
         [1, "a"],
         [2, "b"],
         [3, "c"],
       ],
     ]);
-    expect(rows(text, 99)).toEqual([
+    expect(rows(held, 99)).toEqual([
       [
         [1, "a"],
         [2, "b"],
         [3, "c"],
       ],
     ]);
-    expect(count(text)).toBe(3);
+    expect(count(bytes(held))).toBe(3);
   });
 
   test("a bracket inside a value closes nothing", () => {
-    const text = '["a]b",1],["c[d",2],["e\\"]",3]';
-    expect(count(text)).toBe(3);
-    expect(rows(text, 1).flat()).toEqual([
+    const held = '["a]b",1],["c[d",2],["e\\"]",3]';
+    expect(count(bytes(held))).toBe(3);
+    expect(rows(held, 1).flat()).toEqual([
       ["a]b", 1],
       ["c[d", 2],
       ['e"]', 3],
@@ -59,9 +63,9 @@ describe("reading rows in batches", () => {
   });
 
   test("nested arrays belong to their row", () => {
-    const text = '[[1,2],["x"]],[[3],[]]';
-    expect(count(text)).toBe(2);
-    expect(rows(text, 5)).toEqual([
+    const held = '[[1,2],["x"]],[[3],[]]';
+    expect(count(bytes(held))).toBe(2);
+    expect(rows(held, 5)).toEqual([
       [
         [[1, 2], ["x"]],
         [[3], []],
@@ -69,8 +73,17 @@ describe("reading rows in batches", () => {
     ]);
   });
 
+  test("a multi-byte character closes nothing either", () => {
+    const held = '["329★",1],["日本語",2]';
+    expect(count(bytes(held))).toBe(2);
+    expect(rows(held, 5).flat()).toEqual([
+      ["329★", 1],
+      ["日本語", 2],
+    ]);
+  });
+
   test("no rows at all", () => {
-    expect(count("")).toBe(0);
+    expect(count(bytes(""))).toBe(0);
     expect(rows("", 10)).toEqual([]);
   });
 });

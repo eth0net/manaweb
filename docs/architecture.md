@@ -182,7 +182,8 @@ gets quicker rather than slower because the hot loop stops chasing pointers.
 The cost is at load: parsing the file whole and then building columns peaks
 higher than either, so the file is read in slices of rows instead. It is an
 array of arrays and the row boundaries are findable, which is a reader rather
-than a parser.
+than a parser. The slices are bytes: decoding the file to text up front would
+cost as much again as the rows the reader exists to avoid.
 
 **Residency follows the access pattern, not the file.** A search scans, so
 what it scans has to be resident. Everything else is asked for:

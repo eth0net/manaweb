@@ -1,6 +1,5 @@
 import { PrintColumns } from "./columns";
 import { matches, printed, type Query } from "./query";
-import { chunks, count, split } from "./rows";
 import { type Index, normalize, scores, search } from "./search";
 
 // `name` resolves against the manifest's own URL, so the catalog can move.
@@ -70,6 +69,9 @@ export interface PrintFile {
   sets: SetRow[];
   prints: PrintRow[];
 }
+
+// The header alone: what a print column's integers index.
+export type PrintTables = Omit<PrintFile, "prints">;
 
 export type SetRow = [
   code: string,
@@ -262,9 +264,9 @@ function decode(mask: number, names: string[]): string[] {
 export class Catalog {
   readonly version: string;
   #cards: CardFile;
-  // The header tables only: the rows themselves become columns, and holding
-  // the parsed array as well would keep the thing this replaces alive.
-  #prints: Omit<PrintFile, "prints">;
+  // The header tables only, which the columns carry: holding the parsed rows
+  // as well would keep the thing they replace alive.
+  #prints: PrintTables;
   #cols: PrintColumns;
   // Where each card's run of printings starts, with the total on the end.
   #offsets: Int32Array;
@@ -274,21 +276,18 @@ export class Catalog {
   // How many printings each set holds, tallied on the same pass.
   #setSizes: Int32Array;
 
-  // Rows in batches, so the parsed form of the file never exists whole beside
-  // the columns it becomes — see `docs/architecture.md`.
-  static read(cards: string, prints: string): Catalog {
-    const held = split(prints, "prints");
-    const tables = JSON.parse(held.header) as Omit<PrintFile, "prints">;
-    const cols = new PrintColumns(count(held.rows), tables);
-    for (const batch of chunks<PrintRow>(held.rows, 4096)) cols.take(batch);
-    return new Catalog(JSON.parse(cards) as CardFile, tables, cols.close());
+  // The files as fetched. Printings are read a batch at a time, so their
+  // parsed form never exists whole beside the columns it becomes — see
+  // `docs/architecture.md`.
+  static read(cards: Uint8Array, prints: Uint8Array): Catalog {
+    return new Catalog(
+      JSON.parse(new TextDecoder().decode(cards)) as CardFile,
+      PrintColumns.read(prints),
+    );
   }
 
-  constructor(
-    cards: CardFile,
-    prints: PrintFile | Omit<PrintFile, "prints">,
-    cols?: PrintColumns,
-  ) {
+  constructor(cards: CardFile, cols: PrintColumns) {
+    const prints = cols.tables;
     if (cards.version !== prints.version) {
       throw new Error(
         `catalog halves disagree: ${cards.version} and ${prints.version}`,
@@ -298,16 +297,10 @@ export class Catalog {
     columns("cards", cards.fields, CARD_FIELDS);
     columns("prints", prints.fields, PRINT_FIELDS);
 
-    // A shift is taken modulo 32, so a 32nd language would alias onto the first.
-    if (prints.langs.length > 31) {
-      throw new Error(`${prints.langs.length} languages exceed a bitmask`);
-    }
-
     this.version = cards.version;
     this.#cards = cards;
-    const { prints: rows, ...tables } = prints as PrintFile;
-    this.#prints = tables;
-    this.#cols = cols ?? PrintColumns.of(rows, tables);
+    this.#prints = prints;
+    this.#cols = cols;
 
     this.#offsets = new Int32Array(cards.cards.length + 1);
     let offset = 0;

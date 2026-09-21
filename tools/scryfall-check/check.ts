@@ -33,9 +33,8 @@ function held(): Catalog {
   const manifest = JSON.parse(
     readFileSync(join(WHERE, "manifest.json"), "utf8"),
   );
-  const read = (name: string) =>
-    JSON.parse(readFileSync(join(WHERE, name), "utf8"));
-  return new Catalog(read(manifest.cards.name), read(manifest.prints.name));
+  const read = (name: string) => readFileSync(join(WHERE, name));
+  return Catalog.read(read(manifest.cards.name), read(manifest.prints.name));
 }
 
 async function theirs(query: string): Promise<Answered> {
