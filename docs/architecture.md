@@ -164,6 +164,40 @@ because nothing can change under those names; everything else is fetched and
 only falls back. The cache is named for a hash of the shell it holds, so a
 deploy takes the whole of the last one rather than expiring entries.
 
+### What stays in memory, and what is fetched when asked
+
+Bytes on the device are not the constraint; what the rows cost once parsed is.
+Measured 2026-09-21: the pair is 12.5MB stored and 88MB resident, because
+every row becomes a JavaScript array of JavaScript strings. Roughly five times
+its own size for the cards, six for the printings, and a further 19MB for the
+name index built over them.
+
+**Columns the query filters on are already integers**, so those belong in
+typed arrays: set, rarity, layout, language, finishes and the flag word come
+to 1.5MB across every printing, against 46.5MB for the same rows as objects.
+Holding the strings beside them as one run of characters with an offset array
+brings the whole file to 7.2MB, six and a half times smaller, and filtering
+gets quicker rather than slower because the hot loop stops chasing pointers.
+
+The cost is at load: parsing the file whole and then building columns peaks
+higher than either, so the file is read in slices of rows instead. It is an
+array of arrays and the row boundaries are findable, which is a reader rather
+than a parser.
+
+**Residency follows the access pattern, not the file.** A search scans, so
+what it scans has to be resident. Everything else is asked for:
+
+| | pattern | where it lives |
+|---|---|---|
+| filter columns, names | scanned every query | memory, as typed arrays |
+| printings past the first | one card at a time | bytes, parsed per run |
+| card text | the card being read | a store, keyed by card |
+| scanning a printing | a lookup per card | a store, keyed by set, number and language |
+
+The last one is what makes scanning every language affordable. Resolving a
+printing is a point lookup, which is what an indexed store is for, so it never
+occupies memory at all — the difference between 206MB resident and none of it.
+
 `_headers` also carries the CSP. Pages is the only thing that reads that file,
 which would leave the dev server the one place the policy is not enforced, so
 the dev server parses it and sends the same headers. A policy that only
