@@ -1,3 +1,4 @@
+import { PrintColumns } from "./columns";
 import { matches, printed, type Query } from "./query";
 import { chunks, count, split } from "./rows";
 import { type Index, normalize, scores, search } from "./search";
@@ -33,7 +34,7 @@ type CardRow = [
   flags: number,
 ];
 
-type PrintRow = [
+export type PrintRow = [
   id: string,
   set: number,
   collectorNumber: string,
@@ -68,112 +69,6 @@ interface PrintFile {
   artists: string[];
   sets: SetRow[];
   prints: PrintRow[];
-}
-
-// Positional rows cost five or six times their own bytes once parsed, and
-// every column a query filters on is already an integer — see
-// `docs/architecture.md`. The strings sit beside them in one run each.
-class Columns {
-  readonly rows: number;
-  readonly set: Uint16Array;
-  readonly finishes: Uint8Array;
-  readonly rarity: Uint8Array;
-  readonly layout: Uint8Array;
-  readonly imageStatus: Uint8Array;
-  readonly lang: Uint8Array;
-  readonly flags: Uint8Array;
-  // No artist is 0xffff, there being no negative index to spare.
-  readonly artist: Uint16Array;
-
-  // Every id is a 36-character uuid, so one stride replaces an offset array.
-  static readonly ID = 36;
-  #ids: string;
-  #numbers: string;
-  #numberAt: Uint32Array;
-  // 2% of printings carry one, so a map beats a column of nulls.
-  #printedNames: Map<number, string>;
-
-  // Filled a batch at a time, so the rows a batch parsed can go before the
-  // next one arrives.
-  #idParts: string[] = [];
-  #numberParts: string[] = [];
-  #filled = 0;
-
-  constructor(rows: number) {
-    this.rows = rows;
-    this.set = new Uint16Array(rows);
-    this.finishes = new Uint8Array(rows);
-    this.rarity = new Uint8Array(rows);
-    this.layout = new Uint8Array(rows);
-    this.imageStatus = new Uint8Array(rows);
-    this.lang = new Uint8Array(rows);
-    this.flags = new Uint8Array(rows);
-    this.artist = new Uint16Array(rows);
-    this.#numberAt = new Uint32Array(rows + 1);
-    this.#printedNames = new Map();
-    this.#ids = "";
-    this.#numbers = "";
-  }
-
-  static of(rows: PrintRow[]): Columns {
-    const held = new Columns(rows.length);
-    held.take(rows);
-    return held.close();
-  }
-
-  take(rows: PrintRow[]): void {
-    let at = this.#numberAt[this.#filled] as number;
-    for (const row of rows) {
-      const i = this.#filled++;
-      if (i >= this.rows) throw new Error(`more printings than ${this.rows}`);
-      if (row[0].length !== Columns.ID) {
-        throw new Error(`printing ${i} has a ${row[0].length}-character id`);
-      }
-      this.#idParts.push(row[0]);
-      this.set[i] = row[1];
-      this.#numberParts.push(row[2]);
-      at += row[2].length;
-      this.#numberAt[i + 1] = at;
-      this.finishes[i] = row[3];
-      this.rarity[i] = row[4];
-      this.layout[i] = row[5];
-      this.imageStatus[i] = row[6];
-      this.lang[i] = row[7];
-      if (row[8] !== null) this.#printedNames.set(i, row[8]);
-      this.artist[i] = row[9] ?? 0xffff;
-      this.flags[i] = row[10];
-    }
-  }
-
-  close(): this {
-    if (this.#filled !== this.rows) {
-      throw new Error(
-        `${this.#filled} printings against ${this.rows} counted`,
-      );
-    }
-    this.#ids = this.#idParts.join("");
-    this.#numbers = this.#numberParts.join("");
-    this.#idParts = [];
-    this.#numberParts = [];
-    return this;
-  }
-
-  // Held as one run each, so reading one out allocates. Every caller that
-  // does it in a loop is a scan the comment above it calls one-off.
-  id(at: number): string {
-    return this.#ids.substr(at * Columns.ID, Columns.ID);
-  }
-
-  number(at: number): string {
-    return this.#numbers.slice(
-      this.#numberAt[at] as number,
-      this.#numberAt[at + 1] as number,
-    );
-  }
-
-  printedName(at: number): string | null {
-    return this.#printedNames.get(at) ?? null;
-  }
 }
 
 export type SetRow = [
@@ -370,7 +265,7 @@ export class Catalog {
   // The header tables only: the rows themselves become columns, and holding
   // the parsed array as well would keep the thing this replaces alive.
   #prints: Omit<PrintFile, "prints">;
-  #cols: Columns;
+  #cols: PrintColumns;
   // Where each card's run of printings starts, with the total on the end.
   #offsets: Int32Array;
   #index: Index;
@@ -384,7 +279,7 @@ export class Catalog {
   static read(cards: string, prints: string): Catalog {
     const held = split(prints, "prints");
     const tables = JSON.parse(held.header) as Omit<PrintFile, "prints">;
-    const cols = new Columns(count(held.rows));
+    const cols = new PrintColumns(count(held.rows));
     for (const batch of chunks<PrintRow>(held.rows, 4096)) cols.take(batch);
     return new Catalog(JSON.parse(cards) as CardFile, tables, cols.close());
   }
@@ -392,7 +287,7 @@ export class Catalog {
   constructor(
     cards: CardFile,
     prints: PrintFile | Omit<PrintFile, "prints">,
-    cols?: Columns,
+    cols?: PrintColumns,
   ) {
     if (cards.version !== prints.version) {
       throw new Error(
@@ -416,7 +311,7 @@ export class Catalog {
     this.#cards = cards;
     const { prints: rows, ...tables } = prints as PrintFile;
     this.#prints = tables;
-    this.#cols = cols ?? Columns.of(rows);
+    this.#cols = cols ?? PrintColumns.of(rows);
 
     this.#offsets = new Int32Array(cards.cards.length + 1);
     let offset = 0;
