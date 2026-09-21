@@ -24,6 +24,8 @@ manaweb-scryfall.workspace = true
 
 axum.workspace = true
 manaweb-objects.workspace = true
+# For `manaweb health` only, and already in the tree behind the Scryfall client.
+reqwest.workspace = true
 sqlx.workspace = true
 tokio = { workspace = true, features = [
   "macros",

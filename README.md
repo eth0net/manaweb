@@ -53,16 +53,21 @@ The server needs no arguments and reads its configuration from the
 environment — [`configuration.md`](docs/configuration.md) lists all of it.
 
 ```sh
-docker run --rm -p 8080:8080 -v manaweb-data:/data ghcr.io/eth0net/manaweb
+docker run --rm -v manaweb-data:/data ghcr.io/eth0net/manaweb
 ```
 
 Tagged `X.Y.Z`, `X.Y` and `latest`, published from the tag it was built at.
 `docker build -t manaweb .` builds the same image from a checkout.
 
+Nothing has to be published: it syncs Scryfall, exports the catalog and
+uploads it, and the app and that catalog are served from elsewhere. Port 8080
+carries `/health`, and the catalog for local development.
+
 `/data` holds the card cache and the exported catalog, owned by uid 10001, so
 a bind mount has to be owned by that id to be writable. `ENTRYPOINT` is the
 binary and `serve` is the default command, so `docker run manaweb version`
-reaches a one-off without knowing where anything lives.
+reaches a one-off without knowing where anything lives. `manaweb health` is
+the same door, and is what the container checks itself with.
 
 From a checkout, `just serve` does the same thing without the container.
 

@@ -19,7 +19,7 @@
 //! The bucket it uploads to is configured too, in `manaweb-objects`.
 
 use std::error::Error;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{env, process};
@@ -42,7 +42,11 @@ const REFRESH: Duration = Duration::from_hours(7 * 24);
 /// What `manaweb <command>` takes. The image's entrypoint is the binary and
 /// its command is `serve`, so a one-off reaches the same binary without the
 /// operator knowing where it lives.
-const USAGE: &str = "usage: manaweb [serve|version]";
+const USAGE: &str = "usage: manaweb [serve|health|version]";
+
+/// How long the health check waits. A server that has not answered by then is
+/// unhealthy whatever it is doing.
+const PATIENCE: Duration = Duration::from_secs(2);
 
 #[tokio::main]
 async fn main() {
@@ -54,6 +58,13 @@ async fn main() {
 
     match env::args().nth(1).as_deref() {
         None | Some("serve") => {}
+        Some("health") => {
+            if let Err(error) = health().await {
+                eprintln!("{error}");
+                process::exit(1);
+            }
+            return;
+        }
         Some("version" | "--version" | "-V") => {
             println!("manaweb {}", env!("CARGO_PKG_VERSION"));
             return;
@@ -72,6 +83,38 @@ async fn main() {
         tracing::error!("{error}");
         process::exit(1);
     }
+}
+
+/// Asks the running server whether it is well, so the image can check itself
+/// without carrying a second HTTP client to do it with.
+async fn health() -> Result<(), Box<dyn Error>> {
+    let bind = var("MANAWEB_BIND", "127.0.0.1:8080");
+    let bind: SocketAddr = bind.parse().map_err(|_| format!("MANAWEB_BIND: {bind}"))?;
+
+    // Listening on every interface says nothing about which one to ask, and
+    // from in here the answer is always the loopback.
+    let ip = match bind.ip() {
+        IpAddr::V4(held) if held.is_unspecified() => IpAddr::V4(Ipv4Addr::LOCALHOST),
+        IpAddr::V6(held) if held.is_unspecified() => IpAddr::V6(Ipv6Addr::LOCALHOST),
+        held => held,
+    };
+
+    let client = reqwest::Client::builder().timeout(PATIENCE).build()?;
+    let response = client
+        .get(format!(
+            "http://{}/health",
+            SocketAddr::new(ip, bind.port())
+        ))
+        .send()
+        .await?;
+
+    let status = response.status();
+    let body = response.text().await?;
+    if !status.is_success() {
+        return Err(format!("{status}: {}", body.trim()).into());
+    }
+    println!("{}", body.trim());
+    Ok(())
 }
 
 async fn run() -> Result<(), Box<dyn Error>> {
