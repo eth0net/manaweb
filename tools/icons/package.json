@@ -1,0 +1,11 @@
+{
+  "name": "manaweb-icons",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "icons": "bun run icons.ts"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2"
+  }
+}

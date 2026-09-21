@@ -67,6 +67,13 @@ lexicons: deps
     cd tools/lexicon-check && bun run check
     cd tools/lex-gen && bun run gen --check
 
+# The drawing is the source and every appearance is a row of four colors in
+# it, so a raster is composed rather than drawn — see `docs/roadmap.md`.
+[doc('rewrite the app icons and favicons from icon.svg (needs bun)')]
+[group('dev')]
+icons: deps
+    cd tools/icons && bun run icons
+
 # rewrite the record types the client reads records with (needs bun)
 [group('dev')]
 lexicon-types: deps
