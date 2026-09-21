@@ -57,7 +57,7 @@ interface CardFile {
 }
 
 // Every integer column on a print row indexes one of these, commonest first.
-interface PrintFile {
+export interface PrintFile {
   version: string;
   fields: string[];
   finishes: string[];
@@ -279,7 +279,7 @@ export class Catalog {
   static read(cards: string, prints: string): Catalog {
     const held = split(prints, "prints");
     const tables = JSON.parse(held.header) as Omit<PrintFile, "prints">;
-    const cols = new PrintColumns(count(held.rows));
+    const cols = new PrintColumns(count(held.rows), tables);
     for (const batch of chunks<PrintRow>(held.rows, 4096)) cols.take(batch);
     return new Catalog(JSON.parse(cards) as CardFile, tables, cols.close());
   }
@@ -303,15 +303,11 @@ export class Catalog {
       throw new Error(`${prints.langs.length} languages exceed a bitmask`);
     }
 
-    if (prints.flags.length > 8) {
-      throw new Error(`${prints.flags.length} print flags exceed a byte`);
-    }
-
     this.version = cards.version;
     this.#cards = cards;
     const { prints: rows, ...tables } = prints as PrintFile;
     this.#prints = tables;
-    this.#cols = cols ?? PrintColumns.of(rows);
+    this.#cols = cols ?? PrintColumns.of(rows, tables);
 
     this.#offsets = new Int32Array(cards.cards.length + 1);
     let offset = 0;

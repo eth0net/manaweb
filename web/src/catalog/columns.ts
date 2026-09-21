@@ -4,7 +4,14 @@
 // `docs/architecture.md`. The strings sit beside them in one run each, read
 // out by index.
 
-import type { PrintRow } from ".";
+import type { PrintFile, PrintRow } from ".";
+
+// A column too narrow for its own table wraps rather than failing, so each
+// says what it can take. The two bitmasks are the tight ones: a byte is eight
+// entries there, not 255.
+function fits(name: string, held: number, most: number): void {
+  if (held > most) throw new Error(`${held} ${name} exceed ${most}`);
+}
 
 export class PrintColumns {
   readonly rows: number;
@@ -32,7 +39,18 @@ export class PrintColumns {
   #numberParts: string[] = [];
   #filled = 0;
 
-  constructor(rows: number) {
+  constructor(rows: number, tables?: Omit<PrintFile, "prints">) {
+    if (tables) {
+      fits("sets", tables.sets.length, 0xffff);
+      // 0xffff is the artist a printing does not name.
+      fits("artists", tables.artists.length, 0xfffe);
+      fits("rarities", tables.rarities.length, 0xff);
+      fits("layouts", tables.layouts.length, 0xff);
+      fits("image statuses", tables.imageStatuses.length, 0xff);
+      fits("finishes", tables.finishes.length, 8);
+      fits("print flags", tables.flags.length, 8);
+    }
+
     this.rows = rows;
     this.set = new Uint16Array(rows);
     this.finishes = new Uint8Array(rows);
@@ -48,8 +66,11 @@ export class PrintColumns {
     this.#numbers = "";
   }
 
-  static of(rows: PrintRow[]): PrintColumns {
-    const held = new PrintColumns(rows.length);
+  static of(
+    rows: PrintRow[],
+    tables?: Omit<PrintFile, "prints">,
+  ): PrintColumns {
+    const held = new PrintColumns(rows.length, tables);
     held.take(rows);
     return held.close();
   }
