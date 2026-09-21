@@ -23,10 +23,15 @@
   }
 }
 
+html,
 body {
   background: var(--paper);
   color: var(--ink);
   margin: 0;
+  /* Safari bounces the viewport even where nothing overflows it, which is the
+     one thing that still reads as a page rather than an app. */
+  overscroll-behavior: none;
+  overflow: hidden;
 }
 
 /* An app shell: the page itself doesn't scroll, the list inside it does.
@@ -38,7 +43,12 @@ main {
   height: 100dvh;
   margin: 0 auto;
   max-width: 42rem;
-  padding: 1.5rem 1rem 1rem;
+  /* The viewport reaches under the notch and the home indicator, so the
+     padding has to put it back. */
+  padding: calc(1.5rem + env(safe-area-inset-top, 0px))
+    calc(1rem + env(safe-area-inset-right, 0px))
+    calc(1rem + env(safe-area-inset-bottom, 0px))
+    calc(1rem + env(safe-area-inset-left, 0px));
 }
 
 /* Takes the slack between the header and the bar, so the bar holds the bottom
@@ -125,11 +135,15 @@ nav a.here {
 }
 
 /* The route's own box, so a list inside it still measures against the page. */
+/* The last thing between the shell and a view that outgrows it: a list with a
+   bounded box of its own keeps one, anything else scrolls here. */
 .view {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .tally {
@@ -206,6 +220,7 @@ textarea {
   margin: 1rem 0;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0;
 }
 
@@ -704,6 +719,7 @@ dialog.wide {
   margin: 0 0 0.5rem;
   max-height: 60vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0;
 }
 
