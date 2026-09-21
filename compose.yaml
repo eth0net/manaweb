@@ -1,0 +1,43 @@
+# The AppView on a host of its own. It keeps the card cache fresh, exports the
+# catalog and uploads it; what a browser fetches comes from the app's own
+# origin and the bucket, so nothing here needs reaching from outside.
+#
+# `compose.yaml` is the Compose Specification's own filename, which is why it
+# is not `docker-compose.yml`.
+
+services:
+  manaweb:
+    image: ghcr.io/eth0net/manaweb:0.7
+    container_name: manaweb
+    restart: unless-stopped
+    # The four bucket variables, as values rather than references — see
+    # `docs/configuration.md`. Nothing else is needed: the image already points
+    # the database and the catalog at the volume below.
+    env_file:
+      - .env
+    volumes:
+      - data:/data
+    # No published port and no shared network: nothing talks to this. A port
+    # published here would reach the internet whatever the host firewall says,
+    # docker writing its own rules ahead of them.
+    healthcheck:
+      test: ["CMD", "manaweb", "health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      # It exports and uploads the catalog it already holds before it listens,
+      # so a restart with a full cache is a transfer away from answering.
+      start_period: 120s
+    # A sync reads an 80MB file and rewrites every row, on a host with 1GB. The
+    # weekly tick is the event to watch, and rotation keeps a failing one from
+    # filling the disk it shares with the cache.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+# Named rather than a bind mount: the image's directory is owned by uid 10001
+# and mode 700, which a host directory would have to be given first.
+volumes:
+  data:
