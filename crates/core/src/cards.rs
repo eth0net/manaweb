@@ -109,6 +109,8 @@ pub async fn replace(
     .execute(&mut *tx)
     .await?;
 
+    crate::catalog::order(&mut tx).await?;
+
     tx.commit().await?;
 
     // The replace writes the whole catalog, so the WAL is about as large as

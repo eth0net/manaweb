@@ -28,4 +28,9 @@ pub enum Error {
     /// a disagreement would shift every card after the first bad one.
     #[error("cards claim {claimed} printings but {written} were written")]
     CatalogRuns { claimed: usize, written: usize },
+
+    /// Written at sync, so a printing without it means the cache predates the
+    /// column and nothing has refreshed it since.
+    #[error("a printing has no export order, so the cache wants re-syncing")]
+    CatalogOrder,
 }

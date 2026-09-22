@@ -11,7 +11,7 @@ use std::path::Path;
 
 use futures_util::TryStreamExt as _;
 use serde::Serialize;
-use sqlx::SqlitePool;
+use sqlx::{SqliteConnection, SqlitePool};
 use tokio::fs;
 
 use crate::{Error, Result};
@@ -297,6 +297,7 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
 }
 
 type PrintRow = (
+    Option<i64>,
     String,
     String,
     String,
@@ -351,28 +352,35 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
         "prints",
     )?;
 
-    // Ordered as the cards file is, so each card's printings are one
-    // contiguous run, and to a total order — see `docs/search.md`. The finish
-    // clause keeps 9ed #329 ahead of the foil-only #329★.
+    // [`ORDER`] wrote the order into `seq`, and asking the database for it back
+    // is a row lookup each where reading the table start to end is one pass —
+    // see `docs/architecture.md`.
     let mut rows = sqlx::query_as::<_, PrintRow>(
-        "SELECT c.id, c.set_code, c.collector_number, c.finishes, c.rarity,
+        "SELECT c.seq, c.id, c.set_code, c.collector_number, c.finishes, c.rarity,
                 c.layout, c.image_status, c.lang, c.printed_name,
                 nullif(c.artist, ''),
                 c.promo | (c.variation << 1) | (c.full_art << 2)
                         | (c.textless << 3) | (c.oversized << 4)
-         FROM cards c JOIN oracle o ON o.id = c.oracle_id
-         WHERE NOT c.digital
-         ORDER BY o.name, o.id,
-                  CASE WHEN c.set_type IN ('expansion', 'core') THEN 0 ELSE 1 END,
-                  c.booster DESC, c.released_at DESC,
-                  instr(c.finishes, 'nonfoil') = 0,
-                  c.collector_number, c.id",
+         FROM cards c
+         WHERE NOT c.digital",
     )
     .fetch(pool);
 
-    let mut count = 0;
+    let mut held: Vec<PrintRow> = Vec::new();
     while let Some(row) = rows.try_next().await? {
-        let (id, set, number, finishes, rarity, layout, status, lang, printed, artist, flags) = row;
+        held.push(row);
+    }
+    held.sort_unstable_by_key(|row| row.0);
+
+    let mut count = 0;
+    for row in held {
+        let (seq, id, set, number, finishes, rarity, layout, status, lang, printed, artist, flags) =
+            row;
+        // Unordered rows would write in whatever order the table holds them,
+        // which is plausible and wrong.
+        if seq.is_none() {
+            return Err(Error::CatalogOrder);
+        }
         out.row(&(
             id,
             set_index[&set],
@@ -390,6 +398,36 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
     }
 
     Ok(Artifact::new("prints", count, out.finish()?))
+}
+
+/// Numbers every exportable printing, so the export reads an index rather
+/// than sorting a hundred thousand rows for it.
+///
+/// Ordered as the cards file is, so a card's printings are one contiguous run,
+/// and to a total order — see `docs/search.md`. The finish clause keeps 9ed
+/// #329 ahead of the foil-only #329★.
+///
+/// `0002_export_order.sql` fills a cache synced before the column existed, and
+/// a test holds its clause to this one.
+const ORDER: &str = "WITH ordered AS (
+         SELECT c.id AS id, row_number() OVER (
+             ORDER BY o.name, o.id,
+                      CASE WHEN c.set_type IN ('expansion', 'core') THEN 0 ELSE 1 END,
+                      c.booster DESC, c.released_at DESC,
+                      instr(c.finishes, 'nonfoil') = 0,
+                      c.collector_number, c.id
+         ) AS n
+         FROM cards c JOIN oracle o ON o.id = c.oracle_id
+         WHERE NOT c.digital
+     )
+     UPDATE cards SET seq = ordered.n FROM ordered WHERE ordered.id = cards.id";
+
+/// Runs [`ORDER`] inside the sync's transaction, the rows having just been
+/// replaced.
+pub(crate) async fn order(tx: &mut SqliteConnection) -> Result<()> {
+    sqlx::query(ORDER).execute(tx).await?;
+
+    Ok(())
 }
 
 const ARTISTS: &str = "SELECT artist FROM cards WHERE NOT digital
@@ -454,5 +492,24 @@ impl Writer {
     fn finish(mut self) -> Result<Vec<u8>> {
         self.out.write_all(b"]}")?;
         Ok(self.out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Two orderings would put the artifact's rows in one and the runs the
+    /// cards file claims in the other.
+    #[test]
+    fn the_migration_orders_by_what_a_sync_does() {
+        const FILLED: &str = include_str!("../migrations/0002_export_order.sql");
+
+        assert_eq!(clause(super::ORDER), clause(FILLED));
+    }
+
+    /// What lies between `ORDER BY` and the window it closes, whitespace gone.
+    fn clause(sql: &str) -> String {
+        let (_, after) = sql.split_once("ORDER BY").expect("an ordering");
+        let (held, _) = after.split_once(") AS n").expect("a window to close");
+        held.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 }

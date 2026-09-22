@@ -283,3 +283,19 @@ async fn the_manifest_names_files_that_sit_beside_it() {
 
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// The order is written at sync and sorted on here, so a cache that somehow
+/// holds rows without it would write them in whatever order the table has.
+#[tokio::test]
+async fn a_cache_with_no_order_written_is_refused() {
+    let pool = seeded_with(CARDS).await;
+    sqlx::query("UPDATE cards SET seq = NULL")
+        .execute(&pool)
+        .await
+        .expect("the column should be there to clear");
+
+    assert!(matches!(
+        catalog::build(&pool).await,
+        Err(Error::CatalogOrder)
+    ));
+}
