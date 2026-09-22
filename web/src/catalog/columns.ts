@@ -54,6 +54,16 @@ function fields(file: string, held: string[], read: string[]): void {
   }
 }
 
+// A prefix, not the whole list: a file is uploaded before the client reading
+// it, so a column added there must not take the catalog off the one running.
+function columns(file: string, held: string[], read: string[]): void {
+  if (held.slice(0, read.length).join() !== read.join()) {
+    throw new Error(
+      `${file} holds ${held.join()}, this client reads ${read.join()}`,
+    );
+  }
+}
+
 // A column too narrow for its own table wraps rather than failing, so each
 // says what it can take. The two bitmasks are the tight ones: a byte is eight
 // entries there, not 255.
@@ -82,7 +92,7 @@ export class PrintColumns {
   #filled = 0;
 
   constructor(rows: number, tables: PrintTables) {
-    fields("prints", tables.fields, PRINT_FIELDS);
+    columns("prints", tables.fields, PRINT_FIELDS);
     fits("sets", tables.sets.length, 0xffff);
     // 0xffff is the artist a printing does not name.
     fits("artists", tables.artists.length, 0xfffe);
@@ -191,7 +201,7 @@ export class CardColumns {
   #filled = 0;
 
   constructor(rows: number, tables: CardTables) {
-    fields("cards", tables.fields, CARD_FIELDS);
+    columns("cards", tables.fields, CARD_FIELDS);
     // The table arrived with the bitmask, so a file without it is the older
     // format, whose colors are strings a byte column reads as zero.
     if (!tables.colors) {

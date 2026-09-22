@@ -66,6 +66,17 @@ const PRINTS = JSON.stringify({
 const bytes = (text: string) => new TextEncoder().encode(text);
 const held = () => Catalog.read(bytes(CARDS), bytes(PRINTS));
 
+// Rebuilt rather than patched: the fixtures above are stringified, so there is
+// no whitespace in them to match on.
+function edited(
+  file: string,
+  change: (held: { fields: string[]; cards: unknown[][] }) => void,
+): string {
+  const held = JSON.parse(file) as { fields: string[]; cards: unknown[][] };
+  change(held);
+  return JSON.stringify(held);
+}
+
 describe("a catalog read from its two files", () => {
   test("gives back the card a row went in as", () => {
     const card = held().card(0);
@@ -138,6 +149,29 @@ describe("a catalog read from its two files", () => {
     );
     const found = catalog.resolve([ID("0103")]);
     expect(found.get(ID("0103"))?.card.name).toBe("Forest");
+  });
+
+  test("a column this client has no reader for is read past", () => {
+    const held = edited(CARDS, (file) => {
+      file.fields.push("keywords");
+      for (const row of file.cards) row.push([]);
+    });
+
+    const catalog = Catalog.read(bytes(held), bytes(PRINTS));
+
+    // The last column it reads, so the one an added column would disturb.
+    expect(catalog.card(0).name).toBe("Ancestral Recall");
+    expect(catalog.card(0).flags).toEqual(["reserved"]);
+  });
+
+  test("but a column that moved is refused, the rows being positional", () => {
+    const held = edited(CARDS, (file) => {
+      file.fields.reverse();
+    });
+
+    expect(() => Catalog.read(bytes(held), bytes(PRINTS))).toThrow(
+      "this client reads",
+    );
   });
 
   test("a total that disagrees with the rows is refused", () => {
