@@ -30,6 +30,10 @@ export const CARD_FIELDS = [
   "edhrecRank",
   "stats",
   "flags",
+  // Named because the column after it is read, not because anything reads
+  // this one: the client has no `kw:` yet.
+  "keywords",
+  "faces",
 ];
 
 export const PRINT_FIELDS = [
