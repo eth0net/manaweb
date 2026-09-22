@@ -7,7 +7,9 @@
 
 services:
   manaweb:
-    image: ghcr.io/eth0net/manaweb:0.8
+    # Every release rather than a pinned track: a pin is a second place the
+    # version lives, and it was the one that went stale.
+    image: ghcr.io/eth0net/manaweb:latest
     container_name: manaweb
     restart: unless-stopped
     # The four bucket variables, as values rather than references — see
