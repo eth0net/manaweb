@@ -27,14 +27,19 @@ pub struct SyncReport {
 
 /// The `updated_at` of the last file ingested for `kind`, if any.
 ///
+/// A cache left behind by a migration answers `None`, which is what makes a
+/// refresh re-sync it and an export refuse it.
+///
 /// # Errors
 ///
 /// Fails on a database error.
 pub async fn last_synced(pool: &SqlitePool, kind: &str) -> Result<Option<String>> {
-    let row: Option<(String,)> = sqlx::query_as("SELECT updated_at FROM bulk_sync WHERE kind = ?")
-        .bind(kind)
-        .fetch_optional(pool)
-        .await?;
+    let row: Option<(String,)> =
+        sqlx::query_as("SELECT updated_at FROM bulk_sync WHERE kind = ? AND schema_version = ?")
+            .bind(kind)
+            .bind(crate::db::schema())
+            .fetch_optional(pool)
+            .await?;
     Ok(row.map(|(updated_at,)| updated_at))
 }
 
@@ -97,15 +102,18 @@ pub async fn replace(
     }
 
     sqlx::query(
-        "INSERT INTO bulk_sync (kind, updated_at, card_count) VALUES (?, ?, ?)
+        "INSERT INTO bulk_sync (kind, updated_at, card_count, schema_version)
+         VALUES (?, ?, ?, ?)
          ON CONFLICT(kind) DO UPDATE SET
-             updated_at = excluded.updated_at,
-             card_count = excluded.card_count,
-             synced_at  = datetime('now')",
+             updated_at     = excluded.updated_at,
+             card_count     = excluded.card_count,
+             schema_version = excluded.schema_version,
+             synced_at      = datetime('now')",
     )
     .bind(&bulk.kind)
     .bind(&bulk.updated_at)
     .bind(report.written)
+    .bind(crate::db::schema())
     .execute(&mut *tx)
     .await?;
 

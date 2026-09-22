@@ -43,7 +43,7 @@ pub fn router(pool: SqlitePool, catalog: PathBuf) -> Router {
 
 #[derive(Debug, Serialize)]
 struct Health {
-    /// The bulk file the cache holds, absent before the first sync.
+    /// The bulk file the cache holds, absent until a sync this build can use.
     cache: Option<String>,
 }
 

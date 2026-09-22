@@ -101,6 +101,23 @@ async fn replace_writes_every_card_and_records_the_file() {
     );
 }
 
+/// The incident this guards against: an upgraded container read a cache that
+/// predated a migration as current, skipped the sync and exported the new
+/// column as nulls.
+#[tokio::test]
+async fn a_cache_from_before_a_migration_is_not_synced() {
+    let (pool, _) = seeded().await;
+    sqlx::query("UPDATE bulk_sync SET schema_version = schema_version - 1")
+        .execute(&pool)
+        .await
+        .expect("the sync should have recorded a schema");
+
+    assert_eq!(
+        cards::last_synced(&pool, "default_cards").await.unwrap(),
+        None
+    );
+}
+
 /// Scryfall gives `reversible_card` printings no top-level `oracle_id`, so the
 /// cache lifts it off the faces. Without that, a card you own can't be put in a
 /// deck, since design entries key on `oracle_id`.

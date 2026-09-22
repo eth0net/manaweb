@@ -63,6 +63,22 @@ async fn an_unsynced_cache_has_no_catalog() {
     ));
 }
 
+/// Refusing beats publishing over a correct artifact with whatever the
+/// migration left empty.
+#[tokio::test]
+async fn a_cache_from_before_a_migration_has_no_catalog() {
+    let pool = seeded_with(CARDS).await;
+    sqlx::query("UPDATE bulk_sync SET schema_version = schema_version - 1")
+        .execute(&pool)
+        .await
+        .expect("the sync should have recorded a schema");
+
+    assert!(matches!(
+        catalog::build(&pool).await,
+        Err(Error::EmptyCatalog)
+    ));
+}
+
 /// Both files say what their columns are, so nothing has to read this crate to
 /// interpret one.
 #[tokio::test]

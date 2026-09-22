@@ -21,7 +21,8 @@ pub enum Error {
     #[error("writing the catalog failed")]
     Io(#[from] std::io::Error),
 
-    #[error("no bulk file has been synced, so there is no catalog to serve")]
+    /// No sync yet, or one from before a migration this build carries.
+    #[error("the cache holds no sync this build can export")]
     EmptyCatalog,
 
     /// The client walks the printings file in runs of `printings` per card, so

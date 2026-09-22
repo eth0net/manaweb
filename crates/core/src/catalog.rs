@@ -207,8 +207,8 @@ impl Catalog {
 ///
 /// # Errors
 ///
-/// Fails on a database error, on a cache no sync has populated, or if the
-/// printings don't group into the runs the card rows claim.
+/// Fails on a database error, on a cache this build has no usable sync in, or
+/// if the printings don't group into the runs the card rows claim.
 pub async fn build(pool: &SqlitePool) -> Result<Catalog> {
     let Some(version) = crate::cards::last_synced(pool, "default_cards").await? else {
         return Err(Error::EmptyCatalog);

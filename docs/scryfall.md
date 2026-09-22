@@ -346,9 +346,15 @@ the deploy, the way the prefix rule binds the upload.
 
 That is not hypothetical: an upgraded container read its cache as current,
 skipped the sync, exported the column as nulls and published them over a
-correct artifact. A migration that adds a column only a sync can fill should
-make the cache stale by itself. That is a schema version beside `bulk_sync`,
-and it is not built.
+correct artifact. So `bulk_sync` now carries a schema version, weighed against
+the migrator's own latest: a cache from anything earlier reads as unsynced, so
+a refresh downloads again and an export refuses rather than writing out what
+the migration left empty.
+
+Every migration counts, not only one that adds such a column. Telling them
+apart would be a second thing to remember at exactly the moment the first was
+forgotten, and being wrong costs one extra download of a file that changes
+weekly anyway.
 
 **Not every printing has one.** Measured over a full sync on 2026-09-22:
 117,860 of 118,609 carry an illustration, across some 52,400 distinct

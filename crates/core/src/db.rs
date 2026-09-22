@@ -6,6 +6,18 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, S
 
 static MIGRATIONS: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
+/// The migration the cache has to have been synced under.
+///
+/// A migration can add a column nothing but a sync fills, so one that has not
+/// run since is holding a gap the export would publish.
+pub(crate) fn schema() -> i64 {
+    MIGRATIONS
+        .iter()
+        .map(|migration| migration.version)
+        .max()
+        .unwrap_or_default()
+}
+
 /// Opens the database at `path`, creating it if absent, and migrates it.
 ///
 /// # Errors
