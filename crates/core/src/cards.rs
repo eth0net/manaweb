@@ -332,15 +332,15 @@ async fn insert_printing(
             set_code, set_name, set_type, collector_number, rarity,
             legalities_id, games, finishes,
             digital, promo, reprint, variation, oversized, booster, full_art,
-            textless, border_color, frame, artist, flavor_text, image_status,
-            card_faces
+            textless, border_color, frame, artist, illustration_id,
+            flavor_text, image_status, card_faces
         ) VALUES (
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?,
-            ?
+            ?, ?, ?, ?, ?,
+            ?, ?, ?
         )",
     )
     .bind(card.id.to_string())
@@ -368,6 +368,7 @@ async fn insert_printing(
     .bind(&card.border_color)
     .bind(&card.frame)
     .bind(&card.artist)
+    .bind(illustration_id(card))
     .bind(&card.flavor_text)
     .bind(&card.image_status)
     .bind(card.card_faces.as_ref().map(|faces| faces.get().to_owned()))
@@ -377,21 +378,35 @@ async fn insert_printing(
     Ok(())
 }
 
+/// What the cache lifts off a face where the top level omits it. Serde fills
+/// only what it finds, so each reader takes the one field it came for.
+#[derive(serde::Deserialize)]
+struct Face {
+    oracle_id: Option<String>,
+    illustration_id: Option<String>,
+}
+
 /// Scryfall omits the top-level `oracle_id` on `reversible_card` printings, but
 /// both faces carry it and across all 81 they agree. Lift it, or a card you own
 /// can't be referenced by a deck: design entries key on `oracle_id`.
 fn oracle_id(card: &Card) -> Option<String> {
-    #[derive(serde::Deserialize)]
-    struct Face {
-        oracle_id: Option<String>,
-    }
-
     if let Some(id) = card.oracle_id {
         return Some(id.to_string());
     }
 
     let faces: Vec<Face> = serde_json::from_str(card.card_faces.as_ref()?.get()).ok()?;
     faces.into_iter().find_map(|face| face.oracle_id)
+}
+
+/// A two-faced printing carries its artwork per face and nothing at the top,
+/// so the front's is the one a scanner reads off the card in hand.
+fn illustration_id(card: &Card) -> Option<String> {
+    if let Some(id) = card.illustration_id {
+        return Some(id.to_string());
+    }
+
+    let faces: Vec<Face> = serde_json::from_str(card.card_faces.as_ref()?.get()).ok()?;
+    faces.into_iter().next()?.illustration_id
 }
 
 /// WUBRG order, so a color identity compares as a string. `Color` is declared

@@ -71,6 +71,9 @@ pub struct Card {
     pub border_color: String,
     pub frame: String,
     pub artist: Option<String>,
+    /// Which artwork this printing carries. Printings sharing one are what an
+    /// art match narrows to — see `docs/roadmap.md`.
+    pub illustration_id: Option<Uuid>,
     pub flavor_text: Option<String>,
 
     /// Kept when the image URLs themselves are not: `missing` and `placeholder`

@@ -609,3 +609,41 @@ async fn gameplay_data_survives_a_better_ranked_faceless_printing() {
     );
     assert_eq!(cards::count(&pool).await.unwrap(), 2);
 }
+
+#[tokio::test]
+async fn a_printing_carries_the_artwork_it_shows() {
+    let (pool, _) = seeded().await;
+
+    let (held,): (String,) = sqlx::query_as(
+        "SELECT illustration_id FROM cards WHERE set_code = 'plst' AND collector_number = 'XLN-217'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("the multicolor printing should be there");
+
+    assert_eq!(held, "8590b2be-8a63-4221-a043-d6b40fd2bc91");
+}
+
+#[tokio::test]
+async fn a_two_faced_printing_takes_the_artwork_of_its_front() {
+    let (pool, _) = seeded().await;
+
+    // Neither layout carries one at the top level, and a scanner is looking at
+    // the face in front of it.
+    let held: Vec<(String,)> = sqlx::query_as(
+        "SELECT illustration_id FROM cards
+         WHERE layout IN ('reversible_card', 'transform') ORDER BY layout",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("both layouts should be there");
+
+    let held: Vec<&str> = held.iter().map(|(id,)| id.as_str()).collect();
+    assert_eq!(
+        held,
+        [
+            "6b8fb6bb-c0d1-4715-a4df-e4f4695c6130", // reversible_card
+            "83559f92-ec25-4f3e-8f67-a66970c1e01e", // transform
+        ]
+    );
+}
