@@ -320,6 +320,13 @@ a group number an art match names a card where a scanner needs a printing.
 Only 3,295 cards have faces at all, which is why the dominant class of
 divergence costs a tenth of a megabyte to close.
 
+**Two of the three are built, and the estimates were out in both
+directions.** The illustration group came in at the 0.63MB raw it predicted
+but 0.12MB brotli rather than 0.04MB; keywords at 0.18MB raw rather than
+0.35MB, and 0.04MB brotli. Measured 2026-09-22 as columns in the files
+themselves rather than as files of their own, which is the difference. The
+pair is 4.19MB compressed with both in, against 4.03MB without.
+
 **Oracle text stays opt-in**, being a seventh of the base for two features
 that a collection tracker does not need. Cheap enough now that the question is
 worth revisiting if a third feature ever wants it.
