@@ -7,7 +7,7 @@
 
 services:
   manaweb:
-    image: ghcr.io/eth0net/manaweb:0.7
+    image: ghcr.io/eth0net/manaweb:0.8
     container_name: manaweb
     restart: unless-stopped
     # The four bucket variables, as values rather than references — see

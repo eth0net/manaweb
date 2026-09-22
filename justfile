@@ -142,9 +142,15 @@ release version title body="":
     @test -z "$(git status --porcelain)" || { echo "tree is dirty"; exit 1; }
     awk '!done && /^version = / { sub(/=.*/, "= \"{{ version }}\""); done = 1 } 1' \
         Cargo.toml > Cargo.toml.next && mv Cargo.toml.next Cargo.toml
+    # The compose file pins the minor track, so a patch release rewrites it to
+    # what it already said and a minor moves the host onto the new one.
+    awk -v track="$(echo {{ version }} | cut -d. -f1,2)" \
+        '/^    image: ghcr\.io\/eth0net\/manaweb:/ \
+            { print "    image: ghcr.io/eth0net/manaweb:" track; next } 1' \
+        compose.yaml > compose.yaml.next && mv compose.yaml.next compose.yaml
     cargo check --quiet --all-targets
     just check
-    git add Cargo.toml Cargo.lock
+    git add Cargo.toml Cargo.lock compose.yaml
     # Nothing to commit where the manifest already reads this, which is the
     # normal shape when the bump landed with the work.
     @git diff --cached --quiet || git commit -s -m "chore: {{ version }}"
