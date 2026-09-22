@@ -344,6 +344,12 @@ the next weekly refresh. The artifact that names a group therefore cannot be
 published from a cache that has not refreshed since — an ordering that binds
 the deploy, the way the prefix rule binds the upload.
 
+That is not hypothetical: an upgraded container read its cache as current,
+skipped the sync, exported the column as nulls and published them over a
+correct artifact. A migration that adds a column only a sync can fill should
+make the cache stale by itself. That is a schema version beside `bulk_sync`,
+and it is not built.
+
 **Not every printing has one.** Measured over a full sync on 2026-09-22:
 117,860 of 118,609 carry an illustration, across some 52,400 distinct
 artworks — a count that moved by twelve overnight, Scryfall having

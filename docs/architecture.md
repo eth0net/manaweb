@@ -439,3 +439,20 @@ collection synced when it stopped at a third.
 
 **Jetstream is unauthenticated.** It doesn't verify signatures. Fine for our
 own DIDs; a real trust assumption once Explore indexes arbitrary users.
+
+**The bucket keeps more than it serves.** A prune only reaches what the last
+upload replaced, so a generation older than that stays. The box reported
+fourteen objects kept against the three a client fetches, which is nothing at
+this size and is not bounded by anything either. Deciding what bounds it wants
+a rule about how long a client may be mid-load, which nothing has needed yet.
+
+**The export is built whole before any of it is written.** Both files sit in
+memory as bytes, 13.5MB together, then go to disk and are read back by the
+upload. That grew with faces and grows with whatever comes next, and a writer
+streaming to the file would make it flat. Worth doing when a part is added,
+not before.
+
+**The faces query is the slowest statement in an export.** 1.01s on the box,
+reading 2,315 rows, because it orders by a `json_extract` over every printing
+that has faces. An index on `oracle_id` for those rows would probably settle
+it; nobody has tried.
