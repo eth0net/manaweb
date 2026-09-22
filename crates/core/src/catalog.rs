@@ -53,7 +53,7 @@ const CARD_FIELDS: [&str; 12] = [
     "flags",
 ];
 
-const PRINT_FIELDS: [&str; 11] = [
+const PRINT_FIELDS: [&str; 12] = [
     "id",
     "set",
     "collectorNumber",
@@ -65,6 +65,7 @@ const PRINT_FIELDS: [&str; 11] = [
     "printedName",
     "artist",
     "flags",
+    "art",
 ];
 
 /// What the cards file says about itself before its rows.
@@ -82,7 +83,7 @@ struct CardHeader<'a> {
 #[serde(rename_all = "camelCase")]
 struct PrintHeader<'a> {
     version: &'a str,
-    fields: [&'static str; 11],
+    fields: [&'static str; 12],
     finishes: [&'static str; 3],
     flags: [&'static str; 5],
     rarities: &'a [String],
@@ -309,6 +310,7 @@ type PrintRow = (
     Option<String>,
     Option<String>,
     i64,
+    Option<String>,
 );
 
 async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
@@ -360,27 +362,47 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
                 c.layout, c.image_status, c.lang, c.printed_name,
                 nullif(c.artist, ''),
                 c.promo | (c.variation << 1) | (c.full_art << 2)
-                        | (c.textless << 3) | (c.oversized << 4)
+                        | (c.textless << 3) | (c.oversized << 4),
+                c.illustration_id
          FROM cards c
          WHERE NOT c.digital",
     )
     .fetch(pool);
 
-    let mut held: Vec<PrintRow> = Vec::new();
+    let mut rows_held: Vec<PrintRow> = Vec::new();
     while let Some(row) = rows.try_next().await? {
-        held.push(row);
+        rows_held.push(row);
     }
-    held.sort_unstable_by_key(|row| row.0);
+    rows_held.sort_unstable_by_key(|row| row.0);
+
+    // Numbered as each artwork is first met, which is after the sort above, so
+    // printings sharing one sit close and the column stays compressible.
+    let mut art_index: HashMap<String, usize> = HashMap::new();
 
     let mut count = 0;
-    for row in held {
-        let (seq, id, set, number, finishes, rarity, layout, status, lang, printed, artist, flags) =
-            row;
+    for row in rows_held {
+        let (
+            seq,
+            id,
+            set,
+            number,
+            finishes,
+            rarity,
+            layout,
+            status,
+            lang,
+            printed,
+            artist,
+            flags,
+            art,
+        ) = row;
         // Unordered rows would write in whatever order the table holds them,
         // which is plausible and wrong.
         if seq.is_none() {
             return Err(Error::CatalogOrder);
         }
+        let next = art_index.len();
+        let art = art.map(|artwork| *art_index.entry(artwork).or_insert(next));
         out.row(&(
             id,
             set_index[&set],
@@ -393,6 +415,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
             printed,
             artist.and_then(|name| artist_index.get(&name).copied()),
             flags,
+            art,
         ))?;
         count += 1;
     }

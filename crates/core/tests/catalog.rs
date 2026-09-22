@@ -299,3 +299,32 @@ async fn a_cache_with_no_order_written_is_refused() {
         Err(Error::CatalogOrder)
     ));
 }
+
+/// The scanner matches art and then picks among whatever shares it, so what
+/// the column has to carry is sameness, not which artwork it is.
+#[tokio::test]
+async fn printings_of_one_artwork_share_a_group() {
+    let built = catalog::build(&seeded_with(FOIL_TWIN).await).await.unwrap();
+    let file = read(&built.prints.json);
+
+    let prints = rows(&file, "prints");
+    let art: Vec<&Value> = prints.iter().map(|row| &row[11]).collect();
+
+    assert_eq!(art, [&Value::from(0), &Value::from(0)]);
+}
+
+/// Every other layout carries one, so a null here is Scryfall's omission
+/// rather than a column the export forgot to fill.
+#[tokio::test]
+async fn a_printing_with_no_artwork_says_so() {
+    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let file = read(&built.prints.json);
+    let fields = file["fields"].as_array().expect("a field list");
+
+    assert_eq!(fields.last().expect("a last field"), "art");
+    assert!(
+        rows(&file, "prints")
+            .iter()
+            .all(|row| row[11].is_number() || row[11].is_null())
+    );
+}
