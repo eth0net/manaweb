@@ -78,6 +78,19 @@ erroring — the field names it checks had not changed, only the types behind
 them. Each header table is now checked too, so the same skew refuses to load
 instead.
 
+**An added field has no safe order, though.** The check is exact: a client
+refuses a file whose field list is not the one it reads. So uploading first
+breaks the client that is live, and deploying first breaks on the file that
+is. Being exact is what closed the colorless hole, and this is its other edge.
+
+No single release resolves it — a client has to tolerate what it does not
+know before there is anything unknown to tolerate. So the check reads the
+names it knows off the front of what the file holds and ignores the rest,
+which still catches a column that moved, and that has to be deployed and in
+every browser before a file with a new column is uploaded. The table a
+bitmask indexes is checked exactly as before: that is a meaning, not a
+column list.
+
 **A Pages deployment is a snapshot of one directory**, so a commit-triggered
 deploy carrying the catalog would have to rebuild an artifact it has no
 input for, and one that didn't would delete it. R2 is object storage: a new
