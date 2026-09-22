@@ -18,14 +18,16 @@ const CARDS = JSON.stringify({
     "edhrecRank",
     "stats",
     "flags",
+    "keywords",
+    "faces",
   ],
   kinds: ["card", "token"],
   colors: ["W", "U", "B", "R", "G"],
   flags: ["reserved", "gameChanger"],
   // biome-ignore format: a positional row reads as a row
   cards: [
-    [ID("0001"), "Ancestral Recall", "Instant", "{U}", 1, 2, 2, 0, 2, 7, null, 1],
-    [ID("0002"), "Forest", "Basic Land — Forest", "", 0, null, 16, 0, 1, null, null, 0],
+    [ID("0001"), "Ancestral Recall", "Instant", "{U}", 1, 2, 2, 0, 2, 7, null, 1, [], null],
+    [ID("0002"), "Forest", "Basic Land — Forest", "", 0, null, 16, 0, 1, null, null, 0, [], null],
   ],
 });
 
@@ -94,6 +96,7 @@ describe("a catalog read from its two files", () => {
       edhrecRank: 7,
       stats: null,
       flags: ["reserved"],
+      faces: null,
     });
   });
 

@@ -4,7 +4,7 @@
 // `docs/architecture.md`. The strings sit beside them in one run each, read
 // out by index.
 
-import type { CardRow, CardTables, PrintRow, PrintTables } from ".";
+import type { CardRow, CardTables, Face, PrintRow, PrintTables } from ".";
 import { chunks, count, split } from "./rows";
 import { Runs, Uuids } from "./strings";
 
@@ -198,6 +198,8 @@ export class CardColumns {
   #typeLines: Runs;
   #manaCosts: Runs;
   #stats: Runs;
+  // 3% of cards have two sides, so a map beats a column of nulls.
+  #faces: Map<number, Face[]>;
   #filled = 0;
 
   constructor(rows: number, tables: CardTables) {
@@ -228,6 +230,7 @@ export class CardColumns {
     this.#manaCosts = new Runs(rows, 10);
     // A loyalty, a defense, or a power and a toughness.
     this.#stats = new Runs(rows, 4);
+    this.#faces = new Map();
   }
 
   static read(bytes: Uint8Array): CardColumns {
@@ -254,6 +257,18 @@ export class CardColumns {
       this.edhrecRank[i] = row[9] ?? CardColumns.UNRANKED;
       this.#stats.push(row[10]);
       this.flags[i] = row[11];
+      if (row[13]) {
+        this.#faces.set(
+          i,
+          row[13].map(([name, typeLine, manaCost, colors, stats]) => ({
+            name,
+            typeLine,
+            manaCost,
+            colors,
+            stats,
+          })),
+        );
+      }
     }
   }
 
@@ -290,5 +305,9 @@ export class CardColumns {
 
   stats(at: number): string | null {
     return this.#stats.get(at);
+  }
+
+  faces(at: number): Face[] | null {
+    return this.#faces.get(at) ?? null;
   }
 }

@@ -31,6 +31,18 @@ export type CardRow = [
   edhrecRank: number | null,
   stats: string | null,
   flags: number,
+  keywords: number[],
+  faces: FaceRow[] | null,
+];
+
+// What a side of a two-sided card answers for itself, the card's own columns
+// being the two combined or empty — see `docs/scryfall.md`.
+export type FaceRow = [
+  name: string,
+  typeLine: string | null,
+  manaCost: string | null,
+  colors: number,
+  stats: string | null,
 ];
 
 export type PrintRow = [
@@ -99,6 +111,14 @@ function rank(card: Card): number {
 // The List prefixes them with a set code.
 const COLLECTOR = new Intl.Collator(undefined, { numeric: true });
 
+export interface Face {
+  name: string;
+  typeLine: string | null;
+  manaCost: string | null;
+  colors: number;
+  stats: string | null;
+}
+
 export interface Card {
   index: number;
   oracleId: string;
@@ -116,6 +136,8 @@ export interface Card {
   edhrecRank: number | null;
   // `3/3`, or a loyalty or defense alone. The type line says which.
   stats: string | null;
+  // Absent unless the card has two sides, which 1,025 of them do.
+  faces: Face[] | null;
   // Named by the file, so a flag the artifact gains needs nothing here.
   flags: string[];
 }
@@ -432,6 +454,7 @@ export class Catalog {
       printings: cols.printings[index] as number,
       edhrecRank: rank === CardColumns.UNRANKED ? null : rank,
       stats: cols.stats(index),
+      faces: cols.faces(index),
       flags: decode(cols.flags[index] as number, cols.tables.flags),
     };
   }

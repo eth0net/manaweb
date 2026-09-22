@@ -382,9 +382,10 @@ function holds(
     case "c":
     case "color":
     case "colors":
-      // A reversible card carries none, its faces do, so it answers neither
-      // way rather than reading as colorless.
-      return card.colors !== null && colored(op, value, card.colors);
+      return sided(
+        card,
+        (of) => of.colors !== null && colored(op, value, of.colors),
+      );
     case "id":
     case "identity":
       return colored(op, value, card.colorIdentity);
@@ -397,13 +398,13 @@ function holds(
       return compares(card.cmc, Number(value), op);
     case "m":
     case "mana":
-      return costs(op, value, card.manaCost);
+      return sided(card, (of) => costs(op, value, of.manaCost));
     case "pow":
     case "power":
-      return stat(card, 0, op, value);
+      return sided(card, (of) => stat(of.stats, 0, op, value));
     case "tou":
     case "toughness":
-      return stat(card, 1, op, value);
+      return sided(card, (of) => stat(of.stats, 1, op, value));
     case "is":
     case "not":
       // `not:foil` is `-is:foil` spelled the other way, and the leading minus
@@ -524,8 +525,22 @@ function flagged(
 
 // `pow>tou` compares the two rather than a number, and a power that isn't a
 // number — Tarmogoyf's `*` — matches nothing rather than counting as zero.
-function stat(card: Card, at: number, op: Op, value: string): boolean {
-  const parts = card.stats?.split("/") ?? [];
+// What a card and one of its sides both answer for.
+type Sided = Pick<Card, "typeLine" | "manaCost" | "colors" | "stats">;
+
+// A two-sided card's own columns are its sides combined or empty, so a term it
+// cannot answer for itself is put to each side in turn.
+function sided(card: Card, ask: (of: Sided) => boolean): boolean {
+  return ask(card) || (card.faces?.some(ask) ?? false);
+}
+
+function stat(
+  stats: string | null,
+  at: number,
+  op: Op,
+  value: string,
+): boolean {
+  const parts = stats?.split("/") ?? [];
   const mine = Number(parts[at]);
   if (!Number.isFinite(mine)) return false;
 

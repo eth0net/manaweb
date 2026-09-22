@@ -25,6 +25,7 @@ function card(fields: Partial<Card> = {}): Card {
     edhrecRank: 100,
     stats: null,
     flags: [],
+    faces: null,
     ...fields,
   };
 }
