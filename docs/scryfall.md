@@ -454,6 +454,19 @@ is now checked against what it expects, which catches that case and the next
 one like it, but a version of its own would say so directly rather than
 inferring it from a table's absence.
 
+**Faces cost a third of the estimate, because most of what has them does not
+need them.** The estimate counted every card with a `card_faces` array, and
+two thirds of those are art series, which no rules question is ever asked of.
+Excluding them and keeping cards and tokens leaves 1,025 cards and 2,055
+faces: 0.30MB raw and 0.02MB brotli, against 0.67MB and 0.10MB predicted.
+
+They ride as a column on the card row rather than a section of their own,
+which was not a choice — the reader takes the rows array as the file's last
+key, so a second array after it could not be found. Read off whatever printing
+carries them, only three cards disagreeing between printings and only about a
+face's colors, where the printing naming them wins and a face naming none
+takes them from its cost, as the rules do.
+
 **Carrying them is not showing them.** A back face has its own image, under
 `/back/` rather than `/front/` of the same id, and the detail view draws one
 side and offers no way to turn a card over. That is a second `todo(faces)`,

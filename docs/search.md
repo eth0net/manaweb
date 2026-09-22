@@ -347,6 +347,26 @@ That makes two settings once there is a page for them: the app's language, and
 a card language defaulting to it. Separable on purpose, because the app in
 English with cards in Japanese is a real preference and so is the reverse.
 
+## What we still answer differently
+
+Measured 2026-09-22 with `check-scryfall-search`, which puts the same query to
+both. Before faces, eleven of its queries were missing results and every
+missing card was two-sided; after, one query is, and four cards.
+
+**`pow>tou` compares across the two sides.** Wolfbitten Captive is 1/1 on the
+front and 2/2 on the back, so neither side has more power than toughness, and
+Scryfall returns it anyway. All four remaining cards fit one side's power
+being compared against the other's toughness. That reading is a guess from
+four cards rather than anything documented, so it is written down rather than
+implemented.
+
+**We return cards their default search hides.** Ten of the eleven remaining
+disagreements are ours returning more, never less, and the extras are
+`set_type` of `funny`, Mystery Booster playtest cards, and the handful
+Scryfall delisted for their content. Their search excludes all three unless
+asked; ours has no notion of it. That is a filter we do not have rather than
+data we lack, and it is the larger of the two gaps left.
+
 ## Where the choices live
 
 A settings page owns the card language and which parts are held, and onboarding

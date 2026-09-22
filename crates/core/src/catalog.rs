@@ -514,12 +514,8 @@ pub(crate) async fn order(tx: &mut SqliteConnection) -> Result<()> {
 const KEYWORDS: &str = "SELECT value FROM oracle, json_each(oracle.keywords)
      WHERE paper GROUP BY value ORDER BY count(*) DESC";
 
-/// A card's faces, from whatever printing has them. Only three cards disagree
-/// between printings and only about a face's colors, so the one carrying them
-/// is preferred and the rest is the same either way.
-///
-/// Art series are left out: two thirds of everything with faces, and no rules
-/// question is ever asked of one.
+/// A card's faces, from whatever printing carries them, preferring one whose
+/// front names its colors. Art series are left out — see `docs/scryfall.md`.
 const FACES: &str = "SELECT c.oracle_id, c.card_faces
      FROM cards c JOIN oracle o ON o.id = c.oracle_id
      WHERE c.card_faces IS NOT NULL AND NOT c.digital AND o.paper AND o.kind < 2

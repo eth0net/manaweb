@@ -31,3 +31,9 @@ year<=1994 t:enchantment r:rare
 # Flags computed at export
 is:commander c=5
 is:reserved t:land
+
+# Two-faced cards, whose colors, cost and stats are on the faces
+c:u t:human t:wizard mv=1 r:common
+pow>=4 t:werewolf
+c:r t:vampire mv=3 t:legendary
+m={1}{U} t:creature t:human mv=2 r:common
