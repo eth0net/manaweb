@@ -366,3 +366,39 @@ async fn keywords_are_indexes_into_a_table_of_them() {
         "by name: Admiral, Balamb Garden, Jinnie Fay, Vaevictis"
     );
 }
+
+/// A two-sided card's own columns are its sides combined or empty, so the
+/// faces are what answers for either one.
+#[tokio::test]
+async fn a_two_faced_card_carries_a_row_for_each_side() {
+    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let file = read(&built.cards.json);
+
+    assert_eq!(
+        file["faceFields"],
+        serde_json::json!(["name", "typeLine", "manaCost", "colors", "stats"])
+    );
+
+    // By name: Admiral, Balamb Garden, Jinnie Fay, Vaevictis.
+    let cards = rows(&file, "cards");
+    let sides: Vec<usize> = cards
+        .iter()
+        .map(|row| row[13].as_array().map_or(0, Vec::len))
+        .collect();
+    assert_eq!(sides, [0, 2, 2, 0], "only the two faced cards carry any");
+
+    assert_eq!(
+        cards[1][13],
+        serde_json::json!([
+            ["Balamb Garden, SeeD Academy", "Land — Town", "", 0, null],
+            [
+                "Balamb Garden, Airborne",
+                "Legendary Artifact — Vehicle",
+                "",
+                0,
+                "5/4"
+            ],
+        ]),
+        "the transform card, whose own colors and stats are null"
+    );
+}

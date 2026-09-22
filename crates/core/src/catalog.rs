@@ -19,6 +19,11 @@ use crate::{Error, Result};
 /// Bit `i` of a printing's `finishes` is this list's `i`th entry.
 const FINISHES: [&str; 3] = ["nonfoil", "foil", "etched"];
 
+/// What each entry of a card's `faces` column holds, in order. A face answers
+/// for itself where the card's own columns are the two sides combined or
+/// absent entirely — see `docs/scryfall.md`.
+const FACE_FIELDS: [&str; 5] = ["name", "typeLine", "manaCost", "colors", "stats"];
+
 /// `kind` on a card row indexes this. Search ranks in the same order.
 const KINDS: [&str; 3] = ["card", "token", "artSeries"];
 
@@ -38,7 +43,7 @@ const CARD_FLAGS: [&str; 3] = ["reserved", "gameChanger", "commander"];
 /// The same for a printing: what makes this copy of a card not the plain one.
 const PRINT_FLAGS: [&str; 5] = ["promo", "variation", "fullArt", "textless", "oversized"];
 
-const CARD_FIELDS: [&str; 13] = [
+const CARD_FIELDS: [&str; 14] = [
     "oracleId",
     "name",
     "typeLine",
@@ -52,6 +57,7 @@ const CARD_FIELDS: [&str; 13] = [
     "stats",
     "flags",
     "keywords",
+    "faces",
 ];
 
 const PRINT_FIELDS: [&str; 12] = [
@@ -71,13 +77,15 @@ const PRINT_FIELDS: [&str; 12] = [
 
 /// What the cards file says about itself before its rows.
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CardHeader<'a> {
     version: &'a str,
-    fields: [&'static str; 13],
+    fields: [&'static str; 14],
     kinds: [&'static str; 3],
     colors: [&'static str; 5],
     flags: [&'static str; 3],
     keywords: &'a [String],
+    face_fields: [&'static str; 5],
 }
 
 /// The same for printings, plus the tables its integer columns index into.
@@ -247,6 +255,8 @@ type CardRow = (
 );
 
 async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
+    let faces = faces(pool).await?;
+
     // 873 of them over 17,257 cards that carry any, so a table beats repeating
     // the words. Commonest first, so the common ones index smallest.
     let keywords = common_first(pool, KEYWORDS).await?;
@@ -260,6 +270,7 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
             colors: COLORS,
             flags: CARD_FLAGS,
             keywords: &keywords,
+            face_fields: FACE_FIELDS,
         },
         "cards",
     )?;
@@ -316,6 +327,7 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
             keywords,
         ) = row;
         let keywords: Vec<String> = serde_json::from_str(&keywords).unwrap_or_default();
+        let held = faces.get(&id);
         out.row(&(
             id,
             name,
@@ -333,6 +345,7 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
                 .iter()
                 .filter_map(|word| keyword_index.get(word).copied())
                 .collect::<Vec<_>>(),
+            held,
         ))?;
         count += 1;
     }
@@ -501,6 +514,19 @@ pub(crate) async fn order(tx: &mut SqliteConnection) -> Result<()> {
 const KEYWORDS: &str = "SELECT value FROM oracle, json_each(oracle.keywords)
      WHERE paper GROUP BY value ORDER BY count(*) DESC";
 
+/// A card's faces, from whatever printing has them. Only three cards disagree
+/// between printings and only about a face's colors, so the one carrying them
+/// is preferred and the rest is the same either way.
+///
+/// Art series are left out: two thirds of everything with faces, and no rules
+/// question is ever asked of one.
+const FACES: &str = "SELECT c.oracle_id, c.card_faces
+     FROM cards c JOIN oracle o ON o.id = c.oracle_id
+     WHERE c.card_faces IS NOT NULL AND NOT c.digital AND o.paper AND o.kind < 2
+     ORDER BY c.oracle_id,
+              json_extract(c.card_faces, '$[0].colors') IS NULL,
+              c.id";
+
 const ARTISTS: &str = "SELECT artist FROM cards WHERE NOT digital
      AND coalesce(artist, '') <> '' GROUP BY artist ORDER BY count(*) DESC";
 const RARITIES: &str =
@@ -510,6 +536,72 @@ const LAYOUTS: &str =
 const IMAGE_STATUSES: &str = "SELECT image_status FROM cards WHERE NOT digital
      GROUP BY image_status ORDER BY count(*) DESC";
 const LANGS: &str = "SELECT lang FROM cards WHERE NOT digital GROUP BY lang ORDER BY count(*) DESC";
+
+/// A face as Scryfall writes one. Every field is optional but the name.
+#[derive(Debug, serde::Deserialize)]
+struct RawFace {
+    name: String,
+    type_line: Option<String>,
+    mana_cost: Option<String>,
+    colors: Option<Vec<String>>,
+    power: Option<String>,
+    toughness: Option<String>,
+    loyalty: Option<String>,
+    defense: Option<String>,
+}
+
+/// One row of a card's `faces` column, in [`FACE_FIELDS`] order.
+type Face = (String, Option<String>, Option<String>, u8, Option<String>);
+
+impl RawFace {
+    fn into_face(self) -> Face {
+        // Absent colors means take them from the cost, which is the rule for
+        // any card without a color indicator; a back face carries them.
+        let colors = self.colors.map_or_else(
+            || color_mask(self.mana_cost.as_deref().unwrap_or_default()),
+            |held| color_mask(&held.concat()),
+        );
+
+        // Power and toughness, loyalty and defense share a column here for the
+        // reason they share one on the card.
+        let stats = match (self.power, self.loyalty, self.defense) {
+            (Some(power), ..) => Some(format!("{power}/{}", self.toughness.unwrap_or_default())),
+            (None, Some(loyalty), _) => Some(loyalty),
+            (None, None, defense) => defense,
+        };
+
+        (self.name, self.type_line, self.mana_cost, colors, stats)
+    }
+}
+
+/// Bits over [`COLORS`] for every one named in `text`, which may be a mana
+/// cost: no other symbol spells a color's letter.
+fn color_mask(text: &str) -> u8 {
+    let mut mask = 0;
+    for (bit, color) in COLORS.iter().enumerate() {
+        if text.contains(color) {
+            mask |= 1 << bit;
+        }
+    }
+    mask
+}
+
+/// Every card's faces, keyed by oracle id. The first printing met wins, the
+/// query having put the most complete one first.
+async fn faces(pool: &SqlitePool) -> Result<HashMap<String, Vec<Face>>> {
+    let rows: Vec<(String, String)> = sqlx::query_as(FACES).fetch_all(pool).await?;
+
+    let mut held: HashMap<String, Vec<Face>> = HashMap::new();
+    for (card, json) in rows {
+        let Ok(parsed) = serde_json::from_str::<Vec<RawFace>>(&json) else {
+            continue;
+        };
+        held.entry(card)
+            .or_insert_with(|| parsed.into_iter().map(RawFace::into_face).collect());
+    }
+
+    Ok(held)
+}
 
 /// Distinct values of one column, commonest first.
 async fn common_first(pool: &SqlitePool, query: &'static str) -> Result<Vec<String>> {
@@ -568,6 +660,55 @@ impl Writer {
 
 #[cfg(test)]
 mod tests {
+    use super::{Face, RawFace};
+
+    fn face(json: &str) -> Face {
+        serde_json::from_str::<RawFace>(json)
+            .expect("a face")
+            .into_face()
+    }
+
+    /// A face without its own colors takes them from its cost, which is the
+    /// rule for anything carrying no color indicator. Bit zero is W, so a
+    /// literal below reads GRBUW.
+    #[test]
+    fn a_face_with_no_colors_of_its_own_reads_them_off_its_cost() {
+        let (.., colors, _) = face(r#"{"name":"Stomp","mana_cost":"{1}{R}"}"#);
+        assert_eq!(colors, 0b01000);
+
+        // Hybrid and Phyrexian spell their colors the same way, and no other
+        // symbol spells one at all.
+        let (.., colors, _) = face(r#"{"name":"Jinnie Fay","mana_cost":"{R/G}{G}{G/W}"}"#);
+        assert_eq!(colors, 0b11001);
+
+        let (.., colors, _) = face(r#"{"name":"Ornithopter","mana_cost":"{0}"}"#);
+        assert_eq!(colors, 0);
+    }
+
+    /// A back face has no cost and says its colors outright.
+    #[test]
+    fn a_face_that_names_its_colors_is_taken_at_its_word() {
+        let (.., colors, _) = face(r#"{"name":"Insectile Aberration","colors":["U"]}"#);
+        assert_eq!(colors, 0b00010);
+    }
+
+    /// The same column the card's own row spends on whichever of the three it
+    /// has, so a face spends it the same way.
+    #[test]
+    fn one_column_carries_a_face_s_power_loyalty_or_defense() {
+        let (.., stats) = face(r#"{"name":"A","power":"3","toughness":"2"}"#);
+        assert_eq!(stats.as_deref(), Some("3/2"));
+
+        let (.., stats) = face(r#"{"name":"B","loyalty":"4"}"#);
+        assert_eq!(stats.as_deref(), Some("4"));
+
+        let (.., stats) = face(r#"{"name":"C","defense":"5"}"#);
+        assert_eq!(stats.as_deref(), Some("5"));
+
+        let (.., stats) = face(r#"{"name":"D"}"#);
+        assert_eq!(stats, None);
+    }
+
     /// Two orderings would put the artifact's rows in one and the runs the
     /// cards file claims in the other.
     #[test]
