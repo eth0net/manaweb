@@ -10,6 +10,11 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
+    ignore:
+      # Its version is reqwest's to choose — see the workspace manifest. Lift
+      # this when reqwest moves, and take both together.
+      - dependency-name: tower-http
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
