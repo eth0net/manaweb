@@ -38,7 +38,7 @@ const CARD_FLAGS: [&str; 3] = ["reserved", "gameChanger", "commander"];
 /// The same for a printing: what makes this copy of a card not the plain one.
 const PRINT_FLAGS: [&str; 5] = ["promo", "variation", "fullArt", "textless", "oversized"];
 
-const CARD_FIELDS: [&str; 12] = [
+const CARD_FIELDS: [&str; 13] = [
     "oracleId",
     "name",
     "typeLine",
@@ -51,6 +51,7 @@ const CARD_FIELDS: [&str; 12] = [
     "edhrecRank",
     "stats",
     "flags",
+    "keywords",
 ];
 
 const PRINT_FIELDS: [&str; 12] = [
@@ -72,10 +73,11 @@ const PRINT_FIELDS: [&str; 12] = [
 #[derive(Debug, Serialize)]
 struct CardHeader<'a> {
     version: &'a str,
-    fields: [&'static str; 12],
+    fields: [&'static str; 13],
     kinds: [&'static str; 3],
     colors: [&'static str; 5],
     flags: [&'static str; 3],
+    keywords: &'a [String],
 }
 
 /// The same for printings, plus the tables its integer columns index into.
@@ -241,9 +243,15 @@ type CardRow = (
     Option<i64>,
     Option<String>,
     i64,
+    String,
 );
 
 async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
+    // 873 of them over 17,257 cards that carry any, so a table beats repeating
+    // the words. Commonest first, so the common ones index smallest.
+    let keywords = common_first(pool, KEYWORDS).await?;
+    let keyword_index = index(keywords.iter().cloned());
+
     let mut out = Writer::new(
         &CardHeader {
             version,
@@ -251,6 +259,7 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
             kinds: KINDS,
             colors: COLORS,
             flags: CARD_FLAGS,
+            keywords: &keywords,
         },
         "cards",
     )?;
@@ -283,14 +292,48 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
                                 type_line LIKE 'Legendary%Creature%'
                                 OR type_line LIKE 'Legendary%Spacecraft%'
                                 OR oracle_text LIKE '%can be your commander%'
-                            ) THEN 1 ELSE 0 END << 2)
+                            ) THEN 1 ELSE 0 END << 2),
+                keywords
          FROM oracle WHERE paper ORDER BY name, id",
     )
     .fetch(pool);
 
     let mut count = 0;
     while let Some(row) = rows.try_next().await? {
-        out.row(&row)?;
+        let (
+            id,
+            name,
+            type_line,
+            cost,
+            cmc,
+            colors,
+            identity,
+            kind,
+            printings,
+            rank,
+            stats,
+            flags,
+            keywords,
+        ) = row;
+        let keywords: Vec<String> = serde_json::from_str(&keywords).unwrap_or_default();
+        out.row(&(
+            id,
+            name,
+            type_line,
+            cost,
+            cmc,
+            colors,
+            identity,
+            kind,
+            printings,
+            rank,
+            stats,
+            flags,
+            keywords
+                .iter()
+                .filter_map(|word| keyword_index.get(word).copied())
+                .collect::<Vec<_>>(),
+        ))?;
         count += 1;
     }
 
@@ -452,6 +495,11 @@ pub(crate) async fn order(tx: &mut SqliteConnection) -> Result<()> {
 
     Ok(())
 }
+
+/// Scryfall's keyword list, which is ability words and obscurities as well as
+/// evergreen ones.
+const KEYWORDS: &str = "SELECT value FROM oracle, json_each(oracle.keywords)
+     WHERE paper GROUP BY value ORDER BY count(*) DESC";
 
 const ARTISTS: &str = "SELECT artist FROM cards WHERE NOT digital
      AND coalesce(artist, '') <> '' GROUP BY artist ORDER BY count(*) DESC";

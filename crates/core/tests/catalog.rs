@@ -328,3 +328,41 @@ async fn a_printing_with_no_artwork_says_so() {
             .all(|row| row[11].is_number() || row[11].is_null())
     );
 }
+
+/// Commonest first, so the words a card is likeliest to carry index smallest.
+#[tokio::test]
+async fn keywords_are_indexes_into_a_table_of_them() {
+    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let file = read(&built.cards.json);
+
+    let table: Vec<&str> = file["keywords"]
+        .as_array()
+        .expect("a keyword table")
+        .iter()
+        .map(|word| word.as_str().expect("a word"))
+        .collect();
+    assert_eq!(table[0], "Flying", "two cards fly, one crews");
+
+    let named: Vec<Vec<&str>> = rows(&file, "cards")
+        .iter()
+        .map(|row| {
+            row[12]
+                .as_array()
+                .expect("a list, empty where a card has none")
+                .iter()
+                .map(|at| table[usize::try_from(at.as_u64().expect("an index")).unwrap()])
+                .collect()
+        })
+        .collect();
+
+    assert_eq!(
+        named,
+        [
+            vec![] as Vec<&str>,
+            vec!["Flying", "Transform", "Crew"],
+            vec![],
+            vec!["Flying"],
+        ],
+        "by name: Admiral, Balamb Garden, Jinnie Fay, Vaevictis"
+    );
+}
