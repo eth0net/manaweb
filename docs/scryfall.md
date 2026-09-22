@@ -454,6 +454,11 @@ is now checked against what it expects, which catches that case and the next
 one like it, but a version of its own would say so directly rather than
 inferring it from a table's absence.
 
+**Carrying them is not showing them.** A back face has its own image, under
+`/back/` rather than `/front/` of the same id, and the detail view draws one
+side and offers no way to turn a card over. That is a second `todo(faces)`,
+at the function deriving the URL.
+
 **Repeated tokens.** Tokens from different sets carry different oracle ids,
 so grouping doesn't collapse them: searching "goblin" still returns five rows
 of Goblin token. Grouping them wants a key that isn't `oracle_id` — name plus

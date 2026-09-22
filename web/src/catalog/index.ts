@@ -149,6 +149,9 @@ export type Locate = (keys: Set<string>) => Map<string, string>;
 
 // Hotlinked from the id, so no URL is stored. Nothing is behind it when
 // `imageStatus` is `missing` or `placeholder`.
+//
+// todo(faces): a two-faced card has a back under `/back/`, and the detail view
+// has no way to turn one over — `docs/scryfall.md`.
 export function image(id: string, size = "normal"): string {
   return `https://cards.scryfall.io/${size}/front/${id[0]}/${id[1]}/${id}.jpg`;
 }
