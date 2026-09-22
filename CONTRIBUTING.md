@@ -29,7 +29,9 @@ matrix and the oldest Rust we support.
 One hook is git's own rather than prek's. A tag-only push runs no hooks at
 all, so `reference-transaction` refuses a `v*` tag the manifest disagrees
 with, before the tag exists — `just release` is the way to cut one, and CI
-checks the same thing for a tag pushed from somewhere without hooks.
+checks the same thing for a tag pushed from somewhere without hooks. It takes
+the title the tag is annotated with, since a release that cannot be named in a
+few words is probably two.
 
 Spelling is American, because the vocabulary already is: `color`, `license`,
 `serialize`. `typos` enforces it, and `typos.toml` says what it skips —

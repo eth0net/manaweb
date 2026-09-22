@@ -134,9 +134,11 @@ verify-catalog origin="https://static.manaweb.app/catalog":
     cargo run --release -p manaweb-objects --bin manaweb-verify -- catalog {{ origin }}
 
 # The manifest is the one place a version is written; CI holds the tag to it.
-[doc('bump the workspace version, check, commit and tag it')]
+# The title is an argument because it was a default before, and a default
+# nobody edits is how v0.6.0 and v0.7.0 came to be named after themselves.
+[doc('bump the version, check, commit and tag it: `just release 0.8.0 "What it is for"`')]
 [group('deploy')]
-release version:
+release version title body="":
     @test -z "$(git status --porcelain)" || { echo "tree is dirty"; exit 1; }
     awk '!done && /^version = / { sub(/=.*/, "= \"{{ version }}\""); done = 1 } 1' \
         Cargo.toml > Cargo.toml.next && mv Cargo.toml.next Cargo.toml
@@ -146,4 +148,8 @@ release version:
     # Nothing to commit where the manifest already reads this, which is the
     # normal shape when the bump landed with the work.
     @git diff --cached --quiet || git commit -s -m "chore: {{ version }}"
-    git tag -as v{{ version }} -m "v{{ version }}"
+    @if [ -n "{{ body }}" ]; then \
+        git tag -as v{{ version }} -m "{{ title }}" -m "{{ body }}"; \
+    else \
+        git tag -as v{{ version }} -m "{{ title }}"; \
+    fi
