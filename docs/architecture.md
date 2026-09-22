@@ -288,6 +288,20 @@ writer, so the five-second busy timeout has nothing to expire against. Measured
 on 2026-09-16 across a full replace: reads through the pool took 1.6ms at worst
 and none failed while the write was open.
 
+**The export reads its order rather than working it out.** A printing carries
+where it sits in the artifact, written at sync, because deriving it at export
+time meant a join onto oracle and a temp B-tree that every selected column of
+every row passed through.
+
+Asking the database to hand them back in that order is barely better, an index
+scan paying a row lookup each. So the table is read start to end in one pass
+and put in order here. Measured 2026-09-22 against the full cache, the three
+in turn: 1.64s, 1.08s and 0.80s, at 33MB, 30MB and 78MB resident.
+
+The last of those reads as expensive on a 950MB host and is not. Measured the
+same day: the container idles at 8MB, the host has 600MB free, and the sync an
+export follows peaks higher anyway, at 109MB. It lasts as long as an export.
+
 **Phase 3's non-derivable state gets a file of its own.** Everything in the
 cache derives from Scryfall, which is what makes it disposable; one thing
 arriving with Explore won't, being activity we only ever saw go past. A record
