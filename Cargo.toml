@@ -6,7 +6,7 @@ members = ["crates/*"]
 # One version for the tree. Nothing here is published, and the only consumers
 # are path dependencies inside this workspace, so per-crate versions would be
 # numbers no tool reads. A crate gets its own when it gets published, not before.
-version = "0.7.3"
+version = "0.8.0"
 edition = "2024"
 # Pinned rather than tracking stable so a contributor on an older toolchain
 # gets a clear error instead of a confusing one. Raise it deliberately.
