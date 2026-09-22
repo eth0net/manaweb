@@ -324,11 +324,27 @@ divergence costs a tenth of a megabyte to close.
 that a collection tracker does not need. Cheap enough now that the question is
 worth revisiting if a third feature ever wants it.
 
-**Bytes are the cheap part.** Only the group number needs the cache to change:
-`illustration_id` is parsed nowhere today, so it wants a column, a migration
-and a line in the sync. Faces and keywords are already held. The work that
-matters is in the client, where a term has to be satisfied by a card or by any
-one of its faces — a change to how the tree is walked, not a column to read.
+**Bytes are the cheap part.** Only the group number needed the cache to
+change, and it has one: `illustration_id` is parsed, stored and lifted off the
+front face where a two-faced layout carries no top-level one. Faces and
+keywords were already held. The work that matters is in the client, where a
+term has to be satisfied by a card or by any one of its faces — a change to
+how the tree is walked, not a column to read.
+
+**The column arrives empty, though.** It comes from Scryfall and nothing in
+the cache derives it, so a database synced before it existed reads null until
+the next weekly refresh. The artifact that names a group therefore cannot be
+published from a cache that has not refreshed since — an ordering that binds
+the deploy, the way the prefix rule binds the upload.
+
+**Not every printing has one.** Measured over a full sync on 2026-09-22:
+117,860 of 118,609 carry an illustration, across some 52,400 distinct
+artworks — a count that moved by twelve overnight, Scryfall having
+reassigned them.
+The 749 that do not are ordinary cards with ordinary images, mostly in one-off
+promotional sets, so it is an omission upstream rather than a shape we failed
+to read. An art match can say nothing about 0.7% of what someone might hold
+up, and the collector line is all that names those.
 
 **Settle it before the scanner index exists, not after.** That artifact is
 gigabytes pulled at a throttle and hours of hashing, and what it keys on is
