@@ -133,8 +133,8 @@ sync-cards file="":
 
 # build the client artifact and report its size, writing it to a directory
 [group('dev')]
-build-catalog dir="":
-    cargo run --release -p manaweb-core --example catalog -- {{ db }} {{ dir }}
+build-catalog dir="" hashes="":
+    cargo run --release -p manaweb-core --example catalog -- {{ db }} {{ dir }} {{ hashes }}
 
 # `goat` holds the session and does the writing; the recipe only says what.
 [doc('seed a dev account with the fixture records (needs bun and goat)')]

@@ -286,6 +286,7 @@ to hold it.
 | cards, prints | 12.92MB | 4.19MB | always |
 | text — oracle text | 5.70MB | 0.57MB | opt-in: offline viewing, text search |
 | names, per language | | ~300KB each | opt-in: chosen at onboarding |
+| artwork hashes | 1.57MB | 1.34MB | opt-in: the scanner |
 | art | unbounded | unbounded | opt-in, per card, the service worker's |
 
 Raw matters as much as brotli: one is the download and the other is what the
@@ -430,10 +431,11 @@ what a person types. Only what the row holds changes.
 
 **cards and prints are one part in two files**, always fetched together:
 printings are grouped by card in the cards file's order, so either alone is
-useless. An optional part keys by row index into the cards file, which makes it
-valid against that file and no other — the content-addressed names are what
-enforce that, and every part repeats the version in its header so a mismatched
-set fails loudly instead of reading the wrong rows.
+useless. An optional part keys by position into the pair — a row of the cards
+file, or a printing's artwork group — which makes it valid against that export
+and no other. The content-addressed names are what enforce that, and every
+part repeats the version in its header so a mismatched set fails loudly
+instead of reading the wrong rows.
 
 **Oracle text isn't the search default**, but offline card viewing needs it,
 which makes it one opt-in rather than two features. Text search is a different
@@ -450,9 +452,19 @@ Cards lands, being one fetch rather than thousands.
 unbounded, and wanting a budget and an eviction policy rather than a manifest
 entry.
 
-**The manifest generalizes when the second part exists**, not before — from a
-fixed pair to a set of named parts. It is rebuilt on every export, so the shape
-costs nothing to change later and would be dead weight now.
+**The manifest names the pair and whatever else the export produced.** An
+entry past the pair is optional, so a client reading a manifest without one
+has no scanner rather than no catalog. It is rebuilt every export, so a part
+added later costs nothing in the shape.
+
+**The artwork index is the first of those.** One entry per artwork group, in
+the order the printings file numbers them, carrying four 64-bit hashes each:
+the illustration held at each inset a photograph is likeliest to be off by.
+A header line, then the hashes, then one bit per group saying which of them
+the build had an image for — and it is the bit a reader tests, not the bytes,
+since a group with nothing behind it is zeroed and an unlit camera comes out
+the same way. `manaweb-scan` builds the hashes; the export only places
+them.
 
 ## Open questions
 

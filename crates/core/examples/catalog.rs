@@ -6,23 +6,32 @@
 //! cargo run --release -p manaweb-core --example catalog -- cards.db
 //! # or with somewhere to write the files, to look at them:
 //! cargo run --release -p manaweb-core --example catalog -- cards.db out/
+//! # and with the artwork hashes `manaweb-scan hash` left, to publish the index:
+//! cargo run --release -p manaweb-core --example catalog -- cards.db out/ hashes
 //! ```
 
 use std::env;
 use std::error::Error;
 use std::time::Instant;
 
+use manaweb_core::scan::Store;
 use manaweb_core::{catalog, open};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let mut args = env::args().skip(1);
     let db = args.next().unwrap_or_else(|| "cards.db".to_owned());
-    let out = args.next();
+    let out = args.next().filter(|dir| !dir.is_empty());
+    let hashes = args.next().filter(|path| !path.is_empty());
     let pool = open(&db).await?;
 
+    let store = match hashes {
+        Some(path) => Some(Store::read(&std::fs::read(path)?)?),
+        None => None,
+    };
+
     let started = Instant::now();
-    let built = catalog::build(&pool).await?;
+    let built = catalog::build(&pool, store.as_ref()).await?;
     let elapsed = started.elapsed().as_secs_f64();
 
     if let Some(dir) = &out {
@@ -30,7 +39,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let mut total = 0;
-    for file in [&built.cards, &built.prints] {
+    for file in [
+        Some(&built.cards),
+        Some(&built.prints),
+        built.artwork.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
         total += file.bytes.len();
         println!(
             "  {:<28} {:>7} rows  {:>6.2}MB",

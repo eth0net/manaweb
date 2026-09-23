@@ -2,6 +2,7 @@
 
 use std::io::Cursor;
 
+use manaweb_core::scan::{HASHES, Store, uuid};
 use manaweb_core::{Error, cards, catalog, open_memory};
 use manaweb_scryfall::{BulkData, CardStream};
 use serde_json::Value;
@@ -58,7 +59,7 @@ fn rows(file: &Value, key: &str) -> Vec<Vec<Value>> {
 async fn an_unsynced_cache_has_no_catalog() {
     let pool = open_memory().await.unwrap();
     assert!(matches!(
-        catalog::build(&pool).await,
+        catalog::build(&pool, None).await,
         Err(Error::EmptyCatalog)
     ));
 }
@@ -74,7 +75,7 @@ async fn a_cache_from_before_a_migration_has_no_catalog() {
         .expect("the sync should have recorded a schema");
 
     assert!(matches!(
-        catalog::build(&pool).await,
+        catalog::build(&pool, None).await,
         Err(Error::EmptyCatalog)
     ));
 }
@@ -84,7 +85,7 @@ async fn a_cache_from_before_a_migration_has_no_catalog() {
 #[tokio::test]
 async fn each_file_names_its_own_columns() {
     let pool = seeded_with(CARDS).await;
-    let built = catalog::build(&pool).await.unwrap();
+    let built = catalog::build(&pool, None).await.unwrap();
 
     for (artifact, key) in [(&built.cards, "cards"), (&built.prints, "prints")] {
         let file = read(&artifact.bytes);
@@ -105,7 +106,7 @@ async fn each_file_names_its_own_columns() {
 #[tokio::test]
 async fn printings_group_into_the_runs_the_cards_claim() {
     let pool = seeded_with(CARDS).await;
-    let built = catalog::build(&pool).await.unwrap();
+    let built = catalog::build(&pool, None).await.unwrap();
     let cards = rows(&read(&built.cards.bytes), "cards");
     let prints = rows(&read(&built.prints.bytes), "prints");
 
@@ -137,7 +138,7 @@ async fn a_digital_printing_is_left_out() {
     digital["digital"] = serde_json::json!(true);
 
     let pool = seeded_with(&format!("{paper}\n{digital}\n")).await;
-    let built = catalog::build(&pool).await.unwrap();
+    let built = catalog::build(&pool, None).await.unwrap();
 
     assert_eq!(cards::count(&pool).await.unwrap(), 2, "both are cached");
     assert_eq!(built.prints.rows, 1, "only the paper one is published");
@@ -147,11 +148,15 @@ async fn a_digital_printing_is_left_out() {
 /// immutable.
 #[tokio::test]
 async fn a_file_is_named_after_its_contents() {
-    let same = catalog::build(&seeded_with(CARDS).await).await.unwrap();
-    let again = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let same = catalog::build(&seeded_with(CARDS).await, None)
+        .await
+        .unwrap();
+    let again = catalog::build(&seeded_with(CARDS).await, None)
+        .await
+        .unwrap();
     assert_eq!(same.cards.name, again.cards.name);
 
-    let fewer = catalog::build(&seeded_with(CARDS.lines().next().unwrap()).await)
+    let fewer = catalog::build(&seeded_with(CARDS.lines().next().unwrap()).await, None)
         .await
         .unwrap();
     assert_ne!(same.cards.name, fewer.cards.name);
@@ -161,7 +166,9 @@ async fn a_file_is_named_after_its_contents() {
 /// ordinary printing leads.
 #[tokio::test]
 async fn an_ordinary_printing_outranks_its_foil_only_twin() {
-    let built = catalog::build(&seeded_with(FOIL_TWIN).await).await.unwrap();
+    let built = catalog::build(&seeded_with(FOIL_TWIN).await, None)
+        .await
+        .unwrap();
     let file = read(&built.prints.bytes);
     let prints = rows(&file, "prints");
     let numbers: Vec<&str> = prints
@@ -178,7 +185,7 @@ async fn an_ordinary_printing_outranks_its_foil_only_twin() {
 #[tokio::test]
 async fn one_column_carries_power_loyalty_or_defense() {
     let pool = seeded_with(SPARSE).await;
-    let built = catalog::build(&pool).await.unwrap();
+    let built = catalog::build(&pool, None).await.unwrap();
     let file = read(&built.cards.bytes);
 
     for row in rows(&file, "cards") {
@@ -201,7 +208,9 @@ async fn one_column_carries_power_loyalty_or_defense() {
 /// bit is set here.
 #[tokio::test]
 async fn a_legendary_creature_is_flagged_as_a_commander() {
-    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let built = catalog::build(&seeded_with(CARDS).await, None)
+        .await
+        .unwrap();
     let file = read(&built.cards.bytes);
     let names: Vec<String> = serde_json::from_value(file["flags"].clone()).unwrap();
     let bit = 1 << names.iter().position(|one| one == "commander").unwrap();
@@ -226,7 +235,9 @@ async fn a_legendary_creature_is_flagged_as_a_commander() {
 /// Flags are a bitmask over the file's own `flags` list, on both files.
 #[tokio::test]
 async fn flags_survive_as_a_bitmask() {
-    let built = catalog::build(&seeded_with(SPARSE).await).await.unwrap();
+    let built = catalog::build(&seeded_with(SPARSE).await, None)
+        .await
+        .unwrap();
     let file = read(&built.cards.bytes);
     let names: Vec<String> = serde_json::from_value(file["flags"].clone()).unwrap();
     assert_eq!(names, ["reserved", "gameChanger", "commander"]);
@@ -249,7 +260,7 @@ async fn flags_survive_as_a_bitmask() {
 #[tokio::test]
 async fn finishes_survive_as_a_bitmask() {
     let pool = seeded_with(CARDS).await;
-    let built = catalog::build(&pool).await.unwrap();
+    let built = catalog::build(&pool, None).await.unwrap();
     let file = read(&built.prints.bytes);
     let names: Vec<String> = serde_json::from_value(file["finishes"].clone()).unwrap();
 
@@ -277,7 +288,7 @@ async fn finishes_survive_as_a_bitmask() {
 #[tokio::test]
 async fn the_manifest_names_files_that_sit_beside_it() {
     let pool = seeded_with(CARDS).await;
-    let built = catalog::build(&pool).await.unwrap();
+    let built = catalog::build(&pool, None).await.unwrap();
 
     let dir = std::env::temp_dir().join(format!("manaweb-write-{}", std::process::id()));
     built.write(&dir).await.unwrap();
@@ -311,7 +322,7 @@ async fn a_cache_with_no_order_written_is_refused() {
         .expect("the column should be there to clear");
 
     assert!(matches!(
-        catalog::build(&pool).await,
+        catalog::build(&pool, None).await,
         Err(Error::CatalogOrder)
     ));
 }
@@ -320,7 +331,9 @@ async fn a_cache_with_no_order_written_is_refused() {
 /// the column has to carry is sameness, not which artwork it is.
 #[tokio::test]
 async fn printings_of_one_artwork_share_a_group() {
-    let built = catalog::build(&seeded_with(FOIL_TWIN).await).await.unwrap();
+    let built = catalog::build(&seeded_with(FOIL_TWIN).await, None)
+        .await
+        .unwrap();
     let file = read(&built.prints.bytes);
 
     let prints = rows(&file, "prints");
@@ -333,7 +346,9 @@ async fn printings_of_one_artwork_share_a_group() {
 /// rather than a column the export forgot to fill.
 #[tokio::test]
 async fn a_printing_with_no_artwork_says_so() {
-    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let built = catalog::build(&seeded_with(CARDS).await, None)
+        .await
+        .unwrap();
     let file = read(&built.prints.bytes);
     let fields = file["fields"].as_array().expect("a field list");
 
@@ -348,7 +363,9 @@ async fn a_printing_with_no_artwork_says_so() {
 /// Commonest first, so the words a card is likeliest to carry index smallest.
 #[tokio::test]
 async fn keywords_are_indexes_into_a_table_of_them() {
-    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let built = catalog::build(&seeded_with(CARDS).await, None)
+        .await
+        .unwrap();
     let file = read(&built.cards.bytes);
 
     let table: Vec<&str> = file["keywords"]
@@ -387,7 +404,9 @@ async fn keywords_are_indexes_into_a_table_of_them() {
 /// faces are what answers for either one.
 #[tokio::test]
 async fn a_two_faced_card_carries_a_row_for_each_side() {
-    let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
+    let built = catalog::build(&seeded_with(CARDS).await, None)
+        .await
+        .unwrap();
     let file = read(&built.cards.bytes);
 
     assert_eq!(
@@ -417,4 +436,218 @@ async fn a_two_faced_card_carries_a_row_for_each_side() {
         ]),
         "the transform card, whose own colors and stats are null"
     );
+}
+
+/// The artwork each printing in `cards.jsonl` carries. A two-faced card
+/// contributes its front only, which is what the cache keeps.
+const ARTWORKS: [(&str, &str); 4] = [
+    (
+        "0004311b-646a-4df8-a4b4-9171642e9ef4",
+        "8590b2be-8a63-4221-a043-d6b40fd2bc91",
+    ),
+    (
+        "018830b2-dff9-45f3-9cc2-dc5b2eec0e54",
+        "6b8fb6bb-c0d1-4715-a4df-e4f4695c6130",
+    ),
+    (
+        "001e9f20-5b15-41cb-bf82-46172decc235",
+        "83559f92-ec25-4f3e-8f67-a66970c1e01e",
+    ),
+    (
+        "00177fcf-92af-475a-a7f5-11ab645388a5",
+        "a770a481-3210-4b60-8308-5afcb3f17a22",
+    ),
+];
+
+fn store(artworks: &[(&str, &str)]) -> Store {
+    let mut store = Store::new();
+    for (at, (_, artwork)) in artworks.iter().enumerate() {
+        let at = u64::try_from(at).expect("a small index");
+        store.insert(
+            uuid(artwork).expect("a uuid"),
+            std::array::from_fn(|hash| at * 100 + u64::try_from(hash).expect("a small index") + 1),
+        );
+    }
+    store
+}
+
+/// The index as a client takes it: a header line, the hashes where they lie,
+/// and the bit per artwork saying which of them the store answered for.
+fn part(bytes: &[u8]) -> (Value, Vec<u64>, Vec<u8>) {
+    let at = bytes
+        .iter()
+        .position(|byte| *byte == b'\n')
+        .expect("a header");
+    let header: Value = serde_json::from_slice(&bytes[..at]).expect("the header should be JSON");
+    let count =
+        |key: &str| usize::try_from(header[key].as_u64().expect("a count")).expect("a small count");
+
+    let from = at + 1;
+    let to = from + count("rows") * count("hashes") * size_of::<u64>();
+    let words = bytes[from..to]
+        .as_chunks::<{ size_of::<u64>() }>()
+        .0
+        .iter()
+        .map(|word| u64::from_le_bytes(*word))
+        .collect();
+
+    (header, words, bytes[to..].to_vec())
+}
+
+/// Whether the store answered for the artwork numbered `at`.
+fn answered(held: &[u8], at: usize) -> bool {
+    held[at / 8] & (1 << (at % 8)) != 0
+}
+
+#[tokio::test]
+async fn an_export_given_no_hashes_still_publishes_the_pair() {
+    let built = catalog::build(&seeded_with(CARDS).await, None)
+        .await
+        .unwrap();
+
+    assert!(built.artwork.is_none());
+    assert!(read(&built.manifest().unwrap()).get("artwork").is_none());
+}
+
+// The index is read by position, so an entry missing anywhere in it would
+// shift every artwork after that one onto the wrong card.
+#[tokio::test]
+async fn the_index_holds_every_art_number_the_printings_name() {
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS)))
+        .await
+        .unwrap();
+    let index = built.artwork.as_ref().expect("an index");
+    let (header, words, held) = part(&index.bytes);
+
+    let most = rows(&read(&built.prints.bytes), "prints")
+        .iter()
+        .filter_map(|row| row[11].as_u64())
+        .max()
+        .expect("a printing carrying an artwork");
+
+    assert_eq!(header["rows"].as_u64(), Some(most + 1));
+    assert_eq!(index.rows, usize::try_from(most + 1).unwrap());
+    assert_eq!(words.len(), index.rows * HASHES);
+    assert_eq!(header["absent"].as_u64(), Some(0));
+    assert!((0..index.rows).all(|at| answered(&held, at)));
+}
+
+// The whole part is positional, so hashes in the file in any order at all
+// would satisfy a test that only asks whether they are in it.
+#[tokio::test]
+async fn an_artwork_sits_at_the_number_the_printings_give_it() {
+    let held = store(&ARTWORKS);
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&held))
+        .await
+        .unwrap();
+    let (_, words, _) = part(&built.artwork.as_ref().expect("an index").bytes);
+
+    let mut checked = 0;
+    for row in rows(&read(&built.prints.bytes), "prints") {
+        let print = row[0].as_str().expect("a printing id");
+        let Some(at) = row[11].as_u64() else { continue };
+        let at = usize::try_from(at).expect("a small index");
+
+        let (_, artwork) = ARTWORKS
+            .iter()
+            .find(|(held, _)| *held == print)
+            .expect("a printing the fixture names");
+        let mine = held.get(&uuid(artwork).expect("a uuid")).expect("hashes");
+
+        assert_eq!(&words[at * HASHES..(at + 1) * HASHES], mine, "{print}");
+        checked += 1;
+    }
+    assert_eq!(checked, ARTWORKS.len());
+}
+
+// The store is pulled separately and lags a set release, so this is the
+// ordinary case rather than the broken one.
+#[tokio::test]
+async fn an_artwork_the_store_has_nothing_for_has_its_bit_clear() {
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
+        .await
+        .unwrap();
+    let index = built.artwork.as_ref().expect("an index");
+    let (header, words, held) = part(&index.bytes);
+
+    assert_eq!(
+        index.rows,
+        ARTWORKS.len(),
+        "an artwork with no hashes is still numbered"
+    );
+    assert_eq!(header["absent"].as_u64(), Some(1));
+
+    let clear: Vec<usize> = (0..index.rows).filter(|at| !answered(&held, *at)).collect();
+    assert_eq!(clear.len(), 1);
+
+    let at = clear[0] * HASHES;
+    assert!(words[at..at + HASHES].iter().all(|word| *word == 0));
+}
+
+// Pure black hashes to zero, so an artwork with no hashes would otherwise be
+// the nearest match to a frame taken with the lens covered.
+#[tokio::test]
+async fn nothing_says_an_artwork_with_no_hashes_can_be_matched() {
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
+        .await
+        .unwrap();
+    let (_, words, held) = part(&built.artwork.as_ref().expect("an index").bytes);
+
+    for at in 0..built.artwork.as_ref().unwrap().rows {
+        let zeroed = words[at * HASHES..(at + 1) * HASHES]
+            .iter()
+            .all(|word| *word == 0);
+        assert_ne!(zeroed, answered(&held, at), "artwork {at}");
+    }
+}
+
+// A mismatched pair reads the wrong rows rather than failing, so every part
+// repeats the version — see `docs/scryfall.md`.
+#[tokio::test]
+async fn the_index_names_the_version_the_pair_does() {
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
+        .await
+        .unwrap();
+    let (header, _, _) = part(&built.artwork.as_ref().expect("an index").bytes);
+
+    assert_eq!(header["version"].as_str(), Some(built.version.as_str()));
+    assert_eq!(
+        header["hashes"].as_u64(),
+        Some(u64::try_from(HASHES).unwrap())
+    );
+}
+
+// A typed array of 64-bit words cannot start at an offset that is not a
+// multiple of eight.
+#[tokio::test]
+async fn the_hashes_start_on_a_word_boundary() {
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
+        .await
+        .unwrap();
+    let bytes = &built.artwork.as_ref().expect("an index").bytes;
+
+    let at = bytes
+        .iter()
+        .position(|byte| *byte == b'\n')
+        .expect("a header");
+    assert!((at + 1).is_multiple_of(size_of::<u64>()));
+}
+
+#[tokio::test]
+async fn the_manifest_names_the_index_when_there_is_one() {
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
+        .await
+        .unwrap();
+    let manifest = read(&built.manifest().unwrap());
+    let index = built.artwork.as_ref().expect("an index");
+
+    assert_eq!(
+        manifest["artwork"]["name"].as_str(),
+        Some(index.name.as_str())
+    );
+    assert_eq!(
+        manifest["artwork"]["rows"].as_u64(),
+        Some(u64::try_from(index.rows).unwrap())
+    );
+    assert!(index.name.contains(".bin"), "{}", index.name);
 }

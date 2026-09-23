@@ -14,6 +14,7 @@ use serde::Serialize;
 use sqlx::{SqliteConnection, SqlitePool};
 use tokio::fs;
 
+use crate::scan::{self, HASHES, Store};
 use crate::{Error, Result};
 
 /// Bit `i` of a printing's `finishes` is this list's `i`th entry.
@@ -139,6 +140,9 @@ pub struct Catalog {
     pub version: String,
     pub cards: Artifact,
     pub prints: Artifact,
+    /// Absent when the export was given no hashes, which publishes a pair a
+    /// scanner cannot use rather than no catalog at all.
+    pub artwork: Option<Artifact>,
 }
 
 /// What a client fetches first: the paths of the current pair.
@@ -147,6 +151,8 @@ struct Manifest<'a> {
     version: &'a str,
     cards: Entry<'a>,
     prints: Entry<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    artwork: Option<Entry<'a>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -180,6 +186,7 @@ impl Catalog {
             version: &self.version,
             cards: Entry::new(&self.cards),
             prints: Entry::new(&self.prints),
+            artwork: self.artwork.as_ref().map(Entry::new),
         })?)
     }
 
@@ -195,7 +202,10 @@ impl Catalog {
     pub async fn write(&self, dir: impl AsRef<Path>) -> Result<()> {
         let dir = dir.as_ref();
         fs::create_dir_all(dir).await?;
-        for artifact in [&self.cards, &self.prints] {
+        for artifact in [Some(&self.cards), Some(&self.prints), self.artwork.as_ref()]
+            .into_iter()
+            .flatten()
+        {
             fs::write(dir.join(&artifact.name), &artifact.bytes).await?;
         }
         fs::write(dir.join("manifest.json"), self.manifest()?).await?;
@@ -203,19 +213,19 @@ impl Catalog {
     }
 }
 
-/// Builds both files from the cache.
+/// Builds the pair from the cache, and the artwork index from `store`.
 ///
 /// # Errors
 ///
 /// Fails on a database error, on a cache this build has no usable sync in, or
 /// if the printings don't group into the runs the card rows claim.
-pub async fn build(pool: &SqlitePool) -> Result<Catalog> {
+pub async fn build(pool: &SqlitePool, store: Option<&Store>) -> Result<Catalog> {
     let Some(version) = crate::cards::last_synced(pool, "default_cards").await? else {
         return Err(Error::EmptyCatalog);
     };
 
     let cards = build_cards(pool, &version).await?;
-    let prints = build_prints(pool, &version).await?;
+    let (prints, order) = build_prints(pool, &version).await?;
 
     let (claimed,): (i64,) =
         sqlx::query_as("SELECT coalesce(sum(printings), 0) FROM oracle WHERE paper")
@@ -231,10 +241,15 @@ pub async fn build(pool: &SqlitePool) -> Result<Catalog> {
         });
     }
 
+    let artwork = store
+        .map(|store| build_artwork(&version, &order, store))
+        .transpose()?;
+
     Ok(Catalog {
         version,
         cards,
         prints,
+        artwork,
     })
 }
 
@@ -369,7 +384,7 @@ type PrintRow = (
     Option<String>,
 );
 
-async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
+async fn build_prints(pool: &SqlitePool, version: &str) -> Result<(Artifact, Vec<String>)> {
     let sets: Vec<Set> = sqlx::query_as(
         "SELECT set_code, set_name, set_type, min(released_at)
          FROM cards WHERE NOT digital GROUP BY set_code ORDER BY set_code",
@@ -431,9 +446,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
     }
     rows_held.sort_unstable_by_key(|row| row.0);
 
-    // Numbered as each artwork is first met, which is after the sort above, so
-    // printings sharing one sit close and the column stays compressible.
-    let mut art_index: HashMap<String, usize> = HashMap::new();
+    let mut artworks = Artworks::default();
 
     let mut count = 0;
     for row in rows_held {
@@ -457,8 +470,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
         if seq.is_none() {
             return Err(Error::CatalogOrder);
         }
-        let next = art_index.len();
-        let art = art.map(|artwork| *art_index.entry(artwork).or_insert(next));
+        let art = art.map(|artwork| artworks.number(artwork));
         out.row(&(
             id,
             set_index[&set],
@@ -476,7 +488,89 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
         count += 1;
     }
 
-    Ok(Artifact::new("prints", "json", count, out.finish()?))
+    Ok((
+        Artifact::new("prints", "json", count, out.finish()?),
+        artworks.order,
+    ))
+}
+
+/// Numbers artworks as each is first met, which is after the printings are in
+/// export order, so those sharing one sit close and the column compresses.
+///
+/// The order is kept because the index is written in it.
+#[derive(Debug, Default)]
+struct Artworks {
+    at: HashMap<String, usize>,
+    order: Vec<String>,
+}
+
+impl Artworks {
+    fn number(&mut self, artwork: String) -> usize {
+        if let Some(&at) = self.at.get(&artwork) {
+            return at;
+        }
+        let at = self.order.len();
+        self.at.insert(artwork.clone(), at);
+        self.order.push(artwork);
+        at
+    }
+}
+
+/// What the artwork index says about itself before its hashes.
+#[derive(Debug, Serialize)]
+struct ArtworkHeader<'a> {
+    version: &'a str,
+    hashes: usize,
+    rows: usize,
+    /// How many artworks the store had nothing for, which the bitmap after
+    /// the hashes names one bit each.
+    absent: usize,
+}
+
+/// The artwork index: one artwork's hashes at the number this export gave it.
+///
+/// A header line, then the hashes, then a bit per artwork saying which of
+/// them the store answered for. Positional over a numbering assigned a few
+/// lines above and rewritten by every sync, so the part names the version the
+/// pair does — see `docs/scryfall.md`.
+///
+/// The bit is what a reader matches against, not the hashes: an artwork with
+/// none is eight zero bytes, and a frame of pure black hashes to exactly
+/// that.
+fn build_artwork(version: &str, order: &[String], store: &Store) -> Result<Artifact> {
+    let mut hashes = Vec::with_capacity(order.len() * HASHES * size_of::<u64>());
+    let mut held = vec![0u8; order.len().div_ceil(8)];
+    let mut absent = 0;
+
+    for (at, artwork) in order.iter().enumerate() {
+        let Some(found) = scan::uuid(artwork).and_then(|artwork| store.get(&artwork)) else {
+            absent += 1;
+            hashes.resize(hashes.len() + HASHES * size_of::<u64>(), 0);
+            continue;
+        };
+        for hash in found {
+            hashes.extend_from_slice(&hash.to_le_bytes());
+        }
+        held[at / 8] |= 1 << (at % 8);
+    }
+
+    let mut out = serde_json::to_vec(&ArtworkHeader {
+        version,
+        hashes: HASHES,
+        rows: order.len(),
+        absent,
+    })?;
+    // The hashes are read where they lie rather than copied out, and a typed
+    // array of 64-bit words cannot start at an offset that is not a multiple
+    // of eight.
+    while !(out.len() + 1).is_multiple_of(size_of::<u64>()) {
+        out.push(b' ');
+    }
+    out.push(b'\n');
+    out.extend_from_slice(&hashes);
+    out.extend_from_slice(&held);
+
+    Ok(Artifact::new("artwork", "bin", order.len(), out))
 }
 
 /// Numbers every exportable printing, so the export reads an index rather
