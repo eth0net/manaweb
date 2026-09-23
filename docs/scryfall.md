@@ -286,7 +286,7 @@ to hold it.
 | cards, prints | 12.92MB | 4.19MB | always |
 | text — oracle text | 5.70MB | 0.57MB | opt-in: offline viewing, text search |
 | names, per language | | ~300KB each | opt-in: chosen at onboarding |
-| artwork hashes | 1.57MB | 1.34MB | opt-in: the scanner |
+| artwork hashes | 1.70MB | 1.40MB | opt-in: the scanner |
 | card images | unbounded | unbounded | opt-in, per card, the service worker's |
 
 Raw matters as much as brotli: one is the download and the other is what the
@@ -470,14 +470,29 @@ entry past the pair is optional, so a client reading a manifest without one
 has no scanner rather than no catalog. It is rebuilt every export, so a part
 added later costs nothing in the shape.
 
-**The artwork index is the first of those.** One entry per artwork group, in
-the order the printings file numbers them, carrying four 64-bit hashes each:
-the illustration held at each inset a photograph is likeliest to be off by.
-A header line, then the hashes, then one bit per group saying which of them
-the build had an image for — and it is the bit a reader tests, not the bytes,
-since a group with nothing behind it is zeroed and an unlit camera comes out
-the same way. `manaweb-scan` builds the hashes; the export only places
-them.
+**The artwork index is the first of those.** One entry per artwork, in the
+order the printings file numbers them, carrying four 64-bit hashes each: the
+illustration held at each inset a photograph is likeliest to be off by. A
+header line, the hashes, the back pairs, then one bit per artwork saying which
+the build had an image for. That bit is what a reader tests rather than the
+bytes, an artwork with nothing behind it being zeroed and an unlit camera
+coming out the same way. `manaweb-scan` builds the hashes; the export only
+places them.
+
+The three run in that order because the first two are read as words where they
+lie and only the last is addressed a byte at a time. `fronts` in the header is
+how many of the entries a printing can name, which is the count the printings
+file's own column has to agree with.
+
+**Either side of a card can be matched.** 3,418 artworks sit on the back of
+one, and a pair names each against the artwork on its front, so a photograph
+of the back resolves to the same printings. A pair adds to what the back
+resolves to rather than replacing it, because 86 artworks are the front of one
+printing and the back of another — which is also why the number a match lands
+on never says by itself which of the two it is, and the pairs are read
+whatever it is. The printings file gains nothing from any of this: its column
+still names the one artwork on the front, and a back that is only ever a back
+takes a number past every front, where no column reaches.
 
 ## Open questions
 

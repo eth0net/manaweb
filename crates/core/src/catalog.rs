@@ -557,22 +557,17 @@ async fn backs(pool: &SqlitePool) -> Result<Vec<(String, String)>> {
 
 /// The artwork index: one artwork's hashes at the number this export gave it.
 ///
-/// A header line, the hashes, the back pairs, then a bit per artwork saying
-/// which of them the store answered for. Pairs before the bitmap because both
-/// are read as words and only the bitmap is addressed a byte at a time.
-/// Positional over a numbering assigned a few lines above and rewritten by
-/// every sync, so the part names the version the pair does — see
-/// `docs/scryfall.md`.
+/// What the file holds and in which order is `docs/scryfall.md`. Positional
+/// over a numbering assigned a few lines above and rewritten by every sync,
+/// which is why the part repeats the version.
 ///
 /// The bit is what a reader matches against, not the hashes: an artwork with
 /// none is eight zero bytes, and a frame of pure black hashes to exactly
 /// that.
 ///
-/// A back takes a number after every front unless it is a front as well,
-/// which 86 of them are, so a number alone does not say which a match is and
-/// the pairs are to be read whatever it is. A pair adds that front's
-/// printings to what the back resolves to rather than standing in for them,
-/// for the same reason.
+/// A back is numbered past every front unless it happens to be one too, so a
+/// pair adds rather than substitutes and is consulted whatever number a match
+/// lands on — see `docs/scryfall.md`.
 fn build_artwork(
     version: &str,
     order: &[String],

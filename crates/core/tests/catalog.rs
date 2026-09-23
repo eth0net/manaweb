@@ -641,9 +641,8 @@ async fn a_back_of_its_own_is_numbered_after_every_front() {
     }
 }
 
-// The number a back carries says nothing on its own, since 86 artworks in a
-// real sync are a front as well and keep the number they had. What has to
-// hold either way is that the front of a pair is one the printings name.
+// An artwork that is also a front keeps the number it had, so what must hold
+// either way is that a pair's front is one the printings name.
 #[tokio::test]
 async fn a_pair_points_where_the_printings_file_can_follow() {
     for cards in [CARDS, SHARED_ART] {
@@ -701,9 +700,8 @@ async fn the_bitmap_says_which_artwork_across_more_than_one_byte() {
 /// One printing two-faced, and one whose own artwork is that printing's back.
 const SHARED_ART: &str = include_str!("fixtures/shared-art.jsonl");
 
-// 86 artworks in a real sync are the front of one printing and the back of
-// another. Numbering such a one twice would hash it twice and leave a pair
-// pointing at a copy.
+// Numbering a shared artwork twice would hash it twice and leave a pair
+// pointing at the copy — 86 in a real sync.
 #[tokio::test]
 async fn an_artwork_that_is_a_front_and_a_back_is_numbered_once() {
     let held = store(&[

@@ -339,8 +339,8 @@ for static artifacts, which a CDN fixes cheaply.
 - Client artifact: a few megabytes over the wire, sized in
   [`scryfall.md`](scryfall.md). Served by a CDN rather than
   by us; the shape is in [`scryfall.md`](scryfall.md).
-- Scanner index: 1.57MB over 51,253 artworks, 1.34MB on the wire, measured
-  2026-09-23. Embeddings would be ~25MB and remain an estimate.
+- Scanner index: 1.70MB over 54,585 artworks, both sides of a card, 1.40MB on
+  the wire, measured 2026-09-23. Embeddings would be ~25MB, still an estimate.
 - Weekly deltas have no mechanism yet — computing them means keeping a previous
   catalog snapshot server-side, which sits awkwardly with a disposable DB.
 - Bucket operations, not bandwidth, are what a growing user base spends: the
