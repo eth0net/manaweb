@@ -11,10 +11,14 @@ web/dist/
 npm-debug.log*
 bun-debug.log*
 
-# Anything this machine holds and the repo does not: pulled artwork, notes on
-# a review, whatever a session leaves behind. One place, so it does not have
-# to be added to a line at a time.
+# Scratch for whoever is working here — session notes, a scribbled comparison,
+# whatever wants keeping until it doesn't. Nobody else needs any of it.
 /local/
+
+# Pulled from Scryfall and kept: artwork under `art`, a bulk file under `bulk`
+# if you hold on to one. Gigabytes, derived, and re-pullable, but slowly, so
+# it is worth not deleting.
+/scryfall/
 
 # Local data — the DB is a disposable index, never committed
 *.db
@@ -23,7 +27,6 @@ bun-debug.log*
 *.sqlite
 *.sqlite3
 /data/
-scryfall-bulk/
 # Exported from the cache by the binary, then uploaded
 /catalog/
 
