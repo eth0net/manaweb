@@ -241,8 +241,9 @@ pub async fn build(pool: &SqlitePool, store: Option<&Store>) -> Result<Catalog> 
         });
     }
 
+    let backs = backs(pool).await?;
     let artwork = store
-        .map(|store| build_artwork(&version, &order, store))
+        .map(|store| build_artwork(&version, &order, &backs, store))
         .transpose()?;
 
     Ok(Catalog {
@@ -522,27 +523,91 @@ struct ArtworkHeader<'a> {
     version: &'a str,
     hashes: usize,
     rows: usize,
+    /// Of those, the ones the printings file numbers. The rest are backs, and
+    /// no column names them.
+    fronts: usize,
     /// How many artworks the store had nothing for, which the bitmap after
     /// the hashes names one bit each.
     absent: usize,
+    /// Pairs after the bitmap, each a back artwork and the front it shares a
+    /// printing with.
+    backs: usize,
+}
+
+/// The artwork on a printing's other side, against the one on its front.
+///
+/// At most two faces of a card carry an illustration, so the second is the
+/// back. Both sides of a reversible printing come through here as well, which
+/// is what a scanner wants of them.
+async fn backs(pool: &SqlitePool) -> Result<Vec<(String, String)>> {
+    Ok(sqlx::query_as(
+        "SELECT DISTINCT c.illustration_id,
+                json_extract(c.card_faces, '$[1].illustration_id')
+         FROM cards c
+         WHERE NOT c.digital
+           AND c.illustration_id IS NOT NULL
+           AND json_extract(c.card_faces, '$[1].illustration_id') IS NOT NULL
+           AND json_extract(c.card_faces, '$[1].illustration_id')
+               <> c.illustration_id
+         ORDER BY 2",
+    )
+    .fetch_all(pool)
+    .await?)
 }
 
 /// The artwork index: one artwork's hashes at the number this export gave it.
 ///
-/// A header line, then the hashes, then a bit per artwork saying which of
-/// them the store answered for. Positional over a numbering assigned a few
-/// lines above and rewritten by every sync, so the part names the version the
-/// pair does — see `docs/scryfall.md`.
+/// A header line, the hashes, the back pairs, then a bit per artwork saying
+/// which of them the store answered for. Pairs before the bitmap because both
+/// are read as words and only the bitmap is addressed a byte at a time.
+/// Positional over a numbering assigned a few lines above and rewritten by
+/// every sync, so the part names the version the pair does — see
+/// `docs/scryfall.md`.
 ///
 /// The bit is what a reader matches against, not the hashes: an artwork with
 /// none is eight zero bytes, and a frame of pure black hashes to exactly
 /// that.
-fn build_artwork(version: &str, order: &[String], store: &Store) -> Result<Artifact> {
-    let mut hashes = Vec::with_capacity(order.len() * HASHES * size_of::<u64>());
-    let mut held = vec![0u8; order.len().div_ceil(8)];
+///
+/// A back takes a number after every front unless it is a front as well,
+/// which 86 of them are, so a number alone does not say which a match is and
+/// the pairs are to be read whatever it is. A pair adds that front's
+/// printings to what the back resolves to rather than standing in for them,
+/// for the same reason.
+fn build_artwork(
+    version: &str,
+    order: &[String],
+    backs: &[(String, String)],
+    store: &Store,
+) -> Result<Artifact> {
+    let fronts = order.len();
+    let mut numbers: HashMap<&str, usize> = order
+        .iter()
+        .enumerate()
+        .map(|(at, artwork)| (artwork.as_str(), at))
+        .collect();
+    let mut all: Vec<&str> = order.iter().map(String::as_str).collect();
+    let mut pairs: Vec<(u32, u32)> = Vec::new();
+
+    for (front, back) in backs {
+        let Some(&front) = numbers.get(front.as_str()) else {
+            continue;
+        };
+        let back = *numbers.entry(back.as_str()).or_insert_with(|| {
+            all.push(back.as_str());
+            all.len() - 1
+        });
+        pairs.push((
+            u32::try_from(back).map_err(|_| Error::CatalogArtworks)?,
+            u32::try_from(front).map_err(|_| Error::CatalogArtworks)?,
+        ));
+    }
+    pairs.sort_unstable();
+
+    let mut hashes = Vec::with_capacity(all.len() * HASHES * size_of::<u64>());
+    let mut held = vec![0u8; all.len().div_ceil(8)];
     let mut absent = 0;
 
-    for (at, artwork) in order.iter().enumerate() {
+    for (at, artwork) in all.iter().enumerate() {
         let Some(found) = scan::uuid(artwork).and_then(|artwork| store.get(&artwork)) else {
             absent += 1;
             hashes.resize(hashes.len() + HASHES * size_of::<u64>(), 0);
@@ -557,8 +622,10 @@ fn build_artwork(version: &str, order: &[String], store: &Store) -> Result<Artif
     let mut out = serde_json::to_vec(&ArtworkHeader {
         version,
         hashes: HASHES,
-        rows: order.len(),
+        rows: all.len(),
+        fronts,
         absent,
+        backs: pairs.len(),
     })?;
     // The hashes are read where they lie rather than copied out, and a typed
     // array of 64-bit words cannot start at an offset that is not a multiple
@@ -568,9 +635,13 @@ fn build_artwork(version: &str, order: &[String], store: &Store) -> Result<Artif
     }
     out.push(b'\n');
     out.extend_from_slice(&hashes);
+    for (back, front) in pairs {
+        out.extend_from_slice(&back.to_le_bytes());
+        out.extend_from_slice(&front.to_le_bytes());
+    }
     out.extend_from_slice(&held);
 
-    Ok(Artifact::new("artwork", "bin", order.len(), out))
+    Ok(Artifact::new("artwork", "bin", all.len(), out))
 }
 
 /// Numbers every exportable printing, so the export reads an index rather

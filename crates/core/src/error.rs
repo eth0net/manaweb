@@ -42,4 +42,9 @@ pub enum Error {
     /// cannot place is refused rather than read as retrievals.
     #[error("the artwork hash store is unreadable: {0}")]
     Scan(&'static str),
+
+    /// The index numbers artworks in a 32-bit column, which four billion of
+    /// them would not fit.
+    #[error("more artworks than the index can number")]
+    CatalogArtworks,
 }

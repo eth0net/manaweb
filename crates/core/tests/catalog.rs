@@ -438,8 +438,7 @@ async fn a_two_faced_card_carries_a_row_for_each_side() {
     );
 }
 
-/// The artwork each printing in `cards.jsonl` carries. A two-faced card
-/// contributes its front only, which is what the cache keeps.
+/// The artwork on the front of each printing in `cards.jsonl`, by printing.
 const ARTWORKS: [(&str, &str); 4] = [
     (
         "0004311b-646a-4df8-a4b4-9171642e9ef4",
@@ -459,9 +458,33 @@ const ARTWORKS: [(&str, &str); 4] = [
     ),
 ];
 
-fn store(artworks: &[(&str, &str)]) -> Store {
+/// The two backs it carries, each against the front it shares a printing
+/// with: Jinnie Fay and Balamb Garden.
+const BACKS: [(&str, &str); 2] = [
+    (
+        "faebc2ac-9b6e-477d-869e-cee314d26cc0",
+        "6b8fb6bb-c0d1-4715-a4df-e4f4695c6130",
+    ),
+    (
+        "dd3fc1d7-6e7c-4b10-a4b5-8dc0804061e1",
+        "83559f92-ec25-4f3e-8f67-a66970c1e01e",
+    ),
+];
+
+fn fronts() -> Vec<&'static str> {
+    ARTWORKS.iter().map(|(_, artwork)| *artwork).collect()
+}
+
+/// Every artwork the fixture carries, front and back.
+fn everything() -> Vec<&'static str> {
+    let mut all = fronts();
+    all.extend(BACKS.iter().map(|(back, _)| *back));
+    all
+}
+
+fn store(artworks: &[&str]) -> Store {
     let mut store = Store::new();
-    for (at, (_, artwork)) in artworks.iter().enumerate() {
+    for (at, artwork) in artworks.iter().enumerate() {
         let at = u64::try_from(at).expect("a small index");
         store.insert(
             uuid(artwork).expect("a uuid"),
@@ -471,32 +494,78 @@ fn store(artworks: &[(&str, &str)]) -> Store {
     store
 }
 
-/// The index as a client takes it: a header line, the hashes where they lie,
-/// and the bit per artwork saying which of them the store answered for.
-fn part(bytes: &[u8]) -> (Value, Vec<u64>, Vec<u8>) {
-    let at = bytes
-        .iter()
-        .position(|byte| *byte == b'\n')
-        .expect("a header");
-    let header: Value = serde_json::from_slice(&bytes[..at]).expect("the header should be JSON");
-    let count =
-        |key: &str| usize::try_from(header[key].as_u64().expect("a count")).expect("a small count");
-
-    let from = at + 1;
-    let to = from + count("rows") * count("hashes") * size_of::<u64>();
-    let words = bytes[from..to]
-        .as_chunks::<{ size_of::<u64>() }>()
-        .0
-        .iter()
-        .map(|word| u64::from_le_bytes(*word))
-        .collect();
-
-    (header, words, bytes[to..].to_vec())
+/// The index as a client takes it.
+struct Part {
+    header: Value,
+    /// The hashes, `HASHES` to an artwork, where they lie in the file.
+    words: Vec<u64>,
+    /// A bit per artwork: whether the store answered for it.
+    held: Vec<u8>,
+    /// Each back artwork against the front it shares a printing with.
+    pairs: Vec<(u32, u32)>,
 }
 
-/// Whether the store answered for the artwork numbered `at`.
-fn answered(held: &[u8], at: usize) -> bool {
-    held[at / 8] & (1 << (at % 8)) != 0
+impl Part {
+    fn read(bytes: &[u8]) -> Self {
+        let at = bytes
+            .iter()
+            .position(|byte| *byte == b'\n')
+            .expect("a header");
+        let header: Value =
+            serde_json::from_slice(&bytes[..at]).expect("the header should be JSON");
+        let count = |key: &str| {
+            usize::try_from(header[key].as_u64().expect("a count")).expect("a small count")
+        };
+
+        let from = at + 1;
+        let to = from + count("rows") * count("hashes") * size_of::<u64>();
+        let words = bytes[from..to]
+            .as_chunks::<{ size_of::<u64>() }>()
+            .0
+            .iter()
+            .map(|word| u64::from_le_bytes(*word))
+            .collect();
+
+        let bits = to + count("backs") * 2 * size_of::<u32>();
+        let pairs = bytes[to..bits]
+            .as_chunks::<{ 2 * size_of::<u32>() }>()
+            .0
+            .iter()
+            .map(|pair| {
+                let (back, front) = pair.split_at(size_of::<u32>());
+                (
+                    u32::from_le_bytes(back.try_into().expect("four bytes")),
+                    u32::from_le_bytes(front.try_into().expect("four bytes")),
+                )
+            })
+            .collect();
+
+        Self {
+            header,
+            words,
+            held: bytes[bits..].to_vec(),
+            pairs,
+        }
+    }
+
+    fn count(&self, key: &str) -> usize {
+        usize::try_from(self.header[key].as_u64().expect("a count")).expect("a small count")
+    }
+
+    /// Whether the store answered for the artwork numbered `at`.
+    fn answered(&self, at: usize) -> bool {
+        self.held[at / 8] & (1 << (at % 8)) != 0
+    }
+
+    fn hashes(&self, at: usize) -> &[u64] {
+        &self.words[at * HASHES..(at + 1) * HASHES]
+    }
+}
+
+async fn built(artworks: &[&str]) -> manaweb_core::catalog::Catalog {
+    catalog::build(&seeded_with(CARDS).await, Some(&store(artworks)))
+        .await
+        .unwrap()
 }
 
 #[tokio::test]
@@ -513,11 +582,9 @@ async fn an_export_given_no_hashes_still_publishes_the_pair() {
 // shift every artwork after that one onto the wrong card.
 #[tokio::test]
 async fn the_index_holds_every_art_number_the_printings_name() {
-    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS)))
-        .await
-        .unwrap();
+    let built = built(&everything()).await;
     let index = built.artwork.as_ref().expect("an index");
-    let (header, words, held) = part(&index.bytes);
+    let part = Part::read(&index.bytes);
 
     let most = rows(&read(&built.prints.bytes), "prints")
         .iter()
@@ -525,22 +592,22 @@ async fn the_index_holds_every_art_number_the_printings_name() {
         .max()
         .expect("a printing carrying an artwork");
 
-    assert_eq!(header["rows"].as_u64(), Some(most + 1));
-    assert_eq!(index.rows, usize::try_from(most + 1).unwrap());
-    assert_eq!(words.len(), index.rows * HASHES);
-    assert_eq!(header["absent"].as_u64(), Some(0));
-    assert!((0..index.rows).all(|at| answered(&held, at)));
+    assert_eq!(part.count("fronts"), usize::try_from(most + 1).unwrap());
+    assert_eq!(part.count("rows"), index.rows);
+    assert_eq!(part.words.len(), index.rows * HASHES);
+    assert_eq!(part.count("absent"), 0);
+    assert!((0..index.rows).all(|at| part.answered(at)));
 }
 
 // The whole part is positional, so hashes in the file in any order at all
 // would satisfy a test that only asks whether they are in it.
 #[tokio::test]
 async fn an_artwork_sits_at_the_number_the_printings_give_it() {
-    let held = store(&ARTWORKS);
+    let held = store(&everything());
     let built = catalog::build(&seeded_with(CARDS).await, Some(&held))
         .await
         .unwrap();
-    let (_, words, _) = part(&built.artwork.as_ref().expect("an index").bytes);
+    let part = Part::read(&built.artwork.as_ref().expect("an index").bytes);
 
     let mut checked = 0;
     for row in rows(&read(&built.prints.bytes), "prints") {
@@ -554,50 +621,172 @@ async fn an_artwork_sits_at_the_number_the_printings_give_it() {
             .expect("a printing the fixture names");
         let mine = held.get(&uuid(artwork).expect("a uuid")).expect("hashes");
 
-        assert_eq!(&words[at * HASHES..(at + 1) * HASHES], mine, "{print}");
+        assert_eq!(part.hashes(at), mine, "{print}");
         checked += 1;
     }
     assert_eq!(checked, ARTWORKS.len());
+}
+
+// A back that is nothing else takes a number past every front, so no column
+// of the printings file names it. `CARDS` carries no artwork that is both.
+#[tokio::test]
+async fn a_back_of_its_own_is_numbered_after_every_front() {
+    let built = built(&everything()).await;
+    let part = Part::read(&built.artwork.as_ref().expect("an index").bytes);
+
+    assert_eq!(part.count("backs"), BACKS.len());
+    assert_eq!(part.count("rows"), part.count("fronts") + BACKS.len());
+    for (back, _) in &part.pairs {
+        assert!(usize::try_from(*back).unwrap() >= part.count("fronts"));
+    }
+}
+
+// The number a back carries says nothing on its own, since 86 artworks in a
+// real sync are a front as well and keep the number they had. What has to
+// hold either way is that the front of a pair is one the printings name.
+#[tokio::test]
+async fn a_pair_points_where_the_printings_file_can_follow() {
+    for cards in [CARDS, SHARED_ART] {
+        let built = catalog::build(&seeded_with(cards).await, Some(&store(&everything())))
+            .await
+            .unwrap();
+        let index = built.artwork.as_ref().expect("an index");
+        let part = Part::read(&index.bytes);
+
+        assert!(!part.pairs.is_empty());
+        for (back, front) in &part.pairs {
+            assert!(usize::try_from(*front).unwrap() < part.count("fronts"));
+            assert!(usize::try_from(*back).unwrap() < index.rows);
+        }
+    }
+}
+
+/// Ten printings, ten artworks, so the bitmap runs past its first byte.
+const MANY_ART: &str = include_str!("fixtures/many-art.jsonl");
+
+// Every other test holds eight artworks or fewer, which is one byte, so the
+// bit a client reads and the bit written here agree by accident.
+#[tokio::test]
+async fn the_bitmap_says_which_artwork_across_more_than_one_byte() {
+    let ids: Vec<String> = (0..10)
+        .map(|n| format!("{n:08x}-3333-4444-8555-666666666666"))
+        .collect();
+    // Straddling the byte boundary in both directions.
+    let some: Vec<&str> = [0usize, 3, 7, 8, 9]
+        .iter()
+        .map(|at| ids[*at].as_str())
+        .collect();
+
+    let built = catalog::build(&seeded_with(MANY_ART).await, Some(&store(&some)))
+        .await
+        .unwrap();
+    let index = built.artwork.as_ref().expect("an index");
+    let part = Part::read(&index.bytes);
+
+    assert_eq!(index.rows, 10);
+    assert_eq!(part.held.len(), 2, "ten artworks is two bytes of bitmap");
+    assert_eq!(part.count("absent"), 5);
+
+    let mut seen = 0;
+    for row in rows(&read(&built.prints.bytes), "prints") {
+        let at = usize::try_from(row[11].as_u64().expect("an artwork")).unwrap();
+        let zeroed = part.hashes(at).iter().all(|word| *word == 0);
+        assert_ne!(zeroed, part.answered(at), "artwork {at}");
+        seen += 1;
+    }
+    assert_eq!(seen, 10);
+    assert_eq!((0..10).filter(|at| part.answered(*at)).count(), some.len());
+}
+
+/// One printing two-faced, and one whose own artwork is that printing's back.
+const SHARED_ART: &str = include_str!("fixtures/shared-art.jsonl");
+
+// 86 artworks in a real sync are the front of one printing and the back of
+// another. Numbering such a one twice would hash it twice and leave a pair
+// pointing at a copy.
+#[tokio::test]
+async fn an_artwork_that_is_a_front_and_a_back_is_numbered_once() {
+    let held = store(&[
+        "83559f92-ec25-4f3e-8f67-a66970c1e01e",
+        "dd3fc1d7-6e7c-4b10-a4b5-8dc0804061e1",
+    ]);
+    let built = catalog::build(&seeded_with(SHARED_ART).await, Some(&held))
+        .await
+        .unwrap();
+    let index = built.artwork.as_ref().expect("an index");
+    let part = Part::read(&index.bytes);
+
+    assert_eq!(part.count("fronts"), 2, "both printings name an artwork");
+    assert_eq!(index.rows, 2, "and the back is one of the two");
+    assert_eq!(part.count("backs"), 1);
+
+    let (back, front) = part.pairs[0];
+    assert_ne!(back, front);
+    let shared = held
+        .get(&uuid("dd3fc1d7-6e7c-4b10-a4b5-8dc0804061e1").unwrap())
+        .expect("hashes");
+    assert_eq!(part.hashes(usize::try_from(back).unwrap()), shared);
+}
+
+// What the pair is for: a photograph of the other side resolving to the same
+// printings as a photograph of this one.
+#[tokio::test]
+async fn a_back_pairs_with_the_front_it_shares_a_printing_with() {
+    let held = store(&everything());
+    let built = catalog::build(&seeded_with(CARDS).await, Some(&held))
+        .await
+        .unwrap();
+    let part = Part::read(&built.artwork.as_ref().expect("an index").bytes);
+
+    assert_eq!(part.pairs.len(), BACKS.len());
+    for (back, front) in &BACKS {
+        let want = held.get(&uuid(back).expect("a uuid")).expect("hashes");
+        let (_, at) = part
+            .pairs
+            .iter()
+            .find(|(back, _)| part.hashes(usize::try_from(*back).unwrap()) == want)
+            .expect("a pair for the back");
+
+        let theirs = held.get(&uuid(front).expect("a uuid")).expect("hashes");
+        assert_eq!(part.hashes(usize::try_from(*at).unwrap()), theirs);
+    }
 }
 
 // The store is pulled separately and lags a set release, so this is the
 // ordinary case rather than the broken one.
 #[tokio::test]
 async fn an_artwork_the_store_has_nothing_for_has_its_bit_clear() {
-    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
-        .await
-        .unwrap();
+    let mut some = everything();
+    some.remove(0);
+    let built = built(&some).await;
     let index = built.artwork.as_ref().expect("an index");
-    let (header, words, held) = part(&index.bytes);
+    let part = Part::read(&index.bytes);
 
     assert_eq!(
         index.rows,
-        ARTWORKS.len(),
+        everything().len(),
         "an artwork with no hashes is still numbered"
     );
-    assert_eq!(header["absent"].as_u64(), Some(1));
+    assert_eq!(part.count("absent"), 1);
 
-    let clear: Vec<usize> = (0..index.rows).filter(|at| !answered(&held, *at)).collect();
+    let clear: Vec<usize> = (0..index.rows).filter(|at| !part.answered(*at)).collect();
     assert_eq!(clear.len(), 1);
-
-    let at = clear[0] * HASHES;
-    assert!(words[at..at + HASHES].iter().all(|word| *word == 0));
+    assert!(part.hashes(clear[0]).iter().all(|word| *word == 0));
 }
 
 // Pure black hashes to zero, so an artwork with no hashes would otherwise be
 // the nearest match to a frame taken with the lens covered.
 #[tokio::test]
 async fn nothing_says_an_artwork_with_no_hashes_can_be_matched() {
-    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
-        .await
-        .unwrap();
-    let (_, words, held) = part(&built.artwork.as_ref().expect("an index").bytes);
+    let mut some = everything();
+    some.remove(0);
+    let built = built(&some).await;
+    let index = built.artwork.as_ref().expect("an index");
+    let part = Part::read(&index.bytes);
 
-    for at in 0..built.artwork.as_ref().unwrap().rows {
-        let zeroed = words[at * HASHES..(at + 1) * HASHES]
-            .iter()
-            .all(|word| *word == 0);
-        assert_ne!(zeroed, answered(&held, at), "artwork {at}");
+    for at in 0..index.rows {
+        let zeroed = part.hashes(at).iter().all(|word| *word == 0);
+        assert_ne!(zeroed, part.answered(at), "artwork {at}");
     }
 }
 
@@ -605,25 +794,21 @@ async fn nothing_says_an_artwork_with_no_hashes_can_be_matched() {
 // repeats the version — see `docs/scryfall.md`.
 #[tokio::test]
 async fn the_index_names_the_version_the_pair_does() {
-    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
-        .await
-        .unwrap();
-    let (header, _, _) = part(&built.artwork.as_ref().expect("an index").bytes);
+    let built = built(&everything()).await;
+    let part = Part::read(&built.artwork.as_ref().expect("an index").bytes);
 
-    assert_eq!(header["version"].as_str(), Some(built.version.as_str()));
     assert_eq!(
-        header["hashes"].as_u64(),
-        Some(u64::try_from(HASHES).unwrap())
+        part.header["version"].as_str(),
+        Some(built.version.as_str())
     );
+    assert_eq!(part.count("hashes"), HASHES);
 }
 
 // A typed array of 64-bit words cannot start at an offset that is not a
 // multiple of eight.
 #[tokio::test]
 async fn the_hashes_start_on_a_word_boundary() {
-    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
-        .await
-        .unwrap();
+    let built = built(&everything()).await;
     let bytes = &built.artwork.as_ref().expect("an index").bytes;
 
     let at = bytes
@@ -633,11 +818,29 @@ async fn the_hashes_start_on_a_word_boundary() {
     assert!((at + 1).is_multiple_of(size_of::<u64>()));
 }
 
+// Everything the header counts, against the bytes that follow it.
+#[tokio::test]
+async fn the_file_is_exactly_as_long_as_the_header_claims() {
+    let built = built(&everything()).await;
+    let bytes = &built.artwork.as_ref().expect("an index").bytes;
+    let part = Part::read(bytes);
+
+    let at = bytes.iter().position(|byte| *byte == b'\n').unwrap() + 1;
+    let want = at
+        + part.count("rows") * HASHES * size_of::<u64>()
+        + part.count("backs") * 2 * size_of::<u32>()
+        + part.count("rows").div_ceil(8);
+    assert_eq!(bytes.len(), want);
+
+    // The pairs are read as words too, and the bitmap is whatever length the
+    // artwork count makes it, so it cannot come first.
+    let pairs = at + part.count("rows") * HASHES * size_of::<u64>();
+    assert!(pairs.is_multiple_of(size_of::<u64>()));
+}
+
 #[tokio::test]
 async fn the_manifest_names_the_index_when_there_is_one() {
-    let built = catalog::build(&seeded_with(CARDS).await, Some(&store(&ARTWORKS[1..])))
-        .await
-        .unwrap();
+    let built = built(&everything()).await;
     let manifest = read(&built.manifest().unwrap());
     let index = built.artwork.as_ref().expect("an index");
 
