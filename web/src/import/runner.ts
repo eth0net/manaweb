@@ -582,20 +582,38 @@ export async function drop(): Promise<void> {
   stopping = false;
   ticks(false);
   const now = session;
-  announce({ at: "none" });
-  if (!now) return;
-
-  await clear(now.did);
-  const left = pending;
-  holding([]);
-  recent = new Map();
-  for (const one of left) {
-    try {
-      await remove(now, IMPORTED, rkey(one.uri));
-    } catch {
-      // A part already drained, or a PDS that will refuse the next one too.
-    }
+  if (!now) {
+    announce({ at: "none" });
+    return;
   }
+
+  // The parts go before the job does: one cleared while any of them stand is
+  // one the next app open finds and builds a fresh import out of, writing the
+  // cards from a file that was just discarded. A delete of a part another
+  // device drained already succeeds, so nothing but a refusal stops here.
+  await queued(async () => {
+    const left = pending;
+    const owed = left.length;
+    try {
+      for (const one of left) {
+        await remove(now, IMPORTED, rkey(one.uri));
+        holding(pending.filter((other) => other.uri !== one.uri));
+      }
+    } catch (failure) {
+      announce({
+        at: "failed",
+        done: owed - pending.length,
+        total: owed,
+        why: reason(failure),
+      });
+      return;
+    }
+
+    await clear(now.did);
+    holding([]);
+    recent = new Map();
+    announce({ at: "none" });
+  });
 }
 
 function listen(watcher: () => void): () => void {
