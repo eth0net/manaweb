@@ -45,6 +45,7 @@ function print(fields: Partial<Print> = {}): Print {
     printedName: null,
     artist: "Christopher Rush",
     flags: [],
+    artwork: null,
     ...fields,
   };
 }

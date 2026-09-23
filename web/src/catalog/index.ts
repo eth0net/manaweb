@@ -75,6 +75,7 @@ export type PrintRow = [
   printedName: string | null,
   artist: number | null,
   flags: number,
+  artwork: number | null,
 ];
 
 // A file's header, which is everything in it but the rows.
@@ -176,6 +177,9 @@ export interface Print {
   artist: string | null;
   // What makes this copy not the plain one.
   flags: string[];
+  // Which illustration is on the front, by the number the artwork index
+  // gives it. Null for the handful of printings carrying none.
+  artwork: number | null;
 }
 
 // How a file with no print ids names a printing, spelled the same on both
@@ -525,6 +529,33 @@ export class Catalog {
     return found;
   }
 
+  // Where each artwork's printings sit, tallied on first ask: a scan does it
+  // repeatedly and nothing else asks at all.
+  #byArtwork: Map<number, number[]> | null = null;
+
+  // Every printing whose front carries this artwork, with the card each
+  // belongs to. What an art match narrows to — see `docs/roadmap.md`.
+  artwork(number: number): { card: Card; print: Print }[] {
+    this.#byArtwork ??= this.#groupArtwork();
+    return (this.#byArtwork.get(number) ?? []).map((at) => ({
+      card: this.card(this.#owner(at)),
+      print: this.#print(at),
+    }));
+  }
+
+  #groupArtwork(): Map<number, number[]> {
+    const found = new Map<number, number[]>();
+    const cols = this.#prints;
+    for (let at = 0; at < cols.rows; at++) {
+      const artwork = cols.artwork[at] as number;
+      if (artwork === PrintColumns.NO_ARTWORK) continue;
+      const held = found.get(artwork);
+      if (held) held.push(at);
+      else found.set(artwork, [at]);
+    }
+    return found;
+  }
+
   // Every set with a paper printing, and how many each holds.
   sets(): { set: SetRow; printings: number }[] {
     return this.#prints.tables.sets.map((set, at) => ({
@@ -614,6 +645,10 @@ export class Catalog {
       printedName: cols.printedName(at),
       artist: artist === 0xffff ? null : (tables.artists[artist] ?? null),
       flags: decode(cols.flags[at] as number, tables.flags),
+      artwork:
+        (cols.artwork[at] as number) === PrintColumns.NO_ARTWORK
+          ? null
+          : (cols.artwork[at] as number),
     };
   }
 }

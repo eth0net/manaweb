@@ -50,6 +50,10 @@ export const PRINT_FIELDS = [
   "flags",
 ];
 
+// Read at whatever position the file names it, and absent where the file has
+// none: the check below holds a file only to the columns above.
+const ARTWORK = "artwork";
+
 function fields(file: string, held: string[], read: string[]): void {
   if (held.join() !== read.join()) {
     throw new Error(
@@ -76,6 +80,8 @@ function fits(name: string, held: number, most: number): void {
 }
 
 export class PrintColumns {
+  static readonly NO_ARTWORK = -1;
+
   readonly rows: number;
   // Every integer column indexes one of these, so they travel together.
   readonly tables: PrintTables;
@@ -88,11 +94,15 @@ export class PrintColumns {
   readonly flags: Uint8Array;
   // No artist is 0xffff, there being no negative index to spare.
   readonly artist: Uint16Array;
+  // -1 is the printing with no illustration of its own.
+  readonly artwork: Int32Array;
 
   #ids: Uuids;
   #numbers: Runs;
   // 2% of printings carry one, so a map beats a column of nulls.
   #printedNames: Map<number, string>;
+  // Where this file keeps the artwork column, or -1 for one without it.
+  #artworkAt: number;
   #filled = 0;
 
   constructor(rows: number, tables: PrintTables) {
@@ -119,10 +129,12 @@ export class PrintColumns {
     this.lang = new Uint8Array(rows);
     this.flags = new Uint8Array(rows);
     this.artist = new Uint16Array(rows);
+    this.artwork = new Int32Array(rows);
     this.#ids = new Uuids(rows);
     // Digits mostly, with room for a star or the set code The List prefixes.
     this.#numbers = new Runs(rows, 5);
     this.#printedNames = new Map();
+    this.#artworkAt = tables.fields.indexOf(ARTWORK);
   }
 
   // The file read straight into columns: its rows are counted, then parsed a
@@ -150,6 +162,11 @@ export class PrintColumns {
       if (row[8] !== null) this.#printedNames.set(i, row[8]);
       this.artist[i] = row[9] ?? 0xffff;
       this.flags[i] = row[10];
+      const artwork =
+        this.#artworkAt < 0
+          ? null
+          : ((row[this.#artworkAt] ?? null) as number | null);
+      this.artwork[i] = artwork ?? PrintColumns.NO_ARTWORK;
     }
   }
 

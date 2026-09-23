@@ -45,6 +45,7 @@ const PRINTS = JSON.stringify({
     "printedName",
     "artist",
     "flags",
+    "artwork",
   ],
   finishes: ["nonfoil", "foil"],
   flags: ["promo", "variation"],
@@ -59,9 +60,9 @@ const PRINTS = JSON.stringify({
   ],
   // biome-ignore format: a positional row reads as a row
   prints: [
-    [ID("0101"), 0, "48", 1, 1, 0, 0, 0, null, 0, 0],
-    [ID("0102"), 1, "329★", 3, 1, 0, 0, 1, "祖先の記憶", null, 2],
-    [ID("0103"), 0, "203", 1, 0, 0, 0, 0, null, 0, 0],
+    [ID("0101"), 0, "48", 1, 1, 0, 0, 0, null, 0, 0, 0],
+    [ID("0102"), 1, "329★", 3, 1, 0, 0, 1, "祖先の記憶", null, 2, 0],
+    [ID("0103"), 0, "203", 1, 0, 0, 0, 0, null, 0, 0, null],
   ],
 });
 
@@ -139,6 +140,7 @@ describe("a catalog read from its two files", () => {
       printedName: "祖先の記憶",
       artist: null,
       flags: ["variation"],
+      artwork: 0,
     });
   });
 
@@ -177,9 +179,23 @@ describe("a catalog read from its two files", () => {
     );
   });
 
+  // A client deploys before the export that adds a column, and a manifest
+  // cached before one gets read offline by a client that came after.
+  test("a prints file from before the artwork column still loads", () => {
+    const held = JSON.parse(PRINTS) as {
+      fields: string[];
+      prints: unknown[][];
+    };
+    held.fields = held.fields.filter((name) => name !== "artwork");
+    held.prints = held.prints.map((row) => row.slice(0, -1));
+
+    const catalog = Catalog.read(bytes(CARDS), bytes(JSON.stringify(held)));
+    expect(catalog.prints(0)[0]?.artwork).toBeNull();
+  });
+
   test("a total that disagrees with the rows is refused", () => {
     const short = PRINTS.replace(
-      `,[${JSON.stringify(ID("0103"))},0,"203",1,0,0,0,0,null,0,0]`,
+      `,[${JSON.stringify(ID("0103"))},0,"203",1,0,0,0,0,null,0,0,null]`,
       "",
     );
     expect(() => Catalog.read(bytes(CARDS), bytes(short))).toThrow(
