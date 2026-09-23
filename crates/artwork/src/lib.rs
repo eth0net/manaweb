@@ -1,18 +1,18 @@
-//! The scanner index: one perceptual hash per artwork.
+//! Filling the scanner index: one perceptual hash per artwork.
 //!
 //! Built from Scryfall's images, which is gigabytes at a throttle and hours of
 //! hashing, so it runs on a workstation and never on the server — see
-//! `docs/architecture.md`.
+//! `docs/architecture.md`. The hashing itself is `manaweb-scanner`, which a
+//! browser runs against the same artwork.
 
 pub mod artwork;
 pub mod degrade;
 mod error;
 pub mod fetch;
-pub mod hash;
+pub mod luma;
 
 pub use artwork::Artwork;
 pub use error::Error;
-pub use hash::Hash;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

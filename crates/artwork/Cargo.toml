@@ -1,7 +1,7 @@
 [package]
-name = "manaweb-scan"
+name = "manaweb-artwork"
 version.workspace = true
-description = "The scanner index: a perceptual hash per artwork, built from Scryfall's images."
+description = "Pulls Scryfall's artwork and hashes it into the store the export publishes from."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -10,14 +10,14 @@ repository.workspace = true
 publish = false
 
 [[bin]]
-name = "manaweb-scan"
+name = "manaweb-artwork"
 path = "src/main.rs"
 
 [lints]
 workspace = true
 
 [dependencies]
-manaweb-core.workspace = true
+manaweb-scanner.workspace = true
 manaweb-scryfall.workspace = true
 
 image = { version = "0.25.9", default-features = false, features = ["jpeg"] }

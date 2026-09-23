@@ -167,7 +167,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
 /// Builds the catalog from the cache and writes it out for upload.
 async fn export(pool: &SqlitePool, dir: &Path) -> manaweb_core::Result<String> {
-    // todo(scan): the store the artwork index is built from, which nothing
+    // todo(scanner): the store the artwork index is built from, which nothing
     // fetches yet — see `docs/roadmap.md`.
     let built = catalog::build(pool, None).await?;
     built.write(dir).await?;

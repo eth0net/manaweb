@@ -77,6 +77,33 @@ worth switching for.
   possibility.
 - Proxies and alters defeat any scanner and always will. Accepted limitation.
 
+**One implementation of the hash, in `crates/scanner`.** The build fills the
+index and the browser queries it, and what it costs when the two differ is in
+[`scryfall.md`](scryfall.md). So the hashing is a crate carrying no image
+decoding, no database and no HTTP, which reaches wasm32 now and Swift and
+Kotlin later. `manaweb-artwork` keeps the throttled pull, the JPEG
+decoding and the measuring harness.
+
+**It takes a luma plane and a stride, not an image.** iOS hands over
+`420YpCbCr8BiPlanar` and Android `YUV_420_888`, each a Y plane wanting no
+conversion, so the browser is the only caller that converts anything. The
+stride is separate because those rows carry padding past their pixels, and
+mistaking one for the other shears the picture.
+
+**pHash at four insets, recall@1 99.2%** under every degradation at once —
+misframing, blur, dim light, recompression and rotation. Framing is the single
+one a global hash does not shrug off, which is why an artwork is held at
+several crops rather than at Scryfall's own. Comparing a query against all
+54,585 of them is 0.53ms in plain JavaScript, so WASM is for the detection and
+rectification ahead of the hash rather than for the lookup.
+
+The first WASM build owes two more things: `web/public/_headers` allows
+`script-src 'self'`, which refuses WebAssembly until it names
+`'wasm-unsafe-eval'` as well, and the bundle wants `+simd128`.
+`SharedArrayBuffer` is not worth the COOP/COEP headers it needs, which would
+complicate the OAuth popup, and a transferred `ArrayBuffer` already copies
+nothing.
+
 **The artifact carries an illustration group per printing**, which is what an
 art match narrows to — see [`scryfall.md`](scryfall.md). The client reads
 past that column, so teaching it to map a match onto printings is the first

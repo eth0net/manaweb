@@ -38,11 +38,6 @@ pub enum Error {
     #[error("a printing has no export order, so the cache wants re-syncing")]
     CatalogOrder,
 
-    /// Every byte past the header is a valid hash, so a store this build
-    /// cannot place is refused rather than read as retrievals.
-    #[error("the artwork hash store is unreadable: {0}")]
-    Scan(&'static str),
-
     /// The index numbers artworks in a 32-bit column, which four billion of
     /// them would not fit.
     #[error("more artworks than the index can number")]

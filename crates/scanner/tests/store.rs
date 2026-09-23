@@ -1,4 +1,5 @@
-use manaweb_core::scan::{HASHES, Store, uuid};
+use manaweb_scanner::HASHES;
+use manaweb_scanner::store::{Store, uuid};
 
 /// Bytes an entry takes: the key, then its hashes.
 const ENTRY: usize = 16 + HASHES * size_of::<u64>();
@@ -116,4 +117,39 @@ fn reading_a_store_and_writing_it_back_is_the_same_file() {
     let bytes = store.write();
 
     assert_eq!(Store::read(&bytes).expect("a store").write(), bytes);
+}
+
+// A layout this build does not know is not a store it can place entries in.
+#[test]
+fn a_store_another_layout_wrote_is_refused() {
+    let mut store = Store::new();
+    store.insert(id(ONE), hashes(7));
+    let mut bytes = store.write();
+    bytes[6] -= 1;
+
+    assert!(Store::read(&bytes).is_err());
+}
+
+// And a build whose hashing differs is refused whatever the layout, because
+// the tool keeps a store it can read and would end up holding both.
+#[test]
+fn a_store_another_build_filled_is_refused() {
+    let mut store = Store::new();
+    store.insert(id(ONE), hashes(7));
+    let mut bytes = store.write();
+    bytes[8] ^= 1;
+
+    assert!(Store::read(&bytes).is_err());
+}
+
+// Nothing in the file says what it is, so it is checked before the entries
+// rather than found out by retrieving nothing from them.
+#[test]
+fn a_store_carries_what_filled_it() {
+    let bytes = Store::new().write();
+
+    assert_eq!(
+        u64::from_le_bytes(bytes[8..16].try_into().expect("eight bytes")),
+        manaweb_scanner::fingerprint(),
+    );
 }

@@ -14,8 +14,8 @@ use serde::Serialize;
 use sqlx::{SqliteConnection, SqlitePool};
 use tokio::fs;
 
-use crate::scan::{self, HASHES, Store};
 use crate::{Error, Result};
+use manaweb_scanner::{HASHES, Store, store};
 
 /// Bit `i` of a printing's `finishes` is this list's `i`th entry.
 const FINISHES: [&str; 3] = ["nonfoil", "foil", "etched"];
@@ -562,8 +562,7 @@ async fn backs(pool: &SqlitePool) -> Result<Vec<(String, String)>> {
 /// which is why the part repeats the version.
 ///
 /// The bit is what a reader matches against, not the hashes: an artwork with
-/// none is eight zero bytes, and a frame of pure black hashes to exactly
-/// that.
+/// none is zeroed, and a frame of pure black hashes to exactly that.
 ///
 /// A back is numbered past every front unless it happens to be one too, so a
 /// pair adds rather than substitutes and is consulted whatever number a match
@@ -603,7 +602,7 @@ fn build_artwork(
     let mut absent = 0;
 
     for (at, artwork) in all.iter().enumerate() {
-        let Some(found) = scan::uuid(artwork).and_then(|artwork| store.get(&artwork)) else {
+        let Some(found) = store::uuid(artwork).and_then(|artwork| store.get(&artwork)) else {
             absent += 1;
             hashes.resize(hashes.len() + HASHES * size_of::<u64>(), 0);
             continue;

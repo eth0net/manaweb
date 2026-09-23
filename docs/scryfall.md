@@ -476,7 +476,7 @@ illustration held at each inset a photograph is likeliest to be off by. A
 header line, the hashes, the back pairs, then one bit per artwork saying which
 the build had an image for. That bit is what a reader tests rather than the
 bytes, an artwork with nothing behind it being zeroed and an unlit camera
-coming out the same way. `manaweb-scan` builds the hashes; the export only
+coming out the same way. `manaweb-artwork` builds the hashes; the export only
 places them.
 
 The three run in that order because the first two are read as words where they

@@ -1,25 +1,28 @@
 //! The artwork hash store, which the export reads in place of the images.
 //!
 //! Turning one illustration into hashes means fetching and decoding a JPEG,
-//! and there are fifty thousand of them, so `manaweb-scan` does that on a
+//! and there are fifty thousand of them, so `manaweb-artwork` does that on a
 //! workstation and leaves this behind. The server fetches the result like any
 //! other input and never opens an image.
 
 use std::collections::BTreeMap;
 
+use crate::hash::{HASHES, fingerprint};
 use crate::{Error, Result};
-
-/// Hashes an artwork carries: the same illustration at each inset the scanner
-/// indexes, so a photograph framed a little wide still lands on it.
-pub const HASHES: usize = 4;
 
 /// Scryfall's `illustration_id`, raw rather than the 36 characters it prints
 /// as.
 const KEY: usize = 16;
 
 const MAGIC: [u8; 6] = *b"MWSCAN";
-const VERSION: u8 = 1;
-const HEADER: usize = MAGIC.len() + 2;
+
+/// How the bytes are laid out, which is a different question from what
+/// filled them: a change here leaves every hash in the file good.
+const LAYOUT: u8 = 3;
+
+/// Magic, layout, hashes per artwork, then the fingerprint of the build that
+/// wrote it.
+const HEADER: usize = MAGIC.len() + 2 + size_of::<u64>();
 const ENTRY: usize = KEY + HASHES * 8;
 
 /// Every artwork hashed so far, by illustration.
@@ -59,35 +62,41 @@ impl Store {
     /// # Errors
     ///
     /// Fails on anything this build would otherwise read as hashes: a header
-    /// it does not recognize, a different count per artwork, an entry cut
-    /// short, or entries that are not in ascending order.
+    /// it does not recognize, hashes another build filled, a different count
+    /// per artwork, an entry cut short, or entries out of ascending order.
     pub fn read(bytes: &[u8]) -> Result<Self> {
-        let header = bytes.get(..HEADER).ok_or(Error::Scan("no header"))?;
+        let header = bytes.get(..HEADER).ok_or(Error::Store("no header"))?;
         if header[..MAGIC.len()] != MAGIC {
-            return Err(Error::Scan("not a hash store"));
+            return Err(Error::Store("not a hash store"));
         }
-        if header[MAGIC.len()] != VERSION {
-            return Err(Error::Scan("a format version this build does not read"));
+        if header[MAGIC.len()] != LAYOUT {
+            return Err(Error::Store("a layout this build does not read"));
         }
         if usize::from(header[MAGIC.len() + 1]) != HASHES {
-            return Err(Error::Scan("a different number of hashes per artwork"));
+            return Err(Error::Store("a different number of hashes per artwork"));
+        }
+        // Before the entries, not after: the tool keeps what a store already
+        // holds and hashes only what is missing, so one filled by another
+        // build would come back half of each.
+        if header[MAGIC.len() + 2..] != fingerprint().to_le_bytes() {
+            return Err(Error::Store("hashes another build filled"));
         }
 
         let rest = &bytes[HEADER..];
         if !rest.len().is_multiple_of(ENTRY) {
-            return Err(Error::Scan("an entry is cut short"));
+            return Err(Error::Store("an entry is cut short"));
         }
 
         let mut held = BTreeMap::new();
         let mut last: Option<[u8; KEY]> = None;
         for entry in rest.as_chunks::<ENTRY>().0 {
             let Some((id, words)) = entry.split_first_chunk::<KEY>() else {
-                return Err(Error::Scan("an entry is cut short"));
+                return Err(Error::Store("an entry is cut short"));
             };
             // Written in order, and a duplicate would take the place of what
             // came before it, so reading one back would lose an artwork.
             if last.is_some_and(|last| last >= *id) {
-                return Err(Error::Scan("entries out of order"));
+                return Err(Error::Store("entries out of order"));
             }
             last = Some(*id);
 
@@ -105,8 +114,9 @@ impl Store {
     pub fn write(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(HEADER + self.0.len() * ENTRY);
         out.extend_from_slice(&MAGIC);
-        out.push(VERSION);
+        out.push(LAYOUT);
         out.push(u8::try_from(HASHES).unwrap_or(u8::MAX));
+        out.extend_from_slice(&fingerprint().to_le_bytes());
         for (id, hashes) in &self.0 {
             out.extend_from_slice(id);
             for hash in hashes {

@@ -2,8 +2,9 @@
 
 use std::io::Cursor;
 
-use manaweb_core::scan::{HASHES, Store, uuid};
 use manaweb_core::{Error, cards, catalog, open_memory};
+use manaweb_scanner::HASHES;
+use manaweb_scanner::store::{Store, uuid};
 use manaweb_scryfall::{BulkData, CardStream};
 use serde_json::Value;
 use sqlx::SqlitePool;

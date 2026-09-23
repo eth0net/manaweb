@@ -14,5 +14,5 @@ pub enum Error {
     Io(#[from] std::io::Error),
 
     #[error("{0}")]
-    Core(#[from] manaweb_core::Error),
+    Scanner(#[from] manaweb_scanner::Error),
 }

@@ -10,16 +10,18 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use manaweb_core::scan::{HASHES, Store};
-use manaweb_scan::fetch::Fetcher;
-use manaweb_scan::{Artwork, Result, artwork, degrade, hash};
+use manaweb_artwork::fetch::Fetcher;
+use manaweb_artwork::luma::Plane;
+use manaweb_artwork::{Artwork, Result, artwork, degrade};
+use manaweb_scanner::hash::{self, Frame, Hash};
+use manaweb_scanner::{HASHES, Store, store};
 
 #[tokio::main]
 async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "manaweb_scan=info".into()),
+                .unwrap_or_else(|_| "manaweb_artwork=info".into()),
         )
         .init();
 
@@ -39,7 +41,7 @@ async fn run() -> Result<()> {
     let dir = args.next().unwrap_or_else(|| "scryfall/art".into());
     let rest = args.next();
 
-    let pool = manaweb_scan::open(&db).await?;
+    let pool = manaweb_artwork::open(&db).await?;
     let mut artworks = artwork::all(&pool).await?;
     tracing::info!(artworks = artworks.len(), "artworks in the cache");
 
@@ -62,7 +64,7 @@ async fn run() -> Result<()> {
     }
 }
 
-async fn pull(artworks: &[manaweb_scan::Artwork], dir: &str) -> Result<()> {
+async fn pull(artworks: &[Artwork], dir: &str) -> Result<()> {
     let mut fetcher = Fetcher::new(dir)?;
     let (mut held, mut pulled, mut failed) = (0usize, 0usize, 0usize);
 
@@ -112,7 +114,7 @@ fn write(artworks: &[Artwork], dir: &str, out: &Path) -> Result<()> {
 
     let (mut held, mut hashed, mut absent, mut failed) = (0usize, 0usize, 0usize, 0usize);
     for (done, artwork) in artworks.iter().enumerate() {
-        let Some(id) = manaweb_core::scan::uuid(&artwork.id) else {
+        let Some(id) = store::uuid(&artwork.id) else {
             tracing::warn!(artwork = artwork.id, "not an illustration id");
             failed += 1;
             continue;
@@ -122,17 +124,14 @@ fn write(artworks: &[Artwork], dir: &str, out: &Path) -> Result<()> {
         } else if !fetcher.holds(artwork) {
             absent += 1;
         } else {
-            match image::open(fetcher.path(artwork)) {
-                Ok(image) => {
-                    store.insert(id, entry(&image));
+            // An image that will not decode is one artwork nobody can scan,
+            // which is not worth ending a run over.
+            match read(&fetcher.path(artwork)) {
+                Some(found) => {
+                    store.insert(id, found);
                     hashed += 1;
                 }
-                // An image that will not decode is one artwork nobody can
-                // scan, which is not worth ending a run over.
-                Err(error) => {
-                    failed += 1;
-                    tracing::warn!(artwork = artwork.id, "{error}");
-                }
+                None => failed += 1,
             }
         }
         if done % 1000 == 0 {
@@ -157,9 +156,15 @@ fn write(artworks: &[Artwork], dir: &str, out: &Path) -> Result<()> {
     Ok(())
 }
 
-/// One artwork's entry: the hash that measured best, at each inset.
-fn entry(image: &image::DynamicImage) -> [hash::Hash; HASHES] {
-    std::array::from_fn(|at| hash::phash(&degrade::inset(image, INSETS[at])))
+/// One artwork's entry, or nothing where the file on disk is not an image.
+fn read(path: &Path) -> Option<[Hash; HASHES]> {
+    let image = image::open(path)
+        .inspect_err(|error| tracing::warn!(artwork = %path.display(), "{error}"))
+        .ok()?;
+    Plane::new(&image)
+        .frame()
+        .as_ref()
+        .map(manaweb_scanner::entry)
 }
 
 /// Hashes everything on disk, then asks what a degraded copy retrieves.
@@ -167,10 +172,10 @@ fn entry(image: &image::DynamicImage) -> [hash::Hash; HASHES] {
 /// One query is compared against every artwork, because a scan of fifty
 /// thousand 64-bit words is microseconds and an approximate structure would
 /// be measuring the structure.
-fn measure(artworks: &[manaweb_scan::Artwork], dir: &str) -> Result<()> {
+fn measure(artworks: &[Artwork], dir: &str) -> Result<()> {
     let fetcher = Fetcher::new(dir)?;
     let mut held = Vec::new();
-    let mut index: Vec<Vec<Vec<hash::Hash>>> = vec![Vec::new(); KINDS.len()];
+    let mut index: Vec<Vec<Vec<Hash>>> = vec![Vec::new(); KINDS.len()];
 
     for artwork in artworks {
         if !fetcher.holds(artwork) {
@@ -179,8 +184,12 @@ fn measure(artworks: &[manaweb_scan::Artwork], dir: &str) -> Result<()> {
         let Ok(image) = image::open(fetcher.path(artwork)) else {
             continue;
         };
+        let plane = Plane::new(&image);
+        let Some(frame) = plane.frame() else {
+            continue;
+        };
         for (kind, entry) in KINDS.iter().zip(index.iter_mut()) {
-            entry.push(kind.entry(&image));
+            entry.push(kind.entry(&frame));
         }
         held.push(artwork.clone());
     }
@@ -208,10 +217,13 @@ fn measure(artworks: &[manaweb_scan::Artwork], dir: &str) -> Result<()> {
             let Ok(image) = image::open(fetcher.path(&held[at])) else {
                 continue;
             };
-            let query = (degradation.apply)(&image);
+            let plane = Plane::new(&(degradation.apply)(&image));
+            let Some(query) = plane.frame() else {
+                continue;
+            };
 
             for ((kind, entry), score) in KINDS.iter().zip(&index).zip(&mut scores) {
-                score.record(entry, (kind.hash)(&query), at);
+                score.record(entry, &kind.query(&query), at);
             }
         }
 
@@ -227,50 +239,67 @@ fn measure(artworks: &[manaweb_scan::Artwork], dir: &str) -> Result<()> {
 /// and few enough that a run is minutes.
 const QUERIES: usize = 500;
 
-/// A framing error is the one thing a hash does not survive, so an artwork is
-/// also held at the insets a scanner is likeliest to be off by.
-const INSETS: [f32; HASHES] = [0.0, 0.03, 0.06, 0.09];
-
 /// One way of holding an artwork, and the hash a query is turned into.
 struct Kind {
     name: &'static str,
-    hash: fn(&image::DynamicImage) -> hash::Hash,
+    hash: fn(&Frame) -> Hash,
     /// Whether the index holds the artwork at several crops or just the one.
     insets: bool,
+    /// And whether the query is asked at several, which costs the querier
+    /// nothing the index has not already paid for.
+    asks: bool,
 }
 
 impl Kind {
-    fn entry(&self, image: &image::DynamicImage) -> Vec<hash::Hash> {
-        if !self.insets {
-            return vec![(self.hash)(image)];
+    fn entry(&self, frame: &Frame) -> Vec<Hash> {
+        self.crops(frame, self.insets)
+    }
+
+    fn query(&self, frame: &Frame) -> Vec<Hash> {
+        self.crops(frame, self.asks)
+    }
+
+    fn crops(&self, frame: &Frame, several: bool) -> Vec<Hash> {
+        if !several {
+            return vec![(self.hash)(frame)];
         }
-        INSETS
+        hash::INSETS
             .iter()
-            .map(|&inset| (self.hash)(&degrade::inset(image, inset)))
+            .map(|&inset| (self.hash)(&frame.inset(inset)))
             .collect()
     }
 }
 
-const KINDS: [Kind; 4] = [
+const KINDS: [Kind; 5] = [
     Kind {
         name: "dhash",
         hash: hash::dhash,
         insets: false,
+        asks: false,
     },
     Kind {
         name: "phash",
         hash: hash::phash,
         insets: false,
+        asks: false,
     },
     Kind {
         name: "dhash+crops",
         hash: hash::dhash,
         insets: true,
+        asks: false,
     },
     Kind {
         name: "phash+crops",
         hash: hash::phash,
         insets: true,
+        asks: false,
+    },
+    Kind {
+        name: "phash+asked",
+        hash: hash::phash,
+        insets: true,
+        asks: true,
     },
 ];
 
@@ -289,16 +318,17 @@ struct Scores {
 /// The ranks `at` counts, in order.
 const RANKS: [usize; 3] = [1, 5, 10];
 
-fn nearest(entry: &[hash::Hash], want: hash::Hash) -> u32 {
+/// The nearest any hash the index holds comes to any the query was asked at.
+fn nearest(entry: &[Hash], want: &[Hash]) -> u32 {
     entry
         .iter()
-        .map(|&held| hash::distance(want, held))
+        .flat_map(|&held| want.iter().map(move |&want| hash::distance(want, held)))
         .min()
         .unwrap_or(u32::MAX)
 }
 
 impl Scores {
-    fn record(&mut self, index: &[Vec<hash::Hash>], want: hash::Hash, at: usize) {
+    fn record(&mut self, index: &[Vec<Hash>], want: &[Hash], at: usize) {
         let truth = nearest(&index[at], want);
         let mut rank = 0;
         let mut other = u32::MAX;

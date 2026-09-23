@@ -1,0 +1,21 @@
+[package]
+name = "manaweb-scanner"
+version.workspace = true
+description = "The scanner engine: pixels in, the hashes the artwork index is keyed by out."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# `cos` from a platform's own libm is free to differ in the last bit, and a
+# browser that hashed an artwork a bit differently from the builder would
+# match nothing and report no error. This one is the same software
+# implementation everywhere, which `tests/golden.rs` holds it to.
+libm = "0.2.16"
+thiserror.workspace = true

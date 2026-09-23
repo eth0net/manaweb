@@ -23,6 +23,7 @@ manaweb-api = { path = "crates/api" }
 manaweb-core = { path = "crates/core" }
 chrono = { version = "0.4.45", default-features = false, features = ["now"] }
 manaweb-objects = { path = "crates/objects" }
+manaweb-scanner = { path = "crates/scanner" }
 manaweb-scryfall = { path = "crates/scryfall" }
 
 async-compression = { version = "0.4.44", features = ["gzip", "tokio"] }
