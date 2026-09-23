@@ -29,7 +29,7 @@ use manaweb_objects::Bucket;
 use manaweb_scryfall::{BulkKind, Client, USER_AGENT};
 use sqlx::SqlitePool;
 use tokio::net::TcpListener;
-use tokio::time::{MissedTickBehavior, interval};
+use tokio::time::sleep;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
@@ -38,6 +38,16 @@ const CATALOG: &str = "catalog";
 
 /// Scryfall asks for gameplay data no more than once a week.
 const REFRESH: Duration = Duration::from_hours(7 * 24);
+
+/// How soon a failed refresh is tried again, doubling up to [`RETRY_MAX`].
+///
+/// A migration's new column reaches nobody until a sync lands, so falling
+/// straight back to the weekly cadence leaves it unpublished for a week.
+const RETRY: Duration = Duration::from_mins(5);
+
+/// Far enough apart that a Scryfall outage costs a handful of 78MB downloads
+/// a day rather than a steady stream of them.
+const RETRY_MAX: Duration = Duration::from_hours(6);
 
 /// What `manaweb <command>` takes. The image's entrypoint is the binary and
 /// its command is `serve`, so a one-off reaches the same binary without the
@@ -185,15 +195,19 @@ async fn refresh_weekly(pool: SqlitePool, settings: Settings) {
         }
     };
 
-    let mut ticker = interval(REFRESH);
-    ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    // Nothing waits before the first attempt, so a restart re-syncs at once.
+    let mut wait = Duration::ZERO;
     loop {
-        ticker.tick().await;
-        if let Err(error) = refresh(&pool, &settings, &client).await {
-            // The uploaded catalog is untouched, so a failed refresh is a
-            // warning rather than a reason to stop.
-            tracing::error!("refresh failed: {error}");
-        }
+        sleep(wait).await;
+        wait = match refresh(&pool, &settings, &client).await {
+            Ok(()) => REFRESH,
+            Err(error) => {
+                // The uploaded catalog is untouched, so a failed refresh is a
+                // warning rather than a reason to stop.
+                tracing::error!("refresh failed: {error}");
+                (wait * 2).clamp(RETRY, RETRY_MAX)
+            }
+        };
     }
 }
 
