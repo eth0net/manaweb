@@ -5,6 +5,7 @@
 
 use std::collections::BTreeMap;
 use std::error::Error;
+use std::ffi::OsStr;
 
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN, USER_AGENT};
 use reqwest::{Client, Method, Response};
@@ -27,12 +28,30 @@ struct Manifest {
 
 impl Manifest {
     /// Every file the manifest names, so a part added to it is checked
-    /// without this being touched.
-    fn names(&self) -> Vec<String> {
-        self.parts
-            .values()
-            .filter_map(|part| part.get("name")?.as_str().map(str::to_owned))
-            .collect()
+    /// without this being touched, and the fields that name none.
+    fn names(&self) -> (Vec<String>, Vec<String>) {
+        let (mut names, mut wrong) = (Vec::new(), Vec::new());
+        for (field, part) in &self.parts {
+            if !part.is_object() {
+                continue;
+            }
+            match part.get("name").and_then(Value::as_str) {
+                Some(name) => names.push(name.to_owned()),
+                None => wrong.push(field.clone()),
+            }
+        }
+        (names, wrong)
+    }
+}
+
+/// What a file of this name is served as, matching what an upload sets.
+fn served_as(name: &str) -> &'static str {
+    match std::path::Path::new(name)
+        .extension()
+        .and_then(OsStr::to_str)
+    {
+        Some("json") => "application/json",
+        _ => "application/octet-stream",
     }
 }
 
@@ -175,7 +194,14 @@ pub async fn catalog(origin: &str) -> Result<Found, Box<dyn Error>> {
         }
     };
 
-    for name in named.names() {
+    let (files, wrong) = named.names();
+    for field in wrong {
+        // An upload refuses the same manifest, so a check that passed here
+        // would be saying the opposite of what publishing does.
+        found.fail(format!("manifest.json: {field} names no file"));
+    }
+
+    for name in files {
         let response = client
             .request(Method::HEAD, format!("{base}/{name}"))
             .send()
@@ -187,6 +213,14 @@ pub async fn catalog(origin: &str) -> Result<Found, Box<dyn Error>> {
             found.fail(format!("{name}: status {status}, named but not served"));
         } else if !policy.contains("immutable") {
             found.fail(format!("{name}: cache-control is not immutable"));
+        } else if !header(&response, "content-type").starts_with(served_as(&name)) {
+            // A CDN compresses by type, so hashes served as text are run
+            // through brotli on every miss for nothing.
+            found.fail(format!(
+                "{name}: content-type {}, wanted {}",
+                header(&response, "content-type"),
+                served_as(&name)
+            ));
         } else {
             let cached = header(&response, "cf-cache-status");
             found.ok(format!("{name}  cached {cached}"));
