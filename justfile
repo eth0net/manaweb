@@ -58,7 +58,7 @@ prose: deps
 # about a commit, and it needs their service to answer.
 [doc("hold our search to Scryfall's answers (needs bun, network, a catalog)")]
 [group('checks')]
-check-scryfall-search: deps
+scryfall-search: deps
     cd tools/scryfall-check && bun run check
 
 # validate the lexicons against atproto's own implementation (needs bun)
@@ -67,16 +67,24 @@ lexicons: deps
     cd tools/lexicon-check && bun run check
     cd tools/lex-gen && bun run gen --check
 
+# prek's own installer, which reads the hook types out of `prek.toml`. Here
+# because `just --list` is the index, and a contributor who has to be told the
+# command separately is one the index failed.
+[doc('install the git hooks (needs prek)')]
+[group('dev')]
+hooks:
+    prek install
+
 # The drawing is the source and every appearance is a row of four colors in
 # it, so a raster is composed rather than drawn — see `docs/roadmap.md`.
 [doc('rewrite the app icons and favicons from icon.svg (needs bun)')]
 [group('dev')]
-icons: deps
+write-icons: deps
     cd tools/icons && bun run icons
 
 # rewrite the record types the client reads records with (needs bun)
 [group('dev')]
-lexicon-types: deps
+write-lexicon-types: deps
     cd tools/lex-gen && bun run gen
 
 # lint, typecheck and test every TypeScript in the repo, then build the
@@ -94,17 +102,17 @@ serve bind="127.0.0.1:8080":
 
 [doc("the client's dev server, fetching the catalog from `just serve`")]
 [group('dev')]
-client host="127.0.0.1": deps
+serve-client host="127.0.0.1": deps
     cd web && bun run dev --host {{ host }}
 
 # sync the card cache from Scryfall (~78MB), or from a file already on disk
 [group('dev')]
-sync file="":
+sync-cards file="":
     cargo run --release -p manaweb-core --example sync -- {{ db }} {{ file }}
 
-# report the client artifact's size, writing its files to a directory if given
+# build the client artifact and report its size, writing it to a directory
 [group('dev')]
-catalog dir="":
+build-catalog dir="":
     cargo run --release -p manaweb-core --example catalog -- {{ db }} {{ dir }}
 
 # `goat` holds the session and does the writing; the recipe only says what.

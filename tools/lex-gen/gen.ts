@@ -133,7 +133,7 @@ try {
     const wrong = [...names].filter((n) => written.get(n) !== held.get(n));
     if (wrong.length > 0) {
       console.error(
-        `stale, rerun \`just lexicon-types\`:\n  ${wrong.join("\n  ")}`,
+        `stale, rerun \`just write-lexicon-types\`:\n  ${wrong.join("\n  ")}`,
       );
       process.exit(1);
     }

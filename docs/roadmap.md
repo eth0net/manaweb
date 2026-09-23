@@ -212,10 +212,10 @@ takes `url(#id)` as readily as a color, so a gradient preset needs the gradient
 in `defs` and nothing else — the shape of a theme is already a row of four
 values, whatever kind each one is.
 
-`just icons` is the composer that follows from that. It resolves the tokens to
-concrete fills, since the renderer reads no custom properties, then adds a
-background and an inset, and writes every raster the app ships from the one
-drawing.
+`just write-icons` is the composer that follows from that. It resolves the
+tokens to concrete fills, since the renderer reads no custom properties, then
+adds a background and an inset, and writes every raster the app ships from the
+one drawing.
 
 Two of those exist for Android alone. A launcher crops a home screen icon to
 whatever shape it uses and guarantees only the middle 80%, and it fills a

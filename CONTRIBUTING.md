@@ -13,12 +13,11 @@ Rust (stable, 2024 edition), and [Bun](https://bun.sh) if you're touching
 ```sh
 git clone https://github.com/eth0net/manaweb
 cd manaweb
-prek install
+just hooks
 cargo test
 ```
 
-`just hooks` installs them. [prek](https://github.com/j178/prek) runs what CI
-runs — `cargo fmt`, a
+[prek](https://github.com/j178/prek) runs what CI runs — `cargo fmt`, a
 warning-free `cargo clippy --all-targets --all-features`, `cargo test`,
 `biome`, `tsc`, `bun test`, `typos`, the prose check and the sign-off check —
 on commit and push, so a red build costs no round trip. The Rust and
@@ -48,12 +47,12 @@ hand, since they pull ~78MB from a free service:
 
 ```sh
 cargo run --release -p manaweb-scryfall --example stream  # parse only
-just sync                                                    # into the cache
+just sync-cards                                          # into the cache
 ```
 
-Keep the bulk file and pass it to `just sync` as an argument, so iterating
-doesn't re-download it. `just catalog` then builds the client artifact from
-whatever the cache holds, and needs no network at all.
+Keep the bulk file and pass it to `just sync-cards` as an argument, so
+iterating doesn't re-download it. `just build-catalog` then builds the client
+artifact from whatever the cache holds, and needs no network at all.
 
 ## Commits
 

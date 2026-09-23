@@ -3,7 +3,7 @@
 The client: TypeScript and React, bundled by Vite, run with Bun. Deployed to
 Cloudflare Pages from the repo on commit.
 
-    just client   # the dev server, hot reloading
+    just serve-client   # the dev server, hot reloading
     just ts       # what CI runs: biome, tsc, bun test, vite build
 
 The catalog comes from the other origin, so `just serve` has to be running

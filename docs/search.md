@@ -257,7 +257,7 @@ unmatched rather than as zero, and say so.
 
 ### Held to theirs
 
-`just check-scryfall-search` puts the same query to their API and to our
+`just scryfall-search` puts the same query to their API and to our
 catalog and compares the names. Outside `check`, because it needs their
 service and answers a question about the implementation rather than about a
 commit. It is how "borrow the syntax" stays true rather than becoming

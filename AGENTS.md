@@ -221,7 +221,7 @@ backend:
    and drained into records at whatever the PDS will take. Measured end to end
    against a limited one. Deployed to Pages, reading the catalog from the
    bucket it is uploaded to. Search speaks most of Scryfall's syntax, held to
-   their own answers by `just check-scryfall-search`; a service worker holds
+   their own answers by `just scryfall-search`; a service worker holds
    the shell offline and `web/public/_headers` carries the CSP.
 6. **Done** — fixture records seeding a dev account without the UI, as a
    directory of JSON named by collection and record key, and `just seed`
