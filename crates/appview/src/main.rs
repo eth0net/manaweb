@@ -205,19 +205,23 @@ async fn refresh(
     let bulk = client.bulk_data(BulkKind::DefaultCards).await?;
     if cards::last_synced(pool, &bulk.kind).await?.as_deref() == Some(&bulk.updated_at) {
         tracing::info!(version = %bulk.updated_at, "cache is current");
-        return Ok(());
+    } else {
+        tracing::info!(version = %bulk.updated_at, size = bulk.compressed_size, "syncing");
+        let mut stream = client.download(&bulk).await?;
+        let report = cards::replace(pool, &bulk, &mut stream).await?;
+        tracing::info!(
+            printings = report.written,
+            cards = report.cards,
+            skipped = report.skipped,
+            "synced"
+        );
     }
 
-    tracing::info!(version = %bulk.updated_at, size = bulk.compressed_size, "syncing");
-    let mut stream = client.download(&bulk).await?;
-    let report = cards::replace(pool, &bulk, &mut stream).await?;
-    tracing::info!(
-        printings = report.written,
-        cards = report.cards,
-        skipped = report.skipped,
-        "synced"
-    );
-
+    // Outside the check above, because what it answers is whether the cache
+    // is current and what has to be true is that the bucket is. An upload
+    // that failed after its sync committed would otherwise wait for Scryfall
+    // to publish again before anything tried it a second time. Sending what
+    // the bucket already holds costs a listing.
     export(pool, &settings.catalog).await?;
     settings.upload().await?;
 
