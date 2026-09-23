@@ -3,6 +3,9 @@
 //! Three jobs, split because the pull is hours and the rest is minutes:
 //! `pull` fills a directory with artwork images, `hash` turns them into the
 //! store the export reads, and `measure` reports what a hash retrieves.
+//!
+//! Each takes the cache and the image directory, then `pull` and `measure`
+//! take how many artworks to stop at and `hash` takes where the store goes.
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -34,24 +37,24 @@ async fn run() -> Result<()> {
     let command = args.next().unwrap_or_default();
     let db = args.next().unwrap_or_else(|| "manaweb.db".into());
     let dir = args.next().unwrap_or_else(|| "scryfall/art".into());
-    // Whatever the command has a use for: how many artworks to stop at, or
-    // where the store goes.
     let rest = args.next();
-    let limit: usize = rest
-        .as_deref()
-        .and_then(|limit| limit.parse().ok())
-        .unwrap_or(usize::MAX);
-    let store = rest.unwrap_or_else(|| STORE.into());
 
     let pool = manaweb_scan::open(&db).await?;
     let mut artworks = artwork::all(&pool).await?;
     tracing::info!(artworks = artworks.len(), "artworks in the cache");
-    artworks.truncate(limit);
 
+    // The fourth argument is a count to one command and a path to another, so
+    // each reads it rather than both reading it as both.
     match command.as_str() {
-        "pull" => pull(&artworks, &dir).await,
-        "hash" => write(&artworks, &dir, Path::new(&store)),
-        "measure" => measure(&artworks, &dir),
+        "pull" => {
+            artworks.truncate(limit(rest.as_deref()));
+            pull(&artworks, &dir).await
+        }
+        "hash" => write(&artworks, &dir, Path::new(rest.as_deref().unwrap_or(STORE))),
+        "measure" => {
+            artworks.truncate(limit(rest.as_deref()));
+            measure(&artworks, &dir)
+        }
         other => {
             tracing::error!("no such command: {other:?} (pull, hash, measure)");
             Ok(())
@@ -88,6 +91,12 @@ async fn pull(artworks: &[manaweb_scan::Artwork], dir: &str) -> Result<()> {
 
 /// Where the store lands unless told otherwise, beside the images it covers.
 const STORE: &str = "scryfall/hashes";
+
+/// How many artworks to stop at, everything being the default.
+fn limit(arg: Option<&str>) -> usize {
+    arg.and_then(|count| count.parse().ok())
+        .unwrap_or(usize::MAX)
+}
 
 /// Hashes what the pull fetched, into the store the export publishes from.
 ///
