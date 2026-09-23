@@ -59,8 +59,8 @@ impl Store {
     /// # Errors
     ///
     /// Fails on anything this build would otherwise read as hashes: a header
-    /// it does not recognize, a different count per artwork, or a trailing
-    /// entry cut short.
+    /// it does not recognize, a different count per artwork, an entry cut
+    /// short, or entries that are not in ascending order.
     pub fn read(bytes: &[u8]) -> Result<Self> {
         let header = bytes.get(..HEADER).ok_or(Error::Scan("no header"))?;
         if header[..MAGIC.len()] != MAGIC {
@@ -79,10 +79,18 @@ impl Store {
         }
 
         let mut held = BTreeMap::new();
+        let mut last: Option<[u8; KEY]> = None;
         for entry in rest.as_chunks::<ENTRY>().0 {
             let Some((id, words)) = entry.split_first_chunk::<KEY>() else {
-                continue;
+                return Err(Error::Scan("an entry is cut short"));
             };
+            // Written in order, and a duplicate would take the place of what
+            // came before it, so reading one back would lose an artwork.
+            if last.is_some_and(|last| last >= *id) {
+                return Err(Error::Scan("entries out of order"));
+            }
+            last = Some(*id);
+
             let mut hashes = [0u64; HASHES];
             for (hash, word) in hashes.iter_mut().zip(words.as_chunks::<8>().0) {
                 *hash = u64::from_le_bytes(*word);
