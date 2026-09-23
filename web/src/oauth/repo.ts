@@ -30,6 +30,15 @@ export type Write =
   | { action: "update"; collection: string; rkey: string; value: object }
   | { action: "delete"; collection: string; rkey: string };
 
+// A failure the PDS named, so retrying it gets the same answer. A connection
+// that never reached one is not this, whatever class the fetch stack threw.
+export class Verdict extends Error {
+  constructor(message: string, named: string) {
+    super(message);
+    this.name = named;
+  }
+}
+
 // A refusal that says when to come back, which a paced job needs and a single
 // write can ignore.
 export class Refused extends Error {
@@ -82,9 +91,8 @@ async function unwrap<T>(response: Response, nsid: string): Promise<T> {
   const message = `${nsid}: ${said?.message ?? response.status}`;
   if (response.status === 429) throw new Refused(message, after(response));
 
-  const failure = new Error(message);
-  if (said?.error) failure.name = said.error;
-  throw failure;
+  if (said?.error) throw new Verdict(message, said.error);
+  throw new Error(message);
 }
 
 // Where a write landed, parallel to the writes that made it. A delete carries

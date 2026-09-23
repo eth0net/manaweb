@@ -13,6 +13,7 @@ import {
   Refused,
   remove,
   rkey,
+  Verdict,
   type Write,
 } from "../oauth/repo";
 import { drain, index, landed, owed, PART, pack, without } from "./part";
@@ -418,7 +419,7 @@ function cost(writes: Write[]): number {
 }
 
 function named(failure: unknown): boolean {
-  return failure instanceof Error && failure.name !== "Error";
+  return failure instanceof Verdict;
 }
 
 function reason(failure: unknown): string {
