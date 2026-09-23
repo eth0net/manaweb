@@ -60,6 +60,12 @@ Unresolved, not permission.
 - Image rules bind the UI: don't crop or cover the copyright or artist name,
   don't distort or recolor, no watermarks, and `art_crop` needs artist and
   copyright shown in the same interface.
+- Rate limits are on `api.scryfall.com`; "the direct file origins located at
+  *.scryfall.io do not have rate limits". Caching what we fetch is asked for,
+  "at least for 24 hours", so an image cache is the client's own copies under
+  a budget; serving those images from our bucket is the republishing clause.
+- Resolving a large number of images must come from the bulk files rather than
+  per-card calls, which is where every URL we build already comes from.
 - Don't imply Scryfall endorsement.
 
 **EDHREC** is stricter again — personal noncommercial use, no automated
@@ -71,6 +77,10 @@ must be our own compute rather than access to someone else's data.
 ## References
 
 - [WotC Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy)
-- [Scryfall Terms of Service](https://scryfall.com/docs/terms)
+- [Scryfall API documentation](https://scryfall.com/docs/api) — the data and
+  image guidelines, quoted above; the limits are on
+  [its own page](https://scryfall.com/docs/api/rate-limits)
+- [Scryfall Terms of Service](https://scryfall.com/docs/terms) — the site's
+  community rules, which is a different document
 - [EDHREC Terms of Use](https://edhrec.com/terms) — no automated queries,
   personal noncommercial use only
