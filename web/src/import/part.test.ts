@@ -7,7 +7,7 @@ import {
   stack,
 } from "../collection/cards";
 import { BYTES, type Held, type Result } from "../oauth/repo";
-import { drain, index, landed, owed, PART, pack, without } from "./part";
+import { drain, index, key, landed, owed, PART, pack, without } from "./part";
 import type { Receipt } from "./receipt";
 
 const NOW = "2026-09-15T00:00:00.000Z";
@@ -113,7 +113,7 @@ test("an entry matching a card held joins it rather than starting one", () => {
 });
 
 // Two devices draining at once would otherwise write the same key twice.
-test("a create leaves the key to the server", () => {
+test("a card create leaves the key to the server", () => {
   const writes = drain(part({ ...of, entries: many(2) }), new Map(), NOW);
   const made = writes.filter((one) => one.action === "create");
   expect(made).toHaveLength(2);
@@ -225,7 +225,7 @@ function parts(...each: Owned[][]): Held<Receipt>[] {
   }));
 }
 
-const key = stack(copy);
+const identity = stack(copy);
 
 // `owed` counts entries; these tests are about the copies inside them.
 function copies(held: Held<Receipt>[]): number {
@@ -243,7 +243,7 @@ function copies(held: Held<Receipt>[]): number {
 test("a copy taken off a stack leaves the rest of the part alone", () => {
   const { writes, left } = without(
     parts([{ ...copy, quantity: 3 }, other]),
-    key,
+    identity,
     1,
   );
 
@@ -254,7 +254,11 @@ test("a copy taken off a stack leaves the rest of the part alone", () => {
 });
 
 test("taking every copy drops the entry", () => {
-  const { left } = without(parts([{ ...copy, quantity: 2 }, other]), key, 2);
+  const { left } = without(
+    parts([{ ...copy, quantity: 2 }, other]),
+    identity,
+    2,
+  );
   expect(copies(left)).toBe(1);
   expect(left[0]?.value.entries).toEqual([other]);
 });
@@ -263,7 +267,7 @@ test("taking every copy drops the entry", () => {
 test("copies are taken across as many parts as hold them", () => {
   const { writes, left } = without(
     parts([{ ...copy, quantity: 2 }], [{ ...copy, quantity: 2 }]),
-    key,
+    identity,
     3,
   );
 
@@ -272,7 +276,7 @@ test("copies are taken across as many parts as hold them", () => {
 });
 
 test("a part emptied of everything is dropped rather than left saying nothing", () => {
-  const { writes, left } = without(parts([copy]), key, 1);
+  const { writes, left } = without(parts([copy]), identity, 1);
   expect(writes).toEqual([
     { action: "delete", collection: "app.manaweb.import", rkey: "p0" },
   ]);
@@ -280,12 +284,42 @@ test("a part emptied of everything is dropped rather than left saying nothing", 
 });
 
 test("a stack no part holds is no write at all", () => {
-  const { writes, left } = without(parts([other]), key, 1);
+  const { writes, left } = without(parts([other]), identity, 1);
   expect(writes).toHaveLength(0);
   expect(copies(left)).toBe(1);
 });
 
 test("asking for more copies than are there takes what is there", () => {
-  const { left } = without(parts([{ ...copy, quantity: 2 }]), key, 9);
+  const { left } = without(parts([{ ...copy, quantity: 2 }]), identity, 9);
   expect(copies(left)).toBe(0);
+});
+
+// The part's key is what makes a re-send collide with what the PDS already
+// took rather than write those cards a second time.
+test("a part is keyed by what it holds", async () => {
+  const one: Receipt = { ...of, entries: many(2) };
+  expect(await key(one)).toBe(await key({ ...one, entries: many(2) }));
+});
+
+test("two parts of one file are keyed apart", async () => {
+  const cut = pack(many(PART + 1), of);
+  const keys = await Promise.all(cut.map(key));
+
+  expect(cut.length).toBeGreaterThan(1);
+  expect(new Set(keys).size).toBe(cut.length);
+});
+
+// Or a second import of the same cards would collide with the first and the
+// upload would stop instead of running.
+test("the same cards out of another file are keyed apart", async () => {
+  const mine: Receipt = { ...of, entries: many(2) };
+
+  expect(await key(mine)).not.toBe(await key({ ...mine, digest: "sha256-y" }));
+});
+
+// A record key is 1 to 512 of these and never "." or "..".
+test("a part's key is one a repo will take", async () => {
+  expect(await key({ ...of, entries: many(2) })).toMatch(
+    /^[A-Za-z0-9._~:-]{1,512}$/,
+  );
 });

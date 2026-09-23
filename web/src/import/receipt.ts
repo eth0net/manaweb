@@ -17,16 +17,20 @@ export async function digest(stacks: Owned[]): Promise<string> {
     .sort()
     .join("\n");
 
+  return `sha256-${await sha(lines)}`;
+}
+
+// SHA-256 as hex. Exported because a part's record key is one too, over what
+// the part holds rather than over the file.
+export async function sha(of: string): Promise<string> {
   const sum = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(lines),
+    new TextEncoder().encode(of),
   );
 
-  const hex = [...new Uint8Array(sum)]
+  return [...new Uint8Array(sum)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
-
-  return `sha256-${hex}`;
 }
 
 // Every import already taken. Few enough to read whole, and read once: an

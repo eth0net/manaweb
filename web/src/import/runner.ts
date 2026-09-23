@@ -16,7 +16,7 @@ import {
   Verdict,
   type Write,
 } from "../oauth/repo";
-import { drain, index, landed, owed, PART, pack, without } from "./part";
+import { drain, index, key, landed, owed, PART, pack, without } from "./part";
 import { IMPORTED, type Receipt } from "./receipt";
 import { clear, type Job, load, save } from "./store";
 
@@ -70,6 +70,9 @@ let report: ((written: Stack[]) => void) | null = null;
 // Parts the repo holds, newest read last. The repo is the truth and this is
 // what saves asking it again between every write.
 let pending: Held<Receipt>[] = [];
+// Every key under the collection as of the last listing, receipts included,
+// which is what says whether a call that never answered landed anyway.
+let taken = new Set<string>();
 // The cards inside them, for the collection to show. Recomputed rather than
 // derived on read, so a subscriber gets one stable value per change.
 let waiting: Owned[] = [];
@@ -222,11 +225,30 @@ async function upload(
   announce({ at: "uploading", done: sent(job), total: job.total });
   if (Date.now() < job.dueAt) return;
 
+  // A call whose answer never came may have landed anyway, and a part is keyed
+  // by what it holds, so the repo says which did. Dropping those is what lets
+  // the retry finish the upload instead of colliding with itself.
+  if (job.misses > 0) {
+    if (!(await refresh(now))) return;
+    if (job.receipt && taken.has(await key(job.receipt))) job.receipt = null;
+
+    const keyed = await Promise.all(
+      job.parts.map(async (one) => ({ one, held: taken.has(await key(one)) })),
+    );
+    job.parts = keyed.filter((each) => !each.held).map((each) => each.one);
+    job.misses = 0;
+
+    if (!job.receipt && job.parts.length === 0) {
+      await keep(job, mine);
+      return;
+    }
+  }
+
   const taking = job.receipt ? [job.receipt] : job.parts.slice(0, room(job));
 
   let applied: Applied;
   try {
-    applied = await applyWrites(now, taking.map(part));
+    applied = await applyWrites(now, await Promise.all(taking.map(part)));
   } catch (failure) {
     await refused(job, mine, failure);
     return;
@@ -246,9 +268,15 @@ async function upload(
   announce({ at: "uploading", done: sent(job), total: job.total });
 }
 
-// No key: a part is read back by listing, never addressed, so the server picks.
-function part(value: Receipt): Write {
-  return { action: "create", collection: IMPORTED, value };
+// Keyed by its own contents rather than left to the server, so a re-send is
+// refused rather than written twice — see `key`.
+async function part(value: Receipt): Promise<Write> {
+  return {
+    action: "create",
+    collection: IMPORTED,
+    rkey: await key(value),
+    value,
+  };
 }
 
 function room(job: Job): number {
@@ -362,6 +390,7 @@ async function refresh(now: OAuthSession): Promise<boolean> {
       .filter((one) => size(one.value) === 0 && digests.has(one.value.digest))
       .reduce((sum, one) => sum + (one.value.stacks ?? 0), 0);
 
+    taken = new Set(found.map((one) => rkey(one.uri)));
     holding(left);
     return true;
   } catch {

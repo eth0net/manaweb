@@ -13,13 +13,28 @@ import {
   rkey,
   type Write,
 } from "../oauth/repo";
-import { IMPORTED, type Receipt } from "./receipt";
+import { IMPORTED, type Receipt, sha } from "./receipt";
 
 // A drain is the part's writes plus the one that retires the part, and
 // `applyWrites` takes two hundred. Bytes bind first only where the cards carry
 // full notes and histories, so the packer measures as well as counts.
 export const PART = 199;
 const ROOM = BYTES * 0.85;
+
+// How much of each hash the key takes. Half of one and half of the other,
+// which is a name short enough to read and still far past collidable.
+const KEY = 16;
+
+// A part's record key, out of what the part holds.
+//
+// `applyWrites` mints a key for a create, so a part re-sent after its answer
+// was lost landed a second copy of those cards. Keyed by its own contents, the
+// re-send collides with what is already there and the call fails whole, which
+// is a stop somebody can see rather than a duplicate nobody can.
+export async function key(part: Receipt): Promise<string> {
+  const held = await sha(JSON.stringify(part.entries ?? []));
+  return `${part.digest.slice("sha256-".length, "sha256-".length + KEY)}-${held.slice(0, KEY)}`;
+}
 
 // A file as records the repo will take now, rather than over the hours its
 // cards need. Every part carries the same digest, so what is left of an import
