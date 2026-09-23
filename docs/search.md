@@ -24,8 +24,8 @@ nothing.
 
 | | cards | printings | rank |
 |---|---|---|---|
-| cards | 34,244 | 102,379 | first |
-| tokens, emblems | 1,077 | 3,244 | second |
+| cards | 34,503 | 103,309 | first |
+| tokens, emblems | 1,090 | 3,295 | second |
 | art series | 2,243 | 2,650 | third |
 
 Art series carry their own `oracle_id`, so grouping alone would leave them
@@ -82,10 +82,10 @@ free:
 
 - **Ungrouped**, a row per printing, is a walk of the runs already built.
 - **By card** is what it does now.
-- **By art** needs `illustration_id`, which Scryfall carries and the cache
-  doesn't parse. It shouldn't ship as an id either: a UUID per paper printing
-  is about 3.9MB raw where a dense group number is ~540KB, and nothing needs to
-  *name* an illustration — only to know which printings share one.
+- **By art** groups on the art column the printings file already carries, a
+  dense group number rather than an id: nothing needs to *name* an
+  illustration, only to know which printings share one. The client reads past
+  that column today.
 
 A card page wants the larger art, every printing, and the full details. All of
 that is in the artifact except oracle text, which is the opt-in part above:
@@ -246,9 +246,10 @@ came back, so it lifts the cap off the scan and puts it on the result.
 Ordering by rarity or release reads the representative printing, being the one
 the row already shows.
 
-Wanting a part it doesn't have: `o:` and `kw:` need text, `usd:` needs prices
-(Phase 2), `f:` needs legality, and `lang:` is only as good as the languages
-below.
+Wanting a part it doesn't have: `o:` needs text, `usd:` needs prices (Phase
+2), `f:` needs legality, and `lang:` is only as good as the languages below.
+`kw:` wants none of them — keywords ride in the base pair and no term reads
+them yet.
 
 **`pow` and `tou` don't fully compare.** They arrive as the `stats` string, and
 Tarmogoyf is `*/1+*` — so a numeric filter has to treat a non-numeric power as

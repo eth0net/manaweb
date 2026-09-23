@@ -6,11 +6,12 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
 
 ## Bulk data and the cache
 
-- Card cache from **Default Cards** (~78MB compressed), and the client resolves
-  anything missing from it directly against Scryfall's API. Their CORS policy
-  is `access-control-allow-origin: *` with a 48-hour `cache-control`, so a
-  browser can fetch a single printing and cache it in IndexedDB permanently.
-  Each exotic card is fetched once per device, ever.
+- Card cache from **Default Cards** (~78MB compressed). What it omits is for
+  the client to resolve against Scryfall's API, a printing at a time into
+  IndexedDB: CORS is `access-control-allow-origin: *` with a 48-hour
+  `cache-control`, so an exotic card would cost one fetch per device, ever.
+  **Not built** — nothing in `web/` calls their API, and everything below
+  about non-English printings rests on it.
 - That means **All Cards (~392MB) isn't needed server-side for v0**. Default
   Cards omits most non-English printings, which was the argument for the big
   file; on-demand client resolution covers them instead, and the server DB
@@ -220,14 +221,16 @@ at sync time, so search needs no window functions and no `bm25` gymnastics.
 Two files under one version. Positional rows with their column names in a
 header, written uncompressed for a CDN to compress.
 
-| | rows | uncompressed | brotli |
-|---|---|---|---|
-| cards | 37,821 | 4.64MB | 1.29MB |
-| prints | 108,883 | 7.89MB | 2.73MB |
+| | rows | uncompressed |
+|---|---|---|
+| cards | 37,836 | 4.76MB |
+| prints | 109,254 | 8.16MB |
 
-Measured 2026-09-18: 4.01MB over the wire, at the top of the 4-5MB target in
-[`architecture.md`](architecture.md). It grows with the game, so treat the
-target as the thing to hold and this as the last time anyone looked.
+Rows and bytes off the manifest of the 2026-09-22 sync. Compressed it is the
+4.19MB measured two days earlier and unchanged since, near the top of the
+4-5MB target in [`architecture.md`](architecture.md). It grows with the game,
+so treat the target as the thing to hold and this as the last time anyone
+looked.
 
 **Printings are grouped by card, in the cards file's order**, so a card's
 printings are the run of `printings` rows where the preceding counts end, and
@@ -267,9 +270,9 @@ client.
 **Battles keep their defense on `card_faces`**, so only two cards carry one at
 the top level. Inside the fold it costs nothing, so it stays.
 
-Left out: oracle text, keywords, legality, frame and border color, and a
-printing's own release date — the set carries one. Oracle text is the third file
-when decks arrive.
+Left out: oracle text, legality, frame and border color, and a printing's own
+release date — the set carries one. Oracle text is the third file when decks
+arrive.
 
 ## What to cache, and when
 
@@ -280,7 +283,7 @@ to hold it.
 
 | part | raw | brotli | when |
 |---|---|---|---|
-| cards, prints | 12.53MB | 4.01MB | always |
+| cards, prints | 12.92MB | 4.19MB | always |
 | text — oracle text | 5.70MB | 0.57MB | opt-in: offline viewing, text search |
 | names, per language | | ~300KB each | opt-in: chosen at onboarding |
 | art | unbounded | unbounded | opt-in, per card, the service worker's |
@@ -292,15 +295,15 @@ which is small in absolute terms and still a choice worth offering.
 ## Three features are waiting on one decision
 
 Faces block agreeing with Scryfall on a two-sided card, oracle text blocks
-`o:` and `kw:`, and an illustration group per printing blocks the scanner:
-its whole approach is art narrowing to the printings that share one, with the
-collector line picking among those. Each asks the same thing — base pair, or
-opt-in part — and answering it three times is how a format stops cohering.
+`o:`, and an illustration group per printing blocks the scanner: its whole
+approach is art narrowing to the printings that share one, with the collector
+line picking among those. Each asks the same thing — base pair, or opt-in
+part — and answering it three times is how a format stops cohering.
 
 Measured 2026-09-20, each built as the file it would be and compressed the way
 the CDN compresses:
 
-| candidate | rows | raw | brotli | on a 4.01MB base |
+| candidate | rows | raw | brotli | on the base as it then was |
 |---|---|---|---|---|
 | faces, the fields the rules read | 3,295 cards | 0.67MB | 0.10MB | +2.5% |
 | illustration group | 108,883 printings | 0.63MB | 0.04MB | +1.0% |
@@ -391,10 +394,10 @@ illustration index stays the size it is, and only the prints file multiplies —
 **The scanner does not need them anyway.** What it reads off a card is the
 art, the set code, the collector number and the language glyph, and those
 three together name a printing outright. Turning that name into an id is one
-call to Scryfall, which is already how a non-English printing is resolved
-today and already cached per device. A thousand scanned Japanese cards is a
-hundred seconds of that, once, against fourteen megabytes every user would
-carry whether or not they own a single one.
+call to Scryfall, the same per-device path a non-English printing takes above
+and the same one nothing has built. A thousand scanned Japanese cards is a
+hundred seconds of it, once, against fourteen megabytes every user would carry
+whether or not they own a single one.
 
 **So a language pack, and the useful one is printings rather than text.** Each
 major language runs 15,000 to 62,000 paper printings, so Japanese comes to
@@ -439,8 +442,8 @@ query over the same part, and free once someone has it.
 **A language pack needs All Cards.** Default Cards carries 2,635 non-English
 paper printings across 1,360 cards — 2.4% of printings, so there is no language
 data in it to ship. Until All Cards (~392MB) is ingested, a language choice
-resolves per card from Scryfall's API into IndexedDB, which is already what
-happens for a non-English printing. A built pack is the better answer once All
+would resolve per card from Scryfall's API into IndexedDB, on the path at the
+top of this file that nothing has built. A pack is the better answer once All
 Cards lands, being one fetch rather than thousands.
 
 **Art is different in kind**: not a file we build but Scryfall's CDN per card,

@@ -378,8 +378,8 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
     .await?;
     let set_index = index(sets.iter().map(|set| set.0.clone()));
 
-    // 2,537 artists over 108,273 printings, so a table beats repeating them.
-    // Scryfall sends an empty artist on 794 printings, which is no artist.
+    // 2,557 artists over 109,254 printings, so a table beats repeating them.
+    // Scryfall sends an empty artist on 750 printings, which is no artist.
     let artists = common_first(pool, ARTISTS).await?;
     let artist_index = index(artists.iter().cloned());
 

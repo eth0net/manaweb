@@ -187,8 +187,9 @@ deploy takes the whole of the last one rather than expiring entries.
 ### What stays in memory, and what is fetched when asked
 
 Bytes on the device are not the constraint; what the rows cost once parsed is.
-Measured 2026-09-21: the pair is 12.5MB stored and 88MB resident, because
-every row becomes a JavaScript array of JavaScript strings. Roughly five times
+The pair is 12.9MB stored, and measured at 88MB resident on 2026-09-21 when it
+was 12.5MB, because every row becomes a JavaScript array of JavaScript
+strings. Roughly five times
 its own size for the cards, six for the printings, and a further 19MB for the
 name index built over them.
 
@@ -197,9 +198,11 @@ typed arrays: set, rarity, layout, language, finishes and the flag word come
 to 1.1MB across every printing, against 46.5MB for the same rows as objects.
 Holding the strings beside them as one run of UTF-8 bytes with an offset array
 brings that file to 5.8MB and the cards, which are the same shape, to 4.4MB.
-The pair is then smaller in memory than the 12.4MB it occupies on disk, and
-filtering gets quicker rather than slower because the hot loop stops chasing
-pointers.
+The pair is then smaller in memory than the file it came from, and filtering
+gets quicker rather than slower because the hot loop stops chasing pointers.
+Those figures were taken against the same 2026-09-21 pair; faces, keywords and
+the art column have been added since, and only a browser can say what they
+cost resident.
 
 The cost is at load: parsing the file whole and then building columns peaks
 higher than either, so the file is read in slices of rows instead. It is an
@@ -217,9 +220,11 @@ what it scans has to be resident. Everything else is asked for:
 | card text | the card being read | a store, keyed by card |
 | scanning a printing | a lookup per card | a store, keyed by set, number and language |
 
-The last one is what makes scanning every language affordable. Resolving a
-printing is a point lookup, which is what an indexed store is for, so it never
-occupies memory at all — the difference between 206MB resident and none of it.
+The last one is what would make scanning every language affordable, and it is
+the row nothing has built: there is no such store and no call to Scryfall's
+API anywhere in `web/`. Resolving a printing is a point lookup, which is what
+an indexed store is for, so it would never occupy memory at all — the
+difference between 206MB resident and none of it.
 
 `_headers` also carries the CSP. Pages is the only thing that reads that file,
 which would leave the dev server the one place the policy is not enforced, so
@@ -447,7 +452,7 @@ this size and is not bounded by anything either. Deciding what bounds it wants
 a rule about how long a client may be mid-load, which nothing has needed yet.
 
 **The export is built whole before any of it is written.** Both files sit in
-memory as bytes, 13.5MB together, then go to disk and are read back by the
+memory as bytes, 12.9MB together, then go to disk and are read back by the
 upload. That grew with faces and grows with whatever comes next, and a writer
 streaming to the file would make it flat. Worth doing when a part is added,
 not before.

@@ -94,9 +94,10 @@ backend:
   per Scryfall's own guidance.
 - Default Cards omits most non-English printings — 652 Japanese, 9 German — so
   **a CSV import of a non-English collection can't resolve its print ids** and
-  All Cards (392MB) is a v0 need, not a Phase 3 one. Display can wait: the
-  client resolves a printing on demand from Scryfall's API (CORS is `*`, 48h
-  cache-control) into IndexedDB. See `docs/search.md`.
+  All Cards (392MB) is a v0 need, not a Phase 3 one. Display can wait on the
+  client resolving a printing from Scryfall's API (CORS is `*`, 48h
+  cache-control) into IndexedDB, which is planned and unbuilt. See
+  `docs/search.md`.
 - Don't store images or image URIs — hotlink Scryfall's CDN, deriving URLs from
   the card id. Keep `image_status`.
 - **The cache is two tables.** `oracle` holds what the rules see, one row per
