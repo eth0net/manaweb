@@ -156,8 +156,10 @@ release version title body="":
     # Nothing to commit where the manifest already reads this, which is the
     # normal shape when the bump landed with the work.
     @git diff --cached --quiet || git commit -s -m "chore: {{ version }}"
-    @if [ -n "{{ body }}" ]; then \
-        git tag -as v{{ version }} -m "{{ title }}" -m "{{ body }}"; \
+    # `quote` rather than bare interpolation: a message goes through a shell on
+    # its way to the tag, so a backtick or a `$` in one would run.
+    @if [ -n {{ quote(body) }} ]; then \
+        git tag -as v{{ version }} -m {{ quote(title) }} -m {{ quote(body) }}; \
     else \
-        git tag -as v{{ version }} -m "{{ title }}"; \
+        git tag -as v{{ version }} -m {{ quote(title) }}; \
     fi
