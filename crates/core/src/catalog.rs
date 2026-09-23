@@ -73,7 +73,7 @@ const PRINT_FIELDS: [&str; 12] = [
     "printedName",
     "artist",
     "flags",
-    "art",
+    "artwork",
 ];
 
 /// What the cards file says about itself before its rows.
@@ -463,14 +463,14 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<(Artifact, Vec
             printed,
             artist,
             flags,
-            art,
+            artwork,
         ) = row;
         // Unordered rows would write in whatever order the table holds them,
         // which is plausible and wrong.
         if seq.is_none() {
             return Err(Error::CatalogOrder);
         }
-        let art = art.map(|artwork| artworks.number(artwork));
+        let artwork = artwork.map(|artwork| artworks.number(artwork));
         out.row(&(
             id,
             set_index[&set],
@@ -483,7 +483,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<(Artifact, Vec
             printed,
             artist.and_then(|name| artist_index.get(&name).copied()),
             flags,
-            art,
+            artwork,
         ))?;
         count += 1;
     }

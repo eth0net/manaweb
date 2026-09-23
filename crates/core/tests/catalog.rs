@@ -352,7 +352,7 @@ async fn a_printing_with_no_artwork_says_so() {
     let file = read(&built.prints.bytes);
     let fields = file["fields"].as_array().expect("a field list");
 
-    assert_eq!(fields.last().expect("a last field"), "art");
+    assert_eq!(fields.last().expect("a last field"), "artwork");
     assert!(
         rows(&file, "prints")
             .iter()

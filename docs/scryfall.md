@@ -287,11 +287,18 @@ to hold it.
 | text — oracle text | 5.70MB | 0.57MB | opt-in: offline viewing, text search |
 | names, per language | | ~300KB each | opt-in: chosen at onboarding |
 | artwork hashes | 1.57MB | 1.34MB | opt-in: the scanner |
-| art | unbounded | unbounded | opt-in, per card, the service worker's |
+| card images | unbounded | unbounded | opt-in, per card, the service worker's |
 
 Raw matters as much as brotli: one is the download and the other is what the
 device keeps. Text is nearly half again on disk and a seventh on the wire,
 which is small in absolute terms and still a choice worth offering.
+
+Three things share a word otherwise, so each gets its own: a **card image** is
+a face rendered by Scryfall, six sizes of it, hotlinked and never re-served;
+an **artwork** is the illustration alone and the printings that share it,
+which `illustration_id` names and the printings file numbers; the **artwork
+index** is the part above. Scryfall themselves now serve a size called `art`,
+which is why the bare word is no use to us.
 
 ## Three features are waiting on one decision
 
@@ -320,7 +327,8 @@ version.
 are 0.19MB, which puts the download at 4.20MB and leaves the 4-5MB target
 alone. None of them is a feature someone might not want: without faces a
 two-sided card answers no question about its colors or its types, and without
-a group number an art match names a card where a scanner needs a printing.
+a group number an artwork match names a card where a scanner needs a
+printing.
 Only 3,295 cards have faces at all, which is why the dominant class of
 divergence costs a tenth of a megabyte to close.
 
@@ -448,9 +456,14 @@ would resolve per card from Scryfall's API into IndexedDB, on the path at the
 top of this file that nothing has built. A pack is the better answer once All
 Cards lands, being one fetch rather than thousands.
 
-**Art is different in kind**: not a file we build but Scryfall's CDN per card,
-unbounded, and wanting a budget and an eviction policy rather than a manifest
-entry.
+**Card images are different in kind**: not a file we build but Scryfall's CDN
+per card, unbounded, and wanting a budget and an eviction policy rather than a
+manifest entry. Measured 2026-09-23 over three high-resolution English
+printings: 14KB at `small`, 105KB at `normal`, 173KB at `large`, 1.19MB at
+`png`. A four thousand printing collection is therefore 55MB held small and
+410MB held normal, which is the shape of a quality tier rather than a single
+answer. They stay the client's own copies whatever the tier — see
+[`ip.md`](ip.md).
 
 **The manifest names the pair and whatever else the export produced.** An
 entry past the pair is optional, so a client reading a manifest without one
