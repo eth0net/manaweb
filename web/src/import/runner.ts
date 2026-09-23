@@ -158,6 +158,10 @@ async function tick(): Promise<void> {
     }
   } finally {
     stepping = false;
+    // A stop that arrived mid-step is left to the step to record, and three
+    // of its paths return before they write the job down. Recording it here
+    // instead is what keeps the stop from lasting only as long as the tab.
+    if (stopping) await halt();
   }
 }
 
