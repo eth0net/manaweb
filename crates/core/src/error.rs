@@ -1,13 +1,16 @@
+// Every variant with a source interpolates it. The weekly refresh runs
+// unattended and logs `Display`, so a label alone is a failure nobody can act
+// on: which constraint, which card, which errno.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
-    #[error("database error")]
+    #[error("database error: {0}")]
     Sqlx(#[from] sqlx::Error),
 
-    #[error("applying migrations failed")]
+    #[error("applying migrations failed: {0}")]
     Migrate(#[from] sqlx::migrate::MigrateError),
 
-    #[error("reading the card stream failed")]
+    #[error("reading the card stream failed: {0}")]
     Scryfall(#[from] manaweb_scryfall::Error),
 
     /// A full replace that wrote nothing would empty the catalog, so the
@@ -15,10 +18,10 @@ pub enum Error {
     #[error("the card stream yielded no usable cards, so nothing was replaced")]
     EmptySync,
 
-    #[error("serializing the catalog failed")]
+    #[error("serializing the catalog failed: {0}")]
     Json(#[from] serde_json::Error),
 
-    #[error("writing the catalog failed")]
+    #[error("writing the catalog failed: {0}")]
     Io(#[from] std::io::Error),
 
     /// No sync yet, or one from before a migration this build carries.
