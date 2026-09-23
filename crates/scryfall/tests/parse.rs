@@ -177,3 +177,26 @@ async fn colors_sort_into_wubrg_order() {
     colors.sort();
     assert_eq!(colors, [W, U, B, R, G]);
 }
+
+#[tokio::test]
+async fn a_last_line_with_no_newline_still_reads() {
+    let good = LAYOUTS.lines().next().expect("fixture is not empty");
+    assert_eq!(collect(good.to_owned()).await.len(), 1);
+}
+
+// An unattended sync on a 1GB box, so a file that arrives with no newline in
+// it has to stop the read rather than be held whole.
+#[tokio::test]
+async fn a_line_past_the_ceiling_is_refused() {
+    let huge = format!("{{\"id\":\"{}\"", "x".repeat(2 << 20));
+
+    let failure = stream(huge)
+        .try_next()
+        .await
+        .expect_err("a line this long should not be read");
+
+    let manaweb_scryfall::Error::Io(why) = failure else {
+        panic!("wanted an io error, got {failure}");
+    };
+    assert!(why.to_string().contains("over"), "{why}");
+}
