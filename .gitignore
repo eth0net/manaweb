@@ -54,3 +54,6 @@ $RECYCLE.BIN/
 *.swo
 .vscode/*
 !.vscode/extensions.json
+
+# Scryfall artwork, pulled for the scanner index: gigabytes, and derived.
+art/

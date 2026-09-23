@@ -105,6 +105,20 @@ serve bind="127.0.0.1:8080":
 serve-client host="127.0.0.1": deps
     cd web && bun run dev --host {{ host }}
 
+# Pulls at Scryfall's own 100ms and keeps every image, so a rebuild costs the
+# hashing rather than the download. Hours the first time, minutes after.
+[doc('pull the artwork images the scanner index is built from (~4GB)')]
+[group('dev')]
+pull-art dir="art":
+    cargo run --release -p manaweb-scan -- pull {{ db }} {{ dir }}
+
+# What the index retrieves once a query has been through what a camera does to
+# an artwork. Reads whatever `pull-art` has fetched so far.
+[doc('report what a degraded query retrieves from the artwork index')]
+[group('dev')]
+measure-art dir="art":
+    cargo run --release -p manaweb-scan -- measure {{ db }} {{ dir }}
+
 # sync the card cache from Scryfall (~78MB), or from a file already on disk
 [group('dev')]
 sync-cards file="":
