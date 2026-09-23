@@ -106,7 +106,7 @@ impl Manifest {
 const SETTLED: Duration = Duration::from_hours(24);
 
 /// One artifact set, as it went down.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Pruned {
     /// Gone from the bucket, named as the manifest would have.
     pub removed: Vec<String>,
@@ -232,10 +232,17 @@ impl Bucket {
     ///
     /// # Errors
     ///
-    /// Fails if the prefix holds no readable manifest, if the listing is
+    /// Fails if the manifest is there and doesn't parse, if the listing is
     /// refused, or if a delete is.
     pub async fn prune(&self, prefix: &str) -> Result<Pruned> {
-        let manifest = self.s3.get(&key(prefix, MANIFEST)).await?;
+        let manifest = match self.s3.get(&key(prefix, MANIFEST)).await {
+            Ok(manifest) => manifest,
+            // A prefix nothing has published to yet. Sweeping is what makes
+            // room for an upload, so refusing here would leave the first one
+            // with no way through.
+            Err(object_store::Error::NotFound { .. }) => return Ok(Pruned::default()),
+            Err(error) => return Err(error.into()),
+        };
         // A bucket clock running ahead of ours reads as no age at all, which
         // holds everything rather than failing the sweep.
         let stood = SystemTime::now()

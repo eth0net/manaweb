@@ -77,6 +77,19 @@ async fn bucket(objects: Vec<(&'static str, String)>) -> (SocketAddr, Log, Delet
                         .unwrap();
                 }
 
+                // A prefix nothing has published to has no manifest, which
+                // is a 404 rather than an empty body.
+                if uri.ends_with("manifest.json")
+                    && !objects
+                        .iter()
+                        .any(|(key, _)| key.ends_with("manifest.json"))
+                {
+                    return Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(axum::body::Body::empty())
+                        .unwrap();
+                }
+
                 // A listing is a GET on the bucket with the query to say so.
                 let body = if uri.contains("list-type=2") {
                     let mut xml = String::from(
@@ -226,4 +239,17 @@ async fn a_manifest_that_only_just_changed_takes_nothing() {
     assert!(done.removed.is_empty(), "removed: {:?}", done.removed);
     assert!(deleted.lock().unwrap().is_empty());
     assert_eq!(done.kept.len(), 5, "everything held until it settles");
+}
+
+// The first upload to a bucket has to get past the sweep that makes room for
+// it, and there is nothing to make room for yet.
+#[tokio::test]
+async fn a_prefix_that_holds_nothing_yet_prunes_to_nothing() {
+    let (address, _log, deleted) = bucket(vec![]).await;
+
+    let done = client(address).prune("catalog").await.unwrap();
+
+    assert!(done.removed.is_empty());
+    assert!(done.kept.is_empty());
+    assert!(deleted.lock().unwrap().is_empty(), "nothing to delete");
 }
