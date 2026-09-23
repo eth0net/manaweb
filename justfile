@@ -109,14 +109,14 @@ serve-client host="127.0.0.1": deps
 # hashing rather than the download. Hours the first time, minutes after.
 [doc('pull the artwork images the scanner index is built from (~4GB)')]
 [group('dev')]
-pull-art dir="art":
+pull-art dir="local/art":
     cargo run --release -p manaweb-scan -- pull {{ db }} {{ dir }}
 
 # What the index retrieves once a query has been through what a camera does to
 # an artwork. Reads whatever `pull-art` has fetched so far.
 [doc('report what a degraded query retrieves from the artwork index')]
 [group('dev')]
-measure-art dir="art":
+measure-art dir="local/art":
     cargo run --release -p manaweb-scan -- measure {{ db }} {{ dir }}
 
 # sync the card cache from Scryfall (~78MB), or from a file already on disk

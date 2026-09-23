@@ -31,7 +31,7 @@ async fn run() -> Result<()> {
     let mut args = std::env::args().skip(1);
     let command = args.next().unwrap_or_default();
     let db = args.next().unwrap_or_else(|| "manaweb.db".into());
-    let dir = args.next().unwrap_or_else(|| "art".into());
+    let dir = args.next().unwrap_or_else(|| "local/art".into());
     let limit: usize = args
         .next()
         .and_then(|limit| limit.parse().ok())

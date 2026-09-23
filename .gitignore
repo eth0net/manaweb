@@ -11,6 +11,11 @@ web/dist/
 npm-debug.log*
 bun-debug.log*
 
+# Anything this machine holds and the repo does not: pulled artwork, notes on
+# a review, whatever a session leaves behind. One place, so it does not have
+# to be added to a line at a time.
+/local/
+
 # Local data — the DB is a disposable index, never committed
 *.db
 *.db-shm
@@ -54,6 +59,3 @@ $RECYCLE.BIN/
 *.swo
 .vscode/*
 !.vscode/extensions.json
-
-# Scryfall artwork, pulled for the scanner index: gigabytes, and derived.
-art/
