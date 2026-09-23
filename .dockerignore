@@ -1,5 +1,9 @@
 .git
 .github
+# The build stage copies the tree whole, and a cache exported with mode=max
+# keeps every stage, so a local one would ride along in a layer.
+.env
+.env.*
 target
 node_modules
 catalog
