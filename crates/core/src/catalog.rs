@@ -113,20 +113,20 @@ pub struct Artifact {
     /// Filename with the hash in it, so a response can claim to be immutable.
     pub name: String,
     pub rows: usize,
-    pub json: Vec<u8>,
+    pub bytes: Vec<u8>,
 }
 
 impl Artifact {
-    fn new(kind: &str, rows: usize, json: Vec<u8>) -> Self {
+    fn new(kind: &str, ext: &str, rows: usize, bytes: Vec<u8>) -> Self {
         // A cache key, not a signature, so a non-cryptographic hash is
         // enough — it only has to change when the bytes do.
         let mut hasher = DefaultHasher::new();
-        json.hash(&mut hasher);
+        bytes.hash(&mut hasher);
         let hash = format!("{:016x}", hasher.finish());
         Self {
-            name: format!("{kind}.{hash}.json"),
+            name: format!("{kind}.{hash}.{ext}"),
             rows,
-            json,
+            bytes,
         }
     }
 }
@@ -163,7 +163,7 @@ impl<'a> Entry<'a> {
         Self {
             name: &artifact.name,
             rows: artifact.rows,
-            bytes: artifact.json.len(),
+            bytes: artifact.bytes.len(),
         }
     }
 }
@@ -196,7 +196,7 @@ impl Catalog {
         let dir = dir.as_ref();
         fs::create_dir_all(dir).await?;
         for artifact in [&self.cards, &self.prints] {
-            fs::write(dir.join(&artifact.name), &artifact.json).await?;
+            fs::write(dir.join(&artifact.name), &artifact.bytes).await?;
         }
         fs::write(dir.join("manifest.json"), self.manifest()?).await?;
         Ok(())
@@ -350,7 +350,7 @@ async fn build_cards(pool: &SqlitePool, version: &str) -> Result<Artifact> {
         count += 1;
     }
 
-    Ok(Artifact::new("cards", count, out.finish()?))
+    Ok(Artifact::new("cards", "json", count, out.finish()?))
 }
 
 type PrintRow = (
@@ -476,7 +476,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<Artifact> {
         count += 1;
     }
 
-    Ok(Artifact::new("prints", count, out.finish()?))
+    Ok(Artifact::new("prints", "json", count, out.finish()?))
 }
 
 /// Numbers every exportable printing, so the export reads an index rather

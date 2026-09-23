@@ -31,12 +31,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut total = 0;
     for file in [&built.cards, &built.prints] {
-        total += file.json.len();
+        total += file.bytes.len();
         println!(
             "  {:<28} {:>7} rows  {:>6.2}MB",
             file.name,
             file.rows,
-            megabytes(file.json.len()),
+            megabytes(file.bytes.len()),
         );
     }
     println!(

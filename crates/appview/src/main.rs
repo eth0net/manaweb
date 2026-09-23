@@ -172,7 +172,7 @@ async fn export(pool: &SqlitePool, dir: &Path) -> manaweb_core::Result<String> {
     tracing::info!(
         cards = built.cards.rows,
         prints = built.prints.rows,
-        bytes = built.cards.json.len() + built.prints.json.len(),
+        bytes = built.cards.bytes.len() + built.prints.bytes.len(),
         "catalog built"
     );
     Ok(built.version)

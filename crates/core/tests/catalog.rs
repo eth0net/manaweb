@@ -87,7 +87,7 @@ async fn each_file_names_its_own_columns() {
     let built = catalog::build(&pool).await.unwrap();
 
     for (artifact, key) in [(&built.cards, "cards"), (&built.prints, "prints")] {
-        let file = read(&artifact.json);
+        let file = read(&artifact.bytes);
         assert_eq!(file["version"], built.version);
 
         let fields = file["fields"].as_array().expect("fields should be listed");
@@ -106,8 +106,8 @@ async fn each_file_names_its_own_columns() {
 async fn printings_group_into_the_runs_the_cards_claim() {
     let pool = seeded_with(CARDS).await;
     let built = catalog::build(&pool).await.unwrap();
-    let cards = rows(&read(&built.cards.json), "cards");
-    let prints = rows(&read(&built.prints.json), "prints");
+    let cards = rows(&read(&built.cards.bytes), "cards");
+    let prints = rows(&read(&built.prints.bytes), "prints");
 
     let mut offset = 0;
     for card in &cards {
@@ -162,7 +162,7 @@ async fn a_file_is_named_after_its_contents() {
 #[tokio::test]
 async fn an_ordinary_printing_outranks_its_foil_only_twin() {
     let built = catalog::build(&seeded_with(FOIL_TWIN).await).await.unwrap();
-    let file = read(&built.prints.json);
+    let file = read(&built.prints.bytes);
     let prints = rows(&file, "prints");
     let numbers: Vec<&str> = prints
         .iter()
@@ -170,7 +170,7 @@ async fn an_ordinary_printing_outranks_its_foil_only_twin() {
         .collect();
 
     assert_eq!(numbers, ["329", "329\u{2605}"]);
-    assert_eq!(rows(&read(&built.cards.json), "cards").len(), 1);
+    assert_eq!(rows(&read(&built.cards.bytes), "cards").len(), 1);
 }
 
 /// Power and toughness, loyalty and defense print in the same corner and never
@@ -179,7 +179,7 @@ async fn an_ordinary_printing_outranks_its_foil_only_twin() {
 async fn one_column_carries_power_loyalty_or_defense() {
     let pool = seeded_with(SPARSE).await;
     let built = catalog::build(&pool).await.unwrap();
-    let file = read(&built.cards.json);
+    let file = read(&built.cards.bytes);
 
     for row in rows(&file, "cards") {
         let (power, toughness, loyalty): (Option<String>, Option<String>, Option<String>) =
@@ -202,7 +202,7 @@ async fn one_column_carries_power_loyalty_or_defense() {
 #[tokio::test]
 async fn a_legendary_creature_is_flagged_as_a_commander() {
     let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
-    let file = read(&built.cards.json);
+    let file = read(&built.cards.bytes);
     let names: Vec<String> = serde_json::from_value(file["flags"].clone()).unwrap();
     let bit = 1 << names.iter().position(|one| one == "commander").unwrap();
 
@@ -227,7 +227,7 @@ async fn a_legendary_creature_is_flagged_as_a_commander() {
 #[tokio::test]
 async fn flags_survive_as_a_bitmask() {
     let built = catalog::build(&seeded_with(SPARSE).await).await.unwrap();
-    let file = read(&built.cards.json);
+    let file = read(&built.cards.bytes);
     let names: Vec<String> = serde_json::from_value(file["flags"].clone()).unwrap();
     assert_eq!(names, ["reserved", "gameChanger", "commander"]);
 
@@ -237,7 +237,7 @@ async fn flags_survive_as_a_bitmask() {
         .expect("the fixture holds it");
     assert_eq!(cradle[11].as_u64(), Some(0b11));
 
-    let prints = read(&built.prints.json);
+    let prints = read(&built.prints.bytes);
     let flags: Vec<String> = serde_json::from_value(prints["flags"].clone()).unwrap();
     assert_eq!(
         flags,
@@ -250,7 +250,7 @@ async fn flags_survive_as_a_bitmask() {
 async fn finishes_survive_as_a_bitmask() {
     let pool = seeded_with(CARDS).await;
     let built = catalog::build(&pool).await.unwrap();
-    let file = read(&built.prints.json);
+    let file = read(&built.prints.bytes);
     let names: Vec<String> = serde_json::from_value(file["finishes"].clone()).unwrap();
 
     for row in rows(&file, "prints") {
@@ -321,7 +321,7 @@ async fn a_cache_with_no_order_written_is_refused() {
 #[tokio::test]
 async fn printings_of_one_artwork_share_a_group() {
     let built = catalog::build(&seeded_with(FOIL_TWIN).await).await.unwrap();
-    let file = read(&built.prints.json);
+    let file = read(&built.prints.bytes);
 
     let prints = rows(&file, "prints");
     let art: Vec<&Value> = prints.iter().map(|row| &row[11]).collect();
@@ -334,7 +334,7 @@ async fn printings_of_one_artwork_share_a_group() {
 #[tokio::test]
 async fn a_printing_with_no_artwork_says_so() {
     let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
-    let file = read(&built.prints.json);
+    let file = read(&built.prints.bytes);
     let fields = file["fields"].as_array().expect("a field list");
 
     assert_eq!(fields.last().expect("a last field"), "art");
@@ -349,7 +349,7 @@ async fn a_printing_with_no_artwork_says_so() {
 #[tokio::test]
 async fn keywords_are_indexes_into_a_table_of_them() {
     let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
-    let file = read(&built.cards.json);
+    let file = read(&built.cards.bytes);
 
     let table: Vec<&str> = file["keywords"]
         .as_array()
@@ -388,7 +388,7 @@ async fn keywords_are_indexes_into_a_table_of_them() {
 #[tokio::test]
 async fn a_two_faced_card_carries_a_row_for_each_side() {
     let built = catalog::build(&seeded_with(CARDS).await).await.unwrap();
-    let file = read(&built.cards.json);
+    let file = read(&built.cards.bytes);
 
     assert_eq!(
         file["faceFields"],
