@@ -37,4 +37,9 @@ pub enum Error {
     /// column and nothing has refreshed it since.
     #[error("a printing has no export order, so the cache wants re-syncing")]
     CatalogOrder,
+
+    /// Every byte past the header is a valid hash, so a store this build
+    /// cannot place is refused rather than read as retrievals.
+    #[error("the artwork hash store is unreadable: {0}")]
+    Scan(&'static str),
 }

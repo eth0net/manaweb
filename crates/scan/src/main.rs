@@ -1,13 +1,15 @@
 //! Builds and measures the scanner index.
 //!
-//! Two jobs, because the pull is hours and the measurement is minutes: `pull`
-//! fills a directory with artwork images, `measure` reports what a hash
-//! retrieves from it.
+//! Three jobs, split because the pull is hours and the rest is minutes:
+//! `pull` fills a directory with artwork images, `hash` turns them into the
+//! store the export reads, and `measure` reports what a hash retrieves.
 
+use std::path::Path;
 use std::process::ExitCode;
 
+use manaweb_core::scan::{HASHES, Store};
 use manaweb_scan::fetch::Fetcher;
-use manaweb_scan::{Result, artwork, degrade, hash};
+use manaweb_scan::{Artwork, Result, artwork, degrade, hash};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -32,10 +34,14 @@ async fn run() -> Result<()> {
     let command = args.next().unwrap_or_default();
     let db = args.next().unwrap_or_else(|| "manaweb.db".into());
     let dir = args.next().unwrap_or_else(|| "scryfall/art".into());
-    let limit: usize = args
-        .next()
+    // Whatever the command has a use for: how many artworks to stop at, or
+    // where the store goes.
+    let rest = args.next();
+    let limit: usize = rest
+        .as_deref()
         .and_then(|limit| limit.parse().ok())
         .unwrap_or(usize::MAX);
+    let store = rest.unwrap_or_else(|| STORE.into());
 
     let pool = manaweb_scan::open(&db).await?;
     let mut artworks = artwork::all(&pool).await?;
@@ -44,9 +50,10 @@ async fn run() -> Result<()> {
 
     match command.as_str() {
         "pull" => pull(&artworks, &dir).await,
+        "hash" => write(&artworks, &dir, Path::new(&store)),
         "measure" => measure(&artworks, &dir),
         other => {
-            tracing::error!("no such command: {other:?} (pull, measure)");
+            tracing::error!("no such command: {other:?} (pull, hash, measure)");
             Ok(())
         }
     }
@@ -77,6 +84,73 @@ async fn pull(artworks: &[manaweb_scan::Artwork], dir: &str) -> Result<()> {
 
     tracing::info!(held, pulled, failed, "pulled");
     Ok(())
+}
+
+/// Where the store lands unless told otherwise, beside the images it covers.
+const STORE: &str = "scryfall/hashes";
+
+/// Hashes what the pull fetched, into the store the export publishes from.
+///
+/// Whatever is already there is kept, so a set released since the last run
+/// costs its own images rather than all fifty thousand.
+fn write(artworks: &[Artwork], dir: &str, out: &Path) -> Result<()> {
+    let fetcher = Fetcher::new(dir)?;
+    let mut store = match std::fs::read(out) {
+        Ok(bytes) => Store::read(&bytes)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Store::new(),
+        Err(error) => return Err(error.into()),
+    };
+
+    let (mut held, mut hashed, mut absent, mut failed) = (0usize, 0usize, 0usize, 0usize);
+    for (done, artwork) in artworks.iter().enumerate() {
+        let Some(id) = manaweb_core::scan::uuid(&artwork.id) else {
+            tracing::warn!(artwork = artwork.id, "not an illustration id");
+            failed += 1;
+            continue;
+        };
+        if store.get(&id).is_some() {
+            held += 1;
+        } else if !fetcher.holds(artwork) {
+            absent += 1;
+        } else {
+            match image::open(fetcher.path(artwork)) {
+                Ok(image) => {
+                    store.insert(id, entry(&image));
+                    hashed += 1;
+                }
+                // An image that will not decode is one artwork nobody can
+                // scan, which is not worth ending a run over.
+                Err(error) => {
+                    failed += 1;
+                    tracing::warn!(artwork = artwork.id, "{error}");
+                }
+            }
+        }
+        if done % 1000 == 0 {
+            tracing::info!(done, held, hashed, absent, failed, "hashing");
+        }
+    }
+
+    // Written whole and moved into place: a run interrupted part way leaves
+    // the store it started from rather than a prefix of one.
+    let partial = out.with_extension("part");
+    std::fs::write(&partial, store.write())?;
+    std::fs::rename(&partial, out)?;
+
+    tracing::info!(
+        held,
+        hashed,
+        absent,
+        failed,
+        artworks = store.len(),
+        "hashed"
+    );
+    Ok(())
+}
+
+/// One artwork's entry: the hash that measured best, at each inset.
+fn entry(image: &image::DynamicImage) -> [hash::Hash; HASHES] {
+    std::array::from_fn(|at| hash::phash(&degrade::inset(image, INSETS[at])))
 }
 
 /// Hashes everything on disk, then asks what a degraded copy retrieves.
@@ -146,7 +220,7 @@ const QUERIES: usize = 500;
 
 /// A framing error is the one thing a hash does not survive, so an artwork is
 /// also held at the insets a scanner is likeliest to be off by.
-const INSETS: [f32; 4] = [0.0, 0.03, 0.06, 0.09];
+const INSETS: [f32; HASHES] = [0.0, 0.03, 0.06, 0.09];
 
 /// One way of holding an artwork, and the hash a query is turned into.
 struct Kind {

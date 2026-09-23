@@ -17,6 +17,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
+manaweb-core.workspace = true
 manaweb-scryfall.workspace = true
 
 image = { version = "0.25.9", default-features = false, features = ["jpeg"] }

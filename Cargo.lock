@@ -1239,6 +1239,7 @@ name = "manaweb-scan"
 version = "0.9.2"
 dependencies = [
  "image",
+ "manaweb-core",
  "manaweb-scryfall",
  "reqwest",
  "sqlx",

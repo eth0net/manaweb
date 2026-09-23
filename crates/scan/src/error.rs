@@ -12,4 +12,7 @@ pub enum Error {
 
     #[error("reading or writing the image cache failed: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("{0}")]
+    Core(#[from] manaweb_core::Error),
 }
