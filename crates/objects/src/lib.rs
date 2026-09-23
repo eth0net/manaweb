@@ -62,7 +62,7 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Where a bucket is and what opens it.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Config {
     pub endpoint: String,
     pub bucket: String,
@@ -70,6 +70,20 @@ pub struct Config {
     pub secret: String,
     /// R2 ignores this; another S3 will not.
     pub region: String,
+}
+
+// Written out rather than derived, so the secret cannot reach a log through
+// one `{:?}` somebody adds while looking at something else.
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("endpoint", &self.endpoint)
+            .field("bucket", &self.bucket)
+            .field("key_id", &self.key_id)
+            .field("secret", &"<redacted>")
+            .field("region", &self.region)
+            .finish()
+    }
 }
 
 /// What a client fetches first: a version, and an entry per file naming it.
