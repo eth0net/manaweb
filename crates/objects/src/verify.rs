@@ -3,11 +3,13 @@
 //! whatever a Pages project answers for a path it doesn't have — so a checkout
 //! cannot answer for any of them and neither can a test.
 
+use std::collections::BTreeMap;
 use std::error::Error;
 
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN, USER_AGENT};
 use reqwest::{Client, Method, Response};
 use serde::Deserialize;
+use serde_json::Value;
 
 /// Cloudflare's browser integrity check answers a bare client with a 403, so
 /// this says who it is instead.
@@ -19,13 +21,19 @@ const FROM: &str = "https://manaweb.app";
 #[derive(Deserialize)]
 struct Manifest {
     version: String,
-    cards: Part,
-    prints: Part,
+    #[serde(flatten)]
+    parts: BTreeMap<String, Value>,
 }
 
-#[derive(Deserialize)]
-struct Part {
-    name: String,
+impl Manifest {
+    /// Every file the manifest names, so a part added to it is checked
+    /// without this being touched.
+    fn names(&self) -> Vec<String> {
+        self.parts
+            .values()
+            .filter_map(|part| part.get("name")?.as_str().map(str::to_owned))
+            .collect()
+    }
 }
 
 /// What was wrong, in the order it was found. Empty is a pass.
@@ -167,7 +175,7 @@ pub async fn catalog(origin: &str) -> Result<Found, Box<dyn Error>> {
         }
     };
 
-    for name in [&named.cards.name, &named.prints.name] {
+    for name in named.names() {
         let response = client
             .request(Method::HEAD, format!("{base}/{name}"))
             .send()

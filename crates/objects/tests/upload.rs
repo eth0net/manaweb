@@ -82,14 +82,16 @@ async fn holds(holding: Vec<String>, body: String) -> (SocketAddr, Log) {
     (address, log)
 }
 
-/// A catalog directory as `Catalog::write` leaves one.
+/// A catalog directory as `Catalog::write` leaves one, artwork index and all.
 fn exported(dir: &std::path::Path) {
     std::fs::create_dir_all(dir).unwrap();
+    std::fs::write(dir.join("artwork.ghi.bin"), b"\x00\x01").unwrap();
     std::fs::write(dir.join("cards.abc.json"), b"[1]").unwrap();
     std::fs::write(dir.join("prints.def.json"), b"[2]").unwrap();
     std::fs::write(
         dir.join("manifest.json"),
         br#"{"version":"2026-09-16T21:05:54.709+00:00",
+            "artwork":{"name":"artwork.ghi.bin","rows":1,"bytes":2},
             "cards":{"name":"cards.abc.json","rows":1,"bytes":3},
             "prints":{"name":"prints.def.json","rows":1,"bytes":3}}"#,
     )
@@ -117,7 +119,12 @@ async fn the_manifest_goes_last_and_is_the_only_one_not_immutable() {
 
     assert_eq!(
         done.sent,
-        ["cards.abc.json", "prints.def.json", "manifest.json"]
+        [
+            "artwork.ghi.bin",
+            "cards.abc.json",
+            "prints.def.json",
+            "manifest.json"
+        ]
     );
     assert!(done.held.is_empty());
     assert_eq!(done.version, "2026-09-16T21:05:54.709+00:00");
@@ -130,17 +137,23 @@ async fn the_manifest_goes_last_and_is_the_only_one_not_immutable() {
     assert_eq!(
         puts.iter().map(|one| one.path.as_str()).collect::<Vec<_>>(),
         [
+            "/manaweb-static/catalog/artwork.ghi.bin",
             "/manaweb-static/catalog/cards.abc.json",
             "/manaweb-static/catalog/prints.def.json",
             "/manaweb-static/catalog/manifest.json",
         ]
     );
-    for one in &puts {
+
+    // A CDN picks its compression from the type, so hashes labeled as text
+    // are run through brotli every miss for nothing.
+    assert_eq!(puts[0].content_type, "application/octet-stream");
+    for one in &puts[1..] {
         assert_eq!(one.content_type, "application/json", "{}", one.path);
     }
-    assert!(puts[0].cache_control.contains("immutable"));
-    assert!(puts[1].cache_control.contains("immutable"));
-    assert_eq!(puts[2].cache_control, "no-cache");
+    for one in &puts[..3] {
+        assert!(one.cache_control.contains("immutable"), "{}", one.path);
+    }
+    assert_eq!(puts[3].cache_control, "no-cache");
 }
 
 // The service uploads at startup as well as after a sync, and a prune reads
@@ -152,6 +165,7 @@ async fn a_set_that_has_not_moved_rewrites_nothing_at_all() {
     let same = fs::read_to_string(dir.join("manifest.json")).unwrap();
     let (address, seen) = holds(
         vec![
+            "artwork.ghi.bin".to_owned(),
             "cards.abc.json".to_owned(),
             "prints.def.json".to_owned(),
             "manifest.json".to_owned(),
@@ -163,7 +177,7 @@ async fn a_set_that_has_not_moved_rewrites_nothing_at_all() {
     let done = client(address).upload("catalog", &dir).await.unwrap();
 
     assert!(done.sent.is_empty(), "sent: {:?}", done.sent);
-    assert_eq!(done.held.len(), 3);
+    assert_eq!(done.held.len(), 4);
     assert!(
         !seen.lock().unwrap().iter().any(|one| one.method == "PUT"),
         "a settled set is read, never written"
@@ -180,7 +194,10 @@ async fn a_pair_already_there_is_not_sent_again() {
     let done = client(address).upload("catalog", &dir).await.unwrap();
 
     assert_eq!(done.held, ["cards.abc.json"]);
-    assert_eq!(done.sent, ["prints.def.json", "manifest.json"]);
+    assert_eq!(
+        done.sent,
+        ["artwork.ghi.bin", "prints.def.json", "manifest.json"]
+    );
 
     let seen = log.lock().unwrap().clone();
     assert!(

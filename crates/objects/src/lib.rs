@@ -41,6 +41,9 @@ const REVALIDATE: &str = "no-cache";
 
 const MANIFEST: &str = "manifest.json";
 const JSON: &str = "application/json";
+/// Hashes and the like, which a CDN compressing by content type will leave
+/// alone rather than spend on incompressible bytes.
+const BINARY: &str = "application/octet-stream";
 
 /// R2 has no regions, and signing still wants one.
 const REGION: &str = "auto";
@@ -317,7 +320,11 @@ impl Bucket {
     async fn put(&self, key: &Key, body: Vec<u8>, cache: &str) -> Result<()> {
         let bytes = body.len();
         let mut attributes = Attributes::new();
-        attributes.insert(Attribute::ContentType, AttributeValue::from(JSON));
+        let kind = match key.extension() {
+            Some("json") => JSON,
+            _ => BINARY,
+        };
+        attributes.insert(Attribute::ContentType, AttributeValue::from(kind));
         attributes.insert(
             Attribute::CacheControl,
             AttributeValue::from(cache.to_owned()),
