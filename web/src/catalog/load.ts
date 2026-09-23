@@ -28,9 +28,13 @@ export async function load(step: (of: string) => void): Promise<Loaded> {
   );
 
   // Cached only now the pair it names is, or a later offline load would read a
-  // manifest pointing at files this device never fetched.
-  if (current.fresh) await write(MANIFEST, current.bytes);
-  await prune([manifest.cards.name, manifest.prints.name]);
+  // manifest pointing at files this device never fetched. The sweep waits on
+  // the same thing: it keeps what this manifest names, so running it while an
+  // older one is cached takes away the pair that one points at.
+  const held = cards.stored && prints.stored;
+  const named =
+    held && (!current.fresh || (await write(MANIFEST, current.bytes)));
+  if (named) await prune([manifest.cards.name, manifest.prints.name]);
 
   return { catalog, manifest, cached: cards.cached && prints.cached };
 }
@@ -78,13 +82,14 @@ async function readManifest(): Promise<{
 }
 
 // Content-addressed, so a cached file under this name needs no revalidating.
+// `cached` is where these bytes came from and `stored` is whether the disk
+// holds them now, which are the same question only on the way in.
 async function file(
   name: string,
-): Promise<{ bytes: ArrayBuffer; cached: boolean }> {
+): Promise<{ bytes: ArrayBuffer; cached: boolean; stored: boolean }> {
   const cached = await read(name);
-  if (cached) return { bytes: cached, cached: true };
+  if (cached) return { bytes: cached, cached: true, stored: true };
 
   const bytes = await fetchFile(name);
-  await write(name, bytes);
-  return { bytes, cached: false };
+  return { bytes, cached: false, stored: await write(name, bytes) };
 }

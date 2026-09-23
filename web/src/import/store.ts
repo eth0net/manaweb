@@ -29,6 +29,17 @@ function settle<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+// Resolves when the transaction commits, not when the request succeeds: a
+// quota that only bites at commit aborts it after `onsuccess` has fired, so a
+// write awaiting the request alone reports storing what it did not store.
+function committed(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error);
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
 function open(): Promise<IDBDatabase> {
   const request = indexedDB.open(DATABASE, 1);
   request.onupgradeneeded = () => {
@@ -42,8 +53,9 @@ function open(): Promise<IDBDatabase> {
 export async function save(job: Job): Promise<void> {
   const db = await open();
   try {
-    const store = db.transaction(STORE, "readwrite").objectStore(STORE);
-    await settle(store.put(job, job.did));
+    const transaction = db.transaction(STORE, "readwrite");
+    transaction.objectStore(STORE).put(job, job.did);
+    await committed(transaction);
   } finally {
     db.close();
   }

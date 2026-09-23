@@ -17,6 +17,17 @@ function settle<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+// Resolves when the transaction commits, not when the request succeeds: a
+// quota that only bites at commit aborts it after `onsuccess` has fired, so a
+// write awaiting the request alone reports storing what it did not store.
+function committed(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error);
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
 async function open(): Promise<IDBDatabase | null> {
   try {
     const request = indexedDB.open(DATABASE, 1);
@@ -42,14 +53,22 @@ export async function read(name: string): Promise<ArrayBuffer | null> {
   }
 }
 
-export async function write(name: string, bytes: ArrayBuffer): Promise<void> {
+// Says whether the bytes reached the disk, because the manifest is only
+// cached once the pair it names is — see `load`.
+export async function write(
+  name: string,
+  bytes: ArrayBuffer,
+): Promise<boolean> {
   const db = await open();
-  if (!db) return;
+  if (!db) return false;
   try {
-    const store = db.transaction(STORE, "readwrite").objectStore(STORE);
-    await settle(store.put(bytes, name));
+    const transaction = db.transaction(STORE, "readwrite");
+    transaction.objectStore(STORE).put(bytes, name);
+    await committed(transaction);
+    return true;
   } catch {
     // A full disk or a denied quota leaves the catalog working, just uncached.
+    return false;
   } finally {
     db.close();
   }
@@ -67,12 +86,14 @@ export async function prune(keep: string[]): Promise<void> {
   const db = await open();
   if (!db) return;
   try {
-    const store = db.transaction(STORE, "readwrite").objectStore(STORE);
+    const transaction = db.transaction(STORE, "readwrite");
+    const store = transaction.objectStore(STORE);
     const names = await settle(store.getAllKeys());
     const wanted = new Set<IDBValidKey>([...keep, MANIFEST]);
     for (const name of names) {
       if (!wanted.has(name)) store.delete(name);
     }
+    await committed(transaction);
   } catch {
     // Stale files cost space, not correctness.
   } finally {
