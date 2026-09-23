@@ -10,10 +10,28 @@ export interface Entry {
 }
 
 // Fetched first, and the only part re-fetched: the files are immutable.
+//
+// An optional part is absent from an export that had nothing to build it
+// from.
 export interface Manifest {
   version: string;
   cards: Entry;
   prints: Entry;
+  artwork?: Entry;
+}
+
+// Every file the manifest names, whatever it calls them. A part added to the
+// export reaches the sweep and the update check without a client that
+// predates it having to name it.
+export function parts(manifest: Manifest): Entry[] {
+  return Object.values(manifest).filter(
+    (held): held is Entry =>
+      typeof held === "object" &&
+      held !== null &&
+      typeof (held as Entry).name === "string" &&
+      typeof (held as Entry).rows === "number" &&
+      typeof (held as Entry).bytes === "number",
+  );
 }
 
 // Positional rows, in the order each file's own `fields` names them. Kept

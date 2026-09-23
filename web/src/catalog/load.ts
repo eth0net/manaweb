@@ -1,5 +1,5 @@
 import { CATALOG } from "../config";
-import { Catalog, type Manifest } from ".";
+import { Catalog, type Entry, type Manifest, parts } from ".";
 import { MANIFEST, prune, read, write } from "./store";
 
 export interface Loaded {
@@ -34,9 +34,15 @@ export async function load(step: (of: string) => void): Promise<Loaded> {
   const held = cards.stored && prints.stored;
   const named =
     held && (!current.fresh || (await write(MANIFEST, current.bytes)));
-  if (named) await prune([manifest.cards.name, manifest.prints.name]);
+  if (named) await prune(parts(manifest).map((part) => part.name));
 
   return { catalog, manifest, cached: cards.cached && prints.cached };
+}
+
+// An opt-in part, fetched when something needs it rather than with the pair,
+// and cached under its own name like the rest so `load`'s sweep keeps it.
+export async function part(entry: Entry): Promise<ArrayBuffer> {
+  return (await file(entry.name)).bytes;
 }
 
 // From the network only, and deliberately not cached — see `load`.
@@ -44,9 +50,17 @@ export async function latest(): Promise<Manifest> {
   return parse<Manifest>(await fetchFile(MANIFEST, true));
 }
 
-// By filename, not version: one bulk file can rebuild to different bytes.
+// By filename, not version: one bulk file can rebuild to different bytes, and
+// a part can be rebuilt while the pair beside it is not.
 export function same(a: Manifest, b: Manifest): boolean {
-  return a.cards.name === b.cards.name && a.prints.name === b.prints.name;
+  return names(a) === names(b);
+}
+
+function names(manifest: Manifest): string {
+  return parts(manifest)
+    .map((part) => part.name)
+    .sort()
+    .join();
 }
 
 function parse<T>(bytes: ArrayBuffer): T {
