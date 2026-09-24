@@ -93,16 +93,22 @@ mistaking one for the other shears the picture.
 **pHash at four insets, recall@1 99.2%** under every degradation at once —
 misframing, blur, dim light, recompression and rotation. Framing is the single
 one a global hash does not shrug off, which is why an artwork is held at
-several crops rather than at Scryfall's own. Comparing a query against all
-54,585 of them is 0.53ms in plain JavaScript, so WASM is for the detection and
-rectification ahead of the hash rather than for the lookup.
+several crops rather than at Scryfall's own — **and why the query is asked at
+several too.** Holding them costs the file four entries an artwork; asking
+them costs the querier four hashes of one small frame, and it is what brings
+a rotated photograph back, the corners a rotation swings out of the picture
+being the same kind of error as a bad crop. Asking all four framings
+against all 54,585 of them is 1.3ms in plain JavaScript, measured 2026-09-24
+against the published index, and 0.4ms at one — so WASM is for the detection
+and rectification ahead of the hash rather than for the lookup.
 
-The first WASM build owes two more things: `web/public/_headers` allows
-`script-src 'self'`, which refuses WebAssembly until it names
-`'wasm-unsafe-eval'` as well, and the bundle wants `+simd128`.
-`SharedArrayBuffer` is not worth the COOP/COEP headers it needs, which would
-complicate the OAuth popup, and a transferred `ArrayBuffer` already copies
-nothing.
+The first WASM build owes three things. The golden vectors have to run on
+wasm32, which is the target they exist for and the one CI cannot reach today.
+`web/public/_headers` allows `script-src 'self'`, which refuses WebAssembly
+until it names `'wasm-unsafe-eval'` as well. And the bundle wants
+`+simd128`; `SharedArrayBuffer` is not worth the COOP/COEP headers it needs,
+which would complicate the OAuth popup, and a transferred `ArrayBuffer`
+already copies nothing.
 
 **The artifact carries an illustration group per printing**, which is what an
 art match narrows to — see [`scryfall.md`](scryfall.md). The client reads
