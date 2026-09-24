@@ -170,13 +170,17 @@ async fn export(pool: &SqlitePool, dir: &Path) -> manaweb_core::Result<String> {
     // todo(scanner): the store the artwork index is built from, which nothing
     // fetches yet — see `docs/roadmap.md`.
     let built = catalog::build(pool, None).await?;
-    built.write(dir).await?;
+    let swept = built.write(dir).await?;
     tracing::info!(
         cards = built.cards.rows,
         prints = built.prints.rows,
         bytes = built.cards.bytes.len() + built.prints.bytes.len(),
+        swept = swept.len(),
         "catalog built"
     );
+    for name in &swept {
+        tracing::debug!(name, "swept");
+    }
     Ok(built.version)
 }
 

@@ -884,3 +884,94 @@ async fn the_manifest_names_the_index_when_there_is_one() {
     );
     assert!(index.name.contains(".bin"), "{}", index.name);
 }
+
+/// A hand-built catalog, so two exports can name different files without
+/// the cache having to change underneath them.
+fn named(version: &str, hash: &str) -> catalog::Catalog {
+    let artifact = |kind: &str| catalog::Artifact {
+        name: format!("{kind}.{hash}.json"),
+        rows: 0,
+        bytes: version.as_bytes().to_vec(),
+    };
+    catalog::Catalog {
+        version: version.to_owned(),
+        cards: artifact("cards"),
+        prints: artifact("prints"),
+        artwork: None,
+    }
+}
+
+/// The weekly refresh writes a pair a week, and the directory it writes into
+/// is the one the box keeps.
+#[tokio::test]
+async fn an_export_sweeps_only_what_nothing_can_still_be_fetching() {
+    let dir = std::env::temp_dir().join(format!("manaweb-sweep-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let first = format!("cards.{}.json", "1".repeat(16));
+    let swept = named("one", &"1".repeat(16)).write(&dir).await.unwrap();
+    assert!(swept.is_empty(), "{swept:?}");
+
+    // Still named by the manifest a client may be part way through reading.
+    let swept = named("two", &"2".repeat(16)).write(&dir).await.unwrap();
+    assert!(swept.is_empty(), "{swept:?}");
+    assert!(dir.join(&first).is_file());
+
+    // A generation past the last manifest to name it, but written a minute
+    // ago, so something could still be fetching it.
+    let swept = named("three", &"3".repeat(16)).write(&dir).await.unwrap();
+    assert!(swept.is_empty(), "{swept:?}");
+    assert!(dir.join(&first).is_file());
+
+    // The same export once the first pair has stood.
+    backdate(&dir, 7);
+    let swept = named("four", &"4".repeat(16)).write(&dir).await.unwrap();
+    assert_eq!(
+        swept,
+        vec![
+            first.clone(),
+            format!("cards.{}.json", "2".repeat(16)),
+            format!("prints.{}.json", "1".repeat(16)),
+            format!("prints.{}.json", "2".repeat(16)),
+        ]
+    );
+    assert!(!dir.join(&first).exists());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+/// Ages every file in `dir` by `hours`, which is the only way to reach the
+/// far side of the settling window without waiting there.
+fn backdate(dir: &std::path::Path, hours: u64) {
+    let when = std::time::SystemTime::now() - std::time::Duration::from_hours(hours);
+    for held in std::fs::read_dir(dir).unwrap() {
+        let file = std::fs::File::options()
+            .write(true)
+            .open(held.unwrap().path())
+            .unwrap();
+        file.set_times(std::fs::FileTimes::new().set_modified(when))
+            .unwrap();
+    }
+}
+
+/// The directory is the box's, and a sweep that took anything but its own
+/// output would be a surprise nobody asked for.
+#[tokio::test]
+async fn a_sweep_leaves_alone_what_it_did_not_write() {
+    let dir = std::env::temp_dir().join(format!("manaweb-keep-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("notes.txt"), "mine").unwrap();
+    std::fs::write(dir.join("cards.json"), "mine").unwrap();
+
+    named("one", &"1".repeat(16)).write(&dir).await.unwrap();
+    named("two", &"2".repeat(16)).write(&dir).await.unwrap();
+    backdate(&dir, 7);
+    named("three", &"3".repeat(16)).write(&dir).await.unwrap();
+
+    assert!(dir.join("notes.txt").is_file());
+    assert!(dir.join("cards.json").is_file());
+    assert!(dir.join("manifest.json").is_file());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

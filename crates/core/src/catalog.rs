@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash as _, Hasher as _};
 use std::io::Write as _;
 use std::path::Path;
+use std::time::{Duration, SystemTime};
 
 use futures_util::TryStreamExt as _;
 use serde::Serialize;
@@ -190,27 +191,116 @@ impl Catalog {
         })?)
     }
 
-    /// Writes both files and the manifest under `dir`, ready to upload.
+    /// Every file this catalog is made of, the manifest aside.
+    fn artifacts(&self) -> impl Iterator<Item = &Artifact> {
+        [Some(&self.cards), Some(&self.prints), self.artwork.as_ref()]
+            .into_iter()
+            .flatten()
+    }
+
+    /// Writes both files and the manifest under `dir`, answering what it swept.
     ///
-    /// Stale files are left in place. Uploading to object storage adds the new
-    /// pair without removing the old one, so a client mid-load can still fetch
-    /// what it was told about.
+    /// A client reads a manifest and then spends megabytes on the names it
+    /// gave, so a file goes only once nothing can still be part way through
+    /// it: what the last manifest named stays a generation longer, and
+    /// anything written inside [`SETTLING`] stays whatever the manifests say.
     ///
     /// # Errors
     ///
     /// Fails if the directory can't be created or a file can't be written.
-    pub async fn write(&self, dir: impl AsRef<Path>) -> Result<()> {
+    /// A directory that won't list is swept of nothing rather than fatal.
+    pub async fn write(&self, dir: impl AsRef<Path>) -> Result<Vec<String>> {
         let dir = dir.as_ref();
         fs::create_dir_all(dir).await?;
-        for artifact in [Some(&self.cards), Some(&self.prints), self.artwork.as_ref()]
-            .into_iter()
-            .flatten()
-        {
+
+        let mut keep: Vec<String> = previous(dir).await;
+        keep.extend(self.artifacts().map(|artifact| artifact.name.clone()));
+
+        for artifact in self.artifacts() {
             fs::write(dir.join(&artifact.name), &artifact.bytes).await?;
         }
-        fs::write(dir.join("manifest.json"), self.manifest()?).await?;
-        Ok(())
+        fs::write(dir.join(MANIFEST), self.manifest()?).await?;
+
+        Ok(sweep(dir, &keep).await)
     }
+}
+
+/// What a client fetches first, and the one name in the directory that is not
+/// content-addressed.
+const MANIFEST: &str = "manifest.json";
+
+/// The files the manifest already there names, or none for a first export.
+async fn previous(dir: &Path) -> Vec<String> {
+    let Ok(bytes) = fs::read(dir.join(MANIFEST)).await else {
+        return Vec::new();
+    };
+    let Ok(held) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+        return Vec::new();
+    };
+    held.as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(_, part)| part.get("name")?.as_str().map(str::to_owned))
+        .collect()
+}
+
+/// How long a file stands whatever a manifest says of it, so that two exports
+/// minutes apart cannot between them take away what a client is still
+/// fetching. Generous: the cost of holding one is a few megabytes.
+const SETTLING: Duration = Duration::from_hours(6);
+
+/// Removes every exported file `keep` does not name and `SETTLING` has passed
+/// for, and answers which.
+///
+/// Only what this export writes: a name of another shape is something someone
+/// else put there.
+async fn sweep(dir: &Path, keep: &[String]) -> Vec<String> {
+    let Ok(mut listing) = fs::read_dir(dir).await else {
+        return Vec::new();
+    };
+
+    let mut gone = Vec::new();
+    while let Ok(Some(held)) = listing.next_entry().await {
+        let name = held.file_name().to_string_lossy().into_owned();
+        if !addressed(&name) || keep.contains(&name) || !settled(&held).await {
+            continue;
+        }
+        if fs::remove_file(held.path()).await.is_ok() {
+            gone.push(name);
+        }
+    }
+    gone.sort();
+    gone
+}
+
+/// Whether a file has stood long enough to be sure of.
+///
+/// A file that won't say when it was written, or a clock that has gone
+/// backwards since, reads as new: holding one costs a few megabytes and
+/// taking one costs a download.
+async fn settled(held: &fs::DirEntry) -> bool {
+    let Ok(meta) = held.metadata().await else {
+        return false;
+    };
+    let Ok(written) = meta.modified() else {
+        return false;
+    };
+    SystemTime::now()
+        .duration_since(written)
+        .is_ok_and(|stood| stood >= SETTLING)
+}
+
+/// Whether a name is one [`Artifact::new`] made: a kind, a hash and an
+/// extension.
+fn addressed(name: &str) -> bool {
+    let parts: Vec<&str> = name.split('.').collect();
+    let [kind, hash, ext] = parts[..] else {
+        return false;
+    };
+    !kind.is_empty()
+        && !ext.is_empty()
+        && hash.len() == 16
+        && hash.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 /// Builds the pair from the cache, and the artwork index from `store`.
