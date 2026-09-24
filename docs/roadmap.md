@@ -105,11 +105,26 @@ Asking all four framings against every one of the index's 54,585 entries is
 1.3ms in plain JavaScript, and 0.4ms at one, so WASM is for the detection and
 rectification ahead of the hash rather than for the lookup.
 
-**That number is not the one to judge the scanner by, and no better one has
-been measured.** It asks which *artwork* came back, and the two sides of one
-card are two artworks that often look alike; the client resolves either to
-the same printings through the pair, so a confusion the measurement scores as
-a miss is not one. What wants measuring is which printing a photograph names.
+**That number is not the one to judge the scanner by.** It asks which
+*artwork* came back, and the two sides of one card are two artworks that
+often look alike; the client resolves either to the same printings through
+the pair, so a confusion the measurement scores as a miss is not one. What
+wants measuring is which printing a photograph names, which `just photos`
+scores over a directory of them, each named for the printing it shows.
+
+**A photograph has to be found on the card before it can be hashed**, and
+nothing detects one yet, so the whole frame is taken to be the card and the
+artwork assumed to sit where it does on a 2015 frame — measured off
+Scryfall's own crop rather than a diagram, at `0.079..0.920` across and
+`0.114..0.554` down. Scored against 240 of their card images, which is the
+capture nothing is wrong with: **96.7% of older frames and 91.7% of modern
+ones name their own printing, against 73.3% borderless and 45.0%
+full-art.** The modern frame's median distance is zero, so that rectangle is
+exactly right where a rectangle is the answer at all — and the two that fail
+are the ones whose artwork does not sit in a box. That is the case for
+detecting the card and rectifying it rather than asking the person to frame
+it, and it is the number a photograph is compared against rather than a
+target.
 
 **Color reaches one channel inside the engine**, not at each caller. It is a
 step of the hashing like any other, so the two sides have one statement of it

@@ -51,12 +51,22 @@ impl Fetcher {
             return Ok(bytes);
         }
 
+        self.fetch(&artwork.art_crop(), &path).await
+    }
+
+    /// Any image, at the same throttle, kept at `path`.
+    ///
+    /// # Errors
+    ///
+    /// Fails on a request error, a refusal from Scryfall, or a directory it
+    /// can't write.
+    pub async fn fetch(&mut self, url: &str, path: &Path) -> Result<Vec<u8>> {
         sleep_until(self.next).await;
         self.next = Instant::now() + DELAY;
 
         let bytes = self
             .http
-            .get(artwork.art_crop())
+            .get(url)
             .send()
             .await?
             .error_for_status()?
@@ -70,7 +80,7 @@ impl Fetcher {
         // interrupted run can't be read back as a whole one.
         let partial = path.with_extension("part");
         tokio::fs::write(&partial, &bytes).await?;
-        tokio::fs::rename(&partial, &path).await?;
+        tokio::fs::rename(&partial, path).await?;
 
         Ok(bytes.to_vec())
     }

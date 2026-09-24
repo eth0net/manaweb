@@ -133,6 +133,20 @@ hash-art dir="scryfall/art" out="scryfall/hashes":
 measure-art dir="scryfall/art":
     cargo run --release -p manaweb-artwork -- measure {{ db }} {{ dir }}
 
+# Scryfall's own image of a card is the capture nothing is wrong with, so
+# these are the ceiling a photograph is scored against. A minute of pulling.
+[doc('pull whole-card images to photograph and to score against')]
+[group('dev')]
+photo-cards dir="scryfall/cards" each="60":
+    cargo run --release -p manaweb-artwork -- cards {{ db }} {{ dir }} {{ each }}
+
+# Which printing a photograph names, which is the question `measure-art` does
+# not ask. Each file is named for what it shows: `crates/artwork/src/photo.rs`.
+[doc('score a directory of card photographs against the published store')]
+[group('dev')]
+photos dir="scryfall/cards" store="scryfall/hashes":
+    cargo run --release -p manaweb-artwork -- photos {{ db }} {{ dir }} {{ store }}
+
 # sync the card cache from Scryfall (~78MB), or from a file already on disk
 [group('dev')]
 sync-cards file="":

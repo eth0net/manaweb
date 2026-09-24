@@ -1,18 +1,24 @@
 //! Builds and measures the scanner index.
 //!
-//! Three jobs, split because the pull is hours and the rest is minutes:
+//! Five jobs, split because the pull is hours and the rest is minutes:
 //! `pull` fills a directory with artwork images, `hash` turns them into the
-//! store the export reads, and `measure` reports what a hash retrieves.
+//! store the export reads, and `measure` reports what a hash retrieves from a
+//! degraded copy of one.
 //!
-//! Each takes the cache and the image directory, then `pull` and `measure`
-//! take how many artworks to stop at and `hash` takes where the store goes.
+//! The other two ask the question `measure` cannot, which is what a
+//! photograph of a card names: `cards` pulls whole-card images to photograph
+//! and score against, and `photos` scores a directory of them.
+//!
+//! Each takes the cache and a directory, then `pull`, `measure` and `cards`
+//! take how many to stop at and `hash` takes where the store goes.
 
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::ExitCode;
 
 use manaweb_artwork::fetch::Fetcher;
 use manaweb_artwork::luma::Plane;
-use manaweb_artwork::{Artwork, Result, artwork, degrade};
+use manaweb_artwork::{Artwork, Result, artwork, degrade, photo};
 use manaweb_scanner::hash::{self, Frame, Hash};
 use manaweb_scanner::{HASHES, Store, store};
 
@@ -57,8 +63,18 @@ async fn run() -> Result<()> {
             artworks.truncate(limit(rest.as_deref()));
             measure(&artworks, &dir)
         }
+        "cards" => cards(&pool, &dir, limit(rest.as_deref())).await,
+        "photos" => {
+            photos(
+                &pool,
+                &artworks,
+                &dir,
+                Path::new(rest.as_deref().unwrap_or(STORE)),
+            )
+            .await
+        }
         other => {
-            tracing::error!("no such command: {other:?} (pull, hash, measure)");
+            tracing::error!("no such command: {other:?} (pull, hash, measure, cards, photos)");
             Ok(())
         }
     }
@@ -381,4 +397,163 @@ fn median<T: Copy + Ord + std::fmt::Display>(values: &[T]) -> String {
     let mut sorted = values.to_vec();
     sorted.sort_unstable();
     sorted[sorted.len() / 2].to_string()
+}
+
+/// How many of each stratum `cards` pulls when not told otherwise. Enough to
+/// tell a 90% from a 99% once the four are put together.
+const EACH: usize = 60;
+
+/// Pulls whole-card images to photograph, named as a photograph has to be.
+///
+/// Scryfall's own image of a card is the capture nothing is wrong with, so
+/// scoring these is the ceiling every photograph is measured against — and
+/// the one way to ask what the art box costs without a camera.
+async fn cards(pool: &sqlx::SqlitePool, dir: &str, each: usize) -> Result<()> {
+    let each = u32::try_from(each.min(EACH)).unwrap_or(u32::MAX);
+    let wanted = photo::sample(pool, each).await?;
+    tracing::info!(cards = wanted.len(), "sampled");
+
+    let mut fetcher = Fetcher::new(dir)?;
+    let (mut held, mut pulled, mut failed) = (0usize, 0usize, 0usize);
+
+    for (printing, label) in &wanted {
+        let path = Path::new(dir).join(label.name());
+        if path.exists() {
+            held += 1;
+            continue;
+        }
+        match fetcher.fetch(&photo::card_image(&printing.id), &path).await {
+            Ok(_) => pulled += 1,
+            Err(error) => {
+                failed += 1;
+                tracing::warn!(card = printing.id, "{error}");
+            }
+        }
+    }
+
+    tracing::info!(held, pulled, failed, "pulled");
+    Ok(())
+}
+
+/// Scores every photograph in `dir` against the store, by printing.
+///
+/// The index is the store as published, so this asks what a client would
+/// retrieve rather than what a rebuild of the hashing would.
+async fn photos(
+    pool: &sqlx::SqlitePool,
+    artworks: &[Artwork],
+    dir: &str,
+    out: &Path,
+) -> Result<()> {
+    let store = Store::read(&std::fs::read(out)?)?;
+    let index: Vec<(&str, [Hash; HASHES])> = artworks
+        .iter()
+        .filter_map(|artwork| {
+            let id = store::uuid(&artwork.id)?;
+            Some((artwork.id.as_str(), store.get(&id)?))
+        })
+        .collect();
+    tracing::info!(indexed = index.len(), store = %out.display(), "index read");
+
+    let mut shots: Vec<(photo::Label, std::path::PathBuf)> = std::fs::read_dir(dir)?
+        .filter_map(|held| {
+            let path = held.ok()?.path();
+            let label = photo::Label::read(path.file_name()?.to_str()?)?;
+            Some((label, path))
+        })
+        .collect();
+    shots.sort_by(|a, b| a.1.cmp(&b.1));
+
+    if shots.is_empty() {
+        tracing::warn!(%dir, "nothing named <set>-<number>-<lang>__<how> to score");
+        return Ok(());
+    }
+
+    let mut conditions: BTreeMap<String, photo::Tally> = BTreeMap::new();
+    let mut strata: BTreeMap<String, photo::Tally> = BTreeMap::new();
+    let (mut unknown, mut unreadable) = (0usize, 0usize);
+
+    for (label, path) in &shots {
+        let Some(printing) = photo::find(pool, label).await? else {
+            unknown += 1;
+            tracing::warn!(shot = %path.display(), "no such printing in the cache");
+            continue;
+        };
+        let Some(hit) = score(pool, &index, path, &printing).await? else {
+            unreadable += 1;
+            continue;
+        };
+
+        conditions
+            .entry(label.condition.clone())
+            .or_default()
+            .record(&hit);
+        strata
+            .entry(printing.stratum.clone())
+            .or_default()
+            .record(&hit);
+    }
+
+    tracing::info!(shots = shots.len(), unknown, unreadable, "scored");
+
+    photo::Tally::header("condition");
+    for (name, tally) in &conditions {
+        tally.report(name);
+    }
+    println!();
+    photo::Tally::header("frame");
+    for (name, tally) in &strata {
+        tally.report(name);
+    }
+
+    Ok(())
+}
+
+/// One photograph against the index, or nothing where it will not decode.
+async fn score(
+    pool: &sqlx::SqlitePool,
+    index: &[(&str, [Hash; HASHES])],
+    path: &Path,
+    printing: &photo::Printing,
+) -> Result<Option<photo::Hit>> {
+    let Ok(image) = image::open(path) else {
+        tracing::warn!(shot = %path.display(), "will not decode");
+        return Ok(None);
+    };
+    let plane = Plane::new(&image);
+    // No detection yet, so the card is taken to fill the frame and the
+    // artwork to sit where it does on a modern one.
+    let Some(art) = plane
+        .frame()
+        .as_ref()
+        .and_then(|frame| photo::ART.of(frame))
+    else {
+        tracing::warn!(shot = %path.display(), "no art box in it");
+        return Ok(None);
+    };
+    let want = manaweb_scanner::entry(&art);
+
+    let (mut best, mut found, mut next) = (None, u32::MAX, u32::MAX);
+    for (id, entry) in index {
+        let distance = nearest(entry, &want);
+        if distance < found {
+            next = found;
+            found = distance;
+            best = Some(*id);
+        } else if distance < next {
+            next = distance;
+        }
+    }
+
+    let Some(best) = best else {
+        return Ok(None);
+    };
+    let candidates = photo::carrying(pool, best).await?;
+    Ok(Some(photo::Hit {
+        printing: candidates.contains(&printing.id),
+        artwork: printing.arts().contains(&best),
+        candidates: candidates.len(),
+        found,
+        margin: i64::from(next) - i64::from(found),
+    }))
 }

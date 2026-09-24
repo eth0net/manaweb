@@ -10,6 +10,7 @@ pub mod degrade;
 mod error;
 pub mod fetch;
 pub mod luma;
+pub mod photo;
 
 pub use artwork::Artwork;
 pub use error::Error;
