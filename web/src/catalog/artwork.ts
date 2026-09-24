@@ -29,7 +29,7 @@ export interface Match {
 
 // What this client's own hashing comes out as, which the engine will answer
 // for itself once there is one — `docs/scryfall.md`.
-const HASHER = "6c618393dccd0d94";
+const HASHER = "1c1f64e991d4d1cc";
 
 const NEWLINE = 10;
 const WORD = 8;

@@ -6,6 +6,7 @@
 //! in `docs/scryfall.md`.
 
 pub mod hash;
+pub mod luma;
 pub mod store;
 
 mod error;
@@ -17,6 +18,7 @@ pub mod wasm;
 
 pub use error::Error;
 pub use hash::{Frame, HASHES, Hash, entry, fingerprint};
+pub use luma::plane;
 pub use store::Store;
 
 pub type Result<T> = std::result::Result<T, Error>;

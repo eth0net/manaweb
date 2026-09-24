@@ -11,7 +11,7 @@ function file(
   {
     fronts = artworks.length,
     backs = [] as [number, number][],
-    hasher = "6c618393dccd0d94",
+    hasher = "1c1f64e991d4d1cc",
   } = {},
 ): Uint8Array {
   const header = new TextEncoder().encode(

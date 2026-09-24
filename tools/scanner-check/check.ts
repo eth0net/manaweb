@@ -22,14 +22,22 @@ const BUILDS = [
 ];
 
 // `crates/scanner`'s own probe, restated rather than shipped — see the
-// engine's golden vectors.
+// engine's golden vectors. Color, so the conversion is on the way through.
 const PROBE = { width: 64, height: 48 };
+const CHANNELS: [number, number][] = [
+  [7, 11],
+  [13, 5],
+  [3, 17],
+];
 
 function probe(): Uint8Array {
   const { width, height } = PROBE;
-  const out = new Uint8Array(width * height);
-  for (let at = 0; at < out.length; at++) {
-    out[at] = ((at % width) * 7 + Math.floor(at / width) * 11) % 251;
+  const out = new Uint8Array(width * height * CHANNELS.length);
+  for (let at = 0; at < width * height; at++) {
+    CHANNELS.forEach(([across, down], which) => {
+      out[at * CHANNELS.length + which] =
+        ((at % width) * across + Math.floor(at / width) * down) % 251;
+    });
   }
   return out;
 }
@@ -87,7 +95,7 @@ const fingerprint = stated.at(-1) as string;
 ok(`${want.length} hashes and fingerprint ${fingerprint}`);
 
 const hex = (hash: bigint) => hash.toString(16).padStart(16, "0");
-const levels = probe();
+const color = probe();
 
 for (const build of BUILDS) {
   console.log(`\n${build.name}:`);
@@ -123,6 +131,7 @@ for (const build of BUILDS) {
     ok(`fingerprint ${fingerprint}`);
   }
 
+  const levels = engine.luma(color, CHANNELS.length);
   const got = engine.entry(levels, PROBE.width, PROBE.height).map(hex);
   if (got.join() !== want.join()) {
     fail(`entry ${got.join()} against ${want.join()}`);

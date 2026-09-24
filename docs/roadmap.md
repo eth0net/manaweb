@@ -111,6 +111,10 @@ card are two artworks that often look alike; the client resolves either to
 the same printings through the pair, so a confusion the measurement scores as
 a miss is not one. What wants measuring is which printing a photograph names.
 
+**Color reaches one channel inside the engine**, not at each caller. It is a
+step of the hashing like any other, so the two sides have one statement of it
+between them and the fingerprint covers it.
+
 **The engine is reached over a C ABI, not a bindings generator.** The whole
 surface is a luma plane in and four words out, so a pointer and a length say
 it, and the same signatures serve a browser's `WebAssembly.Instance` and

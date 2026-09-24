@@ -111,28 +111,38 @@ impl<'a> Frame<'a> {
     }
 }
 
-/// Width and height of the frame [`fingerprint`] is taken over.
+/// Width and height of the picture [`fingerprint`] is taken over.
 pub const PROBE: (usize, usize) = (64, 48);
 
-/// `(x * 7 + y * 11) % 251`, coprime enough to leave no flat field.
+/// Color, so the fingerprint covers the conversion to [`crate::luma`] as well
+/// as the hashing: a channel each, coprime enough to leave no flat field.
 ///
 /// Arithmetic a port can restate rather than a fixture it has to ship.
 #[must_use]
 pub fn probe() -> Vec<u8> {
-    let (width, height) = PROBE;
-    (0..width * height)
-        .map(|at| u8::try_from((at % width * 7 + at / width * 11) % 251).unwrap_or(0))
+    let (width, _) = PROBE;
+    let channel = |at: usize, across: usize, down: usize| {
+        u8::try_from((at % width * across + at / width * down) % 251).unwrap_or(0)
+    };
+    (0..pixels())
+        .flat_map(|at| [channel(at, 7, 11), channel(at, 13, 5), channel(at, 3, 17)])
         .collect()
 }
 
-/// One frame's [`entry`], folded to a word, naming this build's hashing.
+/// Pixels the probe covers, its bytes being three of those each.
+fn pixels() -> usize {
+    let (width, height) = PROBE;
+    width * height
+}
+
+/// One picture's [`entry`], folded to a word, naming this build's hashing.
 ///
 /// Derived rather than written down, so a change to anything above moves it
 /// with no one remembering to. What carries it and why is `docs/scryfall.md`.
 #[must_use]
 pub fn fingerprint() -> Hash {
     let (width, height) = PROBE;
-    let levels = probe();
+    let levels = crate::luma::plane(&probe(), 3);
     let Some(frame) = Frame::new(&levels, width, height, width) else {
         return 0;
     };

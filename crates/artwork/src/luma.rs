@@ -1,7 +1,7 @@
 //! Handing a decoded image to the engine, which reads luma and a stride.
 
 use image::DynamicImage;
-use manaweb_scanner::Frame;
+use manaweb_scanner::{Frame, plane};
 
 /// A decoded image as the engine reads it.
 ///
@@ -15,12 +15,14 @@ pub struct Plane {
 }
 
 impl Plane {
+    /// Converted by the engine rather than by the decoder, so the browser can
+    /// reach the same levels from a canvas.
     #[must_use]
     pub fn new(image: &DynamicImage) -> Self {
-        let gray = image.to_luma8();
-        let (width, height) = (gray.width(), gray.height());
+        let rgb = image.to_rgb8();
+        let (width, height) = (rgb.width(), rgb.height());
         Self {
-            luma: gray.into_raw(),
+            luma: plane(rgb.as_raw(), 3),
             width: width as usize,
             height: height as usize,
         }

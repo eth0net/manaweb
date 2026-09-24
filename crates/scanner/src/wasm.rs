@@ -7,6 +7,7 @@ use std::alloc::{Layout, alloc, dealloc};
 
 use crate::Frame;
 use crate::hash::{HASHES, Hash, entry, fingerprint};
+use crate::luma::level;
 
 /// Bytes as the allocator was asked for them, so a free states the same size.
 ///
@@ -53,6 +54,29 @@ pub extern "C" fn scan_hashes() -> usize {
 #[unsafe(no_mangle)]
 pub extern "C" fn scan_fingerprint() -> Hash {
     fingerprint()
+}
+
+/// Writes one level per pixel of the `step`-byte pixels at `at`, to `out`.
+///
+/// Answers 0, or -1 for a step narrower than a color.
+///
+/// # Safety
+///
+/// `at` covers `pixels * step` bytes and `out` covers `pixels`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scan_luma(at: *const u8, pixels: usize, step: usize, out: *mut u8) -> i32 {
+    if at.is_null() || out.is_null() || step < 3 {
+        return -1;
+    }
+    let Some(bytes) = pixels.checked_mul(step) else {
+        return -1;
+    };
+    let color = unsafe { core::slice::from_raw_parts(at, bytes) };
+    let levels = unsafe { core::slice::from_raw_parts_mut(out, pixels) };
+    for (cell, pixel) in levels.iter_mut().zip(color.chunks_exact(step)) {
+        *cell = level(pixel[0], pixel[1], pixel[2]);
+    }
+    0
 }
 
 /// Hashes the plane at `at`, writing [`scan_hashes`] words to `out`.

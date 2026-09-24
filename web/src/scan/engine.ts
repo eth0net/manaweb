@@ -21,6 +21,7 @@ interface Exports {
     stride: number,
     out: number,
   ): number;
+  scan_luma(at: number, pixels: number, step: number, out: number): number;
 }
 
 export class Engine {
@@ -47,6 +48,35 @@ export class Engine {
         ? await WebAssembly.instantiate(source, {})
         : await WebAssembly.instantiateStreaming(source, {});
     return new Engine(held.instance.exports as unknown as Exports);
+  }
+
+  // Here rather than in a loop over the pixels: the builder converts through
+  // the same arithmetic, and the fingerprint covers it.
+  luma(color: Uint8Array, step = 4): Uint8Array {
+    const pixels = Math.floor(color.length / step);
+    if (step < 3 || pixels === 0) {
+      throw new Error(`${color.length} bytes of ${step} is no picture`);
+    }
+
+    const at = this.#wasm.scan_alloc(pixels * step);
+    const out = at === 0 ? 0 : this.#wasm.scan_alloc(pixels);
+    if (at === 0 || out === 0) {
+      if (at !== 0) this.#wasm.scan_free(at, pixels * step);
+      throw new Error(`the engine has no room for ${pixels} pixels`);
+    }
+
+    try {
+      const memory = new Uint8Array(this.#wasm.memory.buffer);
+      memory.set(color.subarray(0, pixels * step), at);
+      if (this.#wasm.scan_luma(at, pixels, step, out) === REFUSED) {
+        throw new Error(`the engine refused ${step} bytes a pixel`);
+      }
+      // A copy, because the next allocation may move what this points at.
+      return new Uint8Array(this.#wasm.memory.buffer).slice(out, out + pixels);
+    } finally {
+      this.#wasm.scan_free(at, pixels * step);
+      this.#wasm.scan_free(out, pixels);
+    }
   }
 
   // A camera's rows carry padding past their pixels, so the stride is asked

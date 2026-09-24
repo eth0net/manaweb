@@ -488,11 +488,17 @@ file's own column has to agree with.
 same artwork and never compare notes, so a builder and a reader that resample
 or transform even slightly differently retrieve nothing at all — and a lookup
 with no match cannot say that is why. What the header carries is therefore the
-hashing itself: one frame the code states rather than ships, hashed and folded
-to a word. Being made of the hashing it cannot be left behind by a change to
-it, and a reader that comes out differently refuses the file. The hash store
-carries the same word, which is what stops a top-up run filling half of one
-store with each.
+hashing itself: one picture the code states rather than ships, hashed and
+folded to a word. Being made of the hashing it cannot be left behind by a
+change to it, and a reader that comes out differently refuses the file. The
+hash store carries the same word, which is what stops a top-up run filling
+half of one store with each.
+
+That picture is in color, so the word covers reaching a single channel as
+well as what happens after. The builder decodes a JPEG and a browser reads a
+canvas, and the weights and the rounding between them are as much a part of
+the answer as the transform is — a decoder's own conversion moving under a
+version bump would have re-keyed the index with nothing to say so.
 
 **Either side of a card can be matched.** 3,418 artworks sit on the back of
 one, and a pair names each against the artwork on its front, so a photograph

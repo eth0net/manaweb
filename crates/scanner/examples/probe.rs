@@ -6,11 +6,12 @@
 //! one statement of the numbers between them rather than a copy each.
 
 use manaweb_scanner::hash::{PROBE, entry, probe};
+use manaweb_scanner::luma::plane;
 use manaweb_scanner::{Frame, fingerprint};
 
 fn main() {
     let (width, height) = PROBE;
-    let levels = probe();
+    let levels = plane(&probe(), 3);
     let frame = Frame::new(&levels, width, height, width).expect("the probe is a frame");
 
     for hash in entry(&frame) {
