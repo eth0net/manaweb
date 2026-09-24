@@ -10,6 +10,11 @@ pub mod store;
 
 mod error;
 
+// Only where something reaches the engine across a boundary. A native build
+// has the crate itself and wants no exported symbols.
+#[cfg(target_family = "wasm")]
+pub mod wasm;
+
 pub use error::Error;
 pub use hash::{Frame, HASHES, Hash, entry, fingerprint};
 pub use store::Store;
