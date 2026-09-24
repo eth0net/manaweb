@@ -1,0 +1,8 @@
+{
+  "name": "manaweb-scanner-check",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "bun run check.ts"
+  }
+}

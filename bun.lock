@@ -32,6 +32,9 @@
     "tools/prose-check": {
       "name": "manaweb-prose-check",
     },
+    "tools/scanner-check": {
+      "name": "manaweb-scanner-check",
+    },
     "tools/scryfall-check": {
       "name": "manaweb-scryfall-check",
     },
@@ -352,6 +355,8 @@
     "manaweb-lexicon-check": ["manaweb-lexicon-check@workspace:tools/lexicon-check"],
 
     "manaweb-prose-check": ["manaweb-prose-check@workspace:tools/prose-check"],
+
+    "manaweb-scanner-check": ["manaweb-scanner-check@workspace:tools/scanner-check"],
 
     "manaweb-scryfall-check": ["manaweb-scryfall-check@workspace:tools/scryfall-check"],
 

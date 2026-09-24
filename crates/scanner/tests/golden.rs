@@ -4,8 +4,8 @@
 //! lookup misses, and neither side can tell that is what happened — so the
 //! input is arithmetic anyone can restate, rather than a fixture to ship.
 //!
-//! todo(scanner): run these on wasm32 too. CI runs the three native targets,
-//! which is not the one the crate was split out to serve.
+//! Native only: `tools/scanner-check` compiles the crate to wasm32 and holds
+//! that build to what this one answers.
 
 use manaweb_scanner::fingerprint;
 use manaweb_scanner::hash::{Frame, PROBE, dhash, entry, phash, probe};

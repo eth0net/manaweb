@@ -111,13 +111,25 @@ card are two artworks that often look alike; the client resolves either to
 the same printings through the pair, so a confusion the measurement scores as
 a miss is not one. What wants measuring is which printing a photograph names.
 
-The first WASM build owes three things. The golden vectors have to run on
-wasm32, which is the target they exist for and the one CI cannot reach today.
-`web/public/_headers` allows `script-src 'self'`, which refuses WebAssembly
-until it names `'wasm-unsafe-eval'` as well. And the bundle wants
-`+simd128`; `SharedArrayBuffer` is not worth the COOP/COEP headers it needs,
-which would complicate the OAuth popup, and a transferred `ArrayBuffer`
-already copies nothing.
+**The engine is reached over a C ABI, not a bindings generator.** The whole
+surface is a luma plane in and four words out, so a pointer and a length say
+it, and the same signatures serve a browser's `WebAssembly.Instance` and
+later Swift and Kotlin. It builds with `cargo rustc --crate-type cdylib`
+rather than a second crate, which keeps every native build free of exported
+symbols. `tools/scanner-check` compiles it and holds it to what the native
+build answers over the same probe — the hashes and the fingerprint, with and
+without `+simd128`, which changes nothing: the vector extension gives the
+compiler no license to reassociate a float. 45KB unoptimized.
+
+Delivery is what the browser still owes. Pages builds the client and cannot
+run cargo, so the module either ships committed under `web/public` or goes to
+the bucket under a prefix of its own like the catalog. Whichever it is,
+`web/public/_headers` allows `script-src 'self'`, which refuses to
+instantiate WebAssembly until it names `'wasm-unsafe-eval'` as well — a
+widening with nothing to justify it until something fetches the module.
+`SharedArrayBuffer` is not worth the COOP/COEP headers it needs, which would
+complicate the OAuth popup, and a transferred `ArrayBuffer` already copies
+nothing.
 
 **The artifact carries an illustration group per printing**, which is what an
 art match narrows to — see [`scryfall.md`](scryfall.md). The client reads
