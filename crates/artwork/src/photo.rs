@@ -58,8 +58,8 @@ pub struct Printing {
     /// The illustration on the front, and on the back where there is one.
     pub art: String,
     pub back_art: Option<String>,
-    /// Which of the frame's awkward shapes this is, for the report's second
-    /// cut: the art box is one rectangle and these are not.
+    /// Which shape of card this is, for the report's second cut. What each
+    /// of them costs is `docs/roadmap.md`.
     pub stratum: String,
 }
 
@@ -80,16 +80,21 @@ impl Printing {
 /// Fails on a database error.
 pub async fn find(pool: &SqlitePool, label: &Label) -> Result<Option<Printing>> {
     Ok(sqlx::query_as(
-        "SELECT id,
-                illustration_id AS art,
-                json_extract(card_faces, '$[1].illustration_id') AS back_art,
-                CASE WHEN full_art THEN 'full-art'
-                     WHEN border_color = 'borderless' THEN 'borderless'
-                     WHEN frame = '2015' THEN 'modern'
+        "SELECT c.id,
+                c.illustration_id AS art,
+                json_extract(c.card_faces, '$[1].illustration_id') AS back_art,
+                CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
+                          THEN 'token'
+                     WHEN c.layout IN ('split', 'flip', 'planar', 'scheme')
+                          OR o.type_line LIKE 'Battle%' THEN 'sideways'
+                     WHEN o.type_line LIKE '%Planeswalker%' THEN 'walker'
+                     WHEN c.full_art THEN 'full-art'
+                     WHEN c.border_color = 'borderless' THEN 'borderless'
+                     WHEN c.frame = '2015' THEN 'modern'
                      ELSE 'older' END AS stratum
-         FROM cards
-         WHERE set_code = ? AND collector_number = ? AND lang = ?
-           AND illustration_id IS NOT NULL",
+         FROM cards c JOIN oracle o ON o.id = c.oracle_id
+         WHERE c.set_code = ? AND c.collector_number = ? AND c.lang = ?
+           AND c.illustration_id IS NOT NULL",
     )
     .bind(&label.set)
     .bind(&label.number)
@@ -128,24 +133,34 @@ pub async fn carrying(pool: &SqlitePool, art: &str) -> Result<Vec<String>> {
 pub async fn sample(pool: &SqlitePool, each: u32) -> Result<Vec<(Printing, Label)>> {
     let rows: Vec<Row> = sqlx::query_as(
         "WITH held AS (
-             SELECT id, set_code, collector_number, lang,
-                    illustration_id AS art,
-                    json_extract(card_faces, '$[1].illustration_id') AS back_art,
-                    CASE WHEN full_art THEN 'full-art'
-                     WHEN border_color = 'borderless' THEN 'borderless'
-                     WHEN frame = '2015' THEN 'modern'
+             SELECT c.id, c.set_code, c.collector_number, c.lang,
+                    c.illustration_id AS art,
+                    json_extract(c.card_faces, '$[1].illustration_id') AS back_art,
+                    CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
+                          THEN 'token'
+                     WHEN c.layout IN ('split', 'flip', 'planar', 'scheme')
+                          OR o.type_line LIKE 'Battle%' THEN 'sideways'
+                     WHEN o.type_line LIKE '%Planeswalker%' THEN 'walker'
+                     WHEN c.full_art THEN 'full-art'
+                     WHEN c.border_color = 'borderless' THEN 'borderless'
+                     WHEN c.frame = '2015' THEN 'modern'
                      ELSE 'older' END AS stratum,
                     row_number() OVER (
-                        PARTITION BY CASE WHEN full_art THEN 'full-art'
-                     WHEN border_color = 'borderless' THEN 'borderless'
-                     WHEN frame = '2015' THEN 'modern'
+                        PARTITION BY CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
+                          THEN 'token'
+                     WHEN c.layout IN ('split', 'flip', 'planar', 'scheme')
+                          OR o.type_line LIKE 'Battle%' THEN 'sideways'
+                     WHEN o.type_line LIKE '%Planeswalker%' THEN 'walker'
+                     WHEN c.full_art THEN 'full-art'
+                     WHEN c.border_color = 'borderless' THEN 'borderless'
+                     WHEN c.frame = '2015' THEN 'modern'
                      ELSE 'older' END
-                        ORDER BY id
+                        ORDER BY c.id
                     ) AS rank
-             FROM cards
-             WHERE NOT digital AND lang = 'en'
-               AND illustration_id IS NOT NULL
-               AND image_status IN ('highres_scan', 'lowres')
+             FROM cards c JOIN oracle o ON o.id = c.oracle_id
+             WHERE NOT c.digital AND c.lang = 'en'
+               AND c.illustration_id IS NOT NULL
+               AND c.image_status IN ('highres_scan', 'lowres')
          )
          SELECT id, set_code, collector_number, lang, art, back_art, stratum
          FROM held WHERE rank <= ? ORDER BY stratum, rank",
@@ -214,7 +229,27 @@ pub const ART: Rect = Rect {
     bottom: 0.554,
 };
 
+/// How much of a photograph the card is taken to fill, since nothing detects
+/// one yet and a phone will not focus on a card pressed up against its lens.
+///
+/// Every one is tried and the nearest kept, the same bargain the index makes
+/// by holding an artwork at several crops: four framings of one small frame
+/// cost microseconds, and being wrong about this costs the retrieval.
+pub const FILLS: [f32; 4] = [1.0, 0.85, 0.72, 0.6];
+
 impl Rect {
+    /// The middle `fill` of a frame, which is where the card is assumed to be.
+    #[must_use]
+    pub fn filling(fill: f32) -> Self {
+        let edge = (1.0 - fill.clamp(0.1, 1.0)) / 2.0;
+        Self {
+            left: edge,
+            top: edge,
+            right: 1.0 - edge,
+            bottom: 1.0 - edge,
+        }
+    }
+
     /// This rectangle of a frame the card fills, or `None` where it lands
     /// outside one.
     // A fraction of a pixel grid is a crossing between a real number and a
@@ -301,8 +336,45 @@ pub struct Hit {
     pub printing: bool,
     pub artwork: bool,
     pub candidates: usize,
+    /// Distance to the artwork that came back.
     pub found: u32,
+    /// And how much further away the next one was.
     pub margin: i64,
+    /// The artwork that came back, for a miss to be able to name it.
+    pub art: String,
+    /// Distance to the artwork the photograph is actually of, which says
+    /// whether a miss was a near thing or the art box landing nowhere near.
+    pub truth: u32,
+}
+
+/// One photograph that did not name its own printing.
+#[derive(Debug)]
+pub struct Miss {
+    pub shot: String,
+    pub stratum: String,
+    pub art: String,
+    pub found: u32,
+    pub truth: u32,
+}
+
+impl Miss {
+    pub fn header() {
+        println!(
+            "{:<28} {:<12} {:>8} {:>8}  came back instead",
+            "shot", "frame", "d(found)", "d(true)"
+        );
+    }
+
+    pub fn report(&self) {
+        let Self {
+            shot,
+            stratum,
+            art,
+            found,
+            truth,
+        } = self;
+        println!("{shot:<28} {stratum:<12} {found:>8} {truth:>8}  {art}");
+    }
 }
 
 fn median<T: Copy + Ord + std::fmt::Display>(values: &[T]) -> String {

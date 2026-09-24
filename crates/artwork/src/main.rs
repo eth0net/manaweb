@@ -471,6 +471,7 @@ async fn photos(
 
     let mut conditions: BTreeMap<String, photo::Tally> = BTreeMap::new();
     let mut strata: BTreeMap<String, photo::Tally> = BTreeMap::new();
+    let mut misses: Vec<photo::Miss> = Vec::new();
     let (mut unknown, mut unreadable) = (0usize, 0usize);
 
     for (label, path) in &shots {
@@ -492,6 +493,16 @@ async fn photos(
             .entry(printing.stratum.clone())
             .or_default()
             .record(&hit);
+
+        if !hit.printing {
+            misses.push(photo::Miss {
+                shot: label.name(),
+                stratum: printing.stratum.clone(),
+                art: hit.art,
+                found: hit.found,
+                truth: hit.truth,
+            });
+        }
     }
 
     tracing::info!(shots = shots.len(), unknown, unreadable, "scored");
@@ -504,6 +515,17 @@ async fn photos(
     photo::Tally::header("frame");
     for (name, tally) in &strata {
         tally.report(name);
+    }
+
+    // Named rather than counted: a rate says how often, and only the list
+    // says whether they have anything in common.
+    if !misses.is_empty() {
+        println!();
+        misses.sort_by_key(|miss| (miss.stratum.clone(), miss.shot.clone()));
+        photo::Miss::header();
+        for miss in &misses {
+            miss.report();
+        }
     }
 
     Ok(())
@@ -521,21 +543,32 @@ async fn score(
         return Ok(None);
     };
     let plane = Plane::new(&image);
-    // No detection yet, so the card is taken to fill the frame and the
-    // artwork to sit where it does on a modern one.
-    let Some(art) = plane
-        .frame()
-        .as_ref()
-        .and_then(|frame| photo::ART.of(frame))
-    else {
-        tracing::warn!(shot = %path.display(), "no art box in it");
+    let Some(frame) = plane.frame() else {
+        tracing::warn!(shot = %path.display(), "no pixels in it");
         return Ok(None);
     };
-    let want = manaweb_scanner::entry(&art);
+    // Every framing the card might have, since none is detected — the
+    // rectangle and what it costs are in `docs/roadmap.md`.
+    let want: Vec<Hash> = photo::FILLS
+        .iter()
+        .filter_map(|&fill| {
+            let card = photo::Rect::filling(fill).of(&frame)?;
+            Some(manaweb_scanner::entry(&photo::ART.of(&card)?))
+        })
+        .flatten()
+        .collect();
+    if want.is_empty() {
+        tracing::warn!(shot = %path.display(), "no art box in it");
+        return Ok(None);
+    }
 
-    let (mut best, mut found, mut next) = (None, u32::MAX, u32::MAX);
+    let arts = printing.arts();
+    let (mut best, mut found, mut next, mut truth) = (None, u32::MAX, u32::MAX, u32::MAX);
     for (id, entry) in index {
         let distance = nearest(entry, &want);
+        if arts.contains(id) {
+            truth = truth.min(distance);
+        }
         if distance < found {
             next = found;
             found = distance;
@@ -551,9 +584,11 @@ async fn score(
     let candidates = photo::carrying(pool, best).await?;
     Ok(Some(photo::Hit {
         printing: candidates.contains(&printing.id),
-        artwork: printing.arts().contains(&best),
+        artwork: arts.contains(&best),
         candidates: candidates.len(),
         found,
         margin: i64::from(next) - i64::from(found),
+        art: best.to_owned(),
+        truth,
     }))
 }
