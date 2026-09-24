@@ -90,17 +90,26 @@ conversion, so the browser is the only caller that converts anything. The
 stride is separate because those rows carry padding past their pixels, and
 mistaking one for the other shears the picture.
 
-**pHash at four insets, recall@1 99.2%** under every degradation at once —
-misframing, blur, dim light, recompression and rotation. Framing is the single
-one a global hash does not shrug off, which is why an artwork is held at
-several crops rather than at Scryfall's own — **and why the query is asked at
-several too.** Holding them costs the file four entries an artwork; asking
-them costs the querier four hashes of one small frame, and it is what brings
-a rotated photograph back, the corners a rotation swings out of the picture
-being the same kind of error as a bad crop. Asking all four framings
-against all 54,585 of them is 1.3ms in plain JavaScript, measured 2026-09-24
-against the published index, and 0.4ms at one — so WASM is for the detection
-and rectification ahead of the hash rather than for the lookup.
+**pHash at four insets, recall@1 97.2%** with every degradation at once —
+misframing, rotation, blur, dim light and recompression — and 99.0% inside
+ten, measured 2026-09-24 by `just measure-art` over 500 queries and the
+54,584 artworks there is an image for. Framing is the one a global hash does
+not shrug off, which is why an artwork is held at several crops rather than
+at Scryfall's own — **and why the query is asked at several too.** Holding
+them costs the file four entries an artwork; asking them costs four hashes of
+one small frame, and is worth 0.8 points there and 1.4 on rotation alone, the
+corners a rotation swings out of the picture being the same kind of error as
+a bad crop.
+
+Asking all four framings against every one of the index's 54,585 entries is
+1.3ms in plain JavaScript, and 0.4ms at one, so WASM is for the detection and
+rectification ahead of the hash rather than for the lookup.
+
+**That number is not the one to judge the scanner by, and no better one has
+been measured.** It asks which *artwork* came back, and the two sides of one
+card are two artworks that often look alike; the client resolves either to
+the same printings through the pair, so a confusion the measurement scores as
+a miss is not one. What wants measuring is which printing a photograph names.
 
 The first WASM build owes three things. The golden vectors have to run on
 wasm32, which is the target they exist for and the one CI cannot reach today.
