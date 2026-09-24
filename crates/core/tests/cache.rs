@@ -381,6 +381,29 @@ async fn a_bad_line_is_skipped_and_counted() {
     assert_eq!(cards::count(&pool).await.unwrap(), 1);
 }
 
+/// Scryfall is the source of the promise that a set, collector number and
+/// language name one printing, and it is theirs to break.
+#[tokio::test]
+async fn a_printing_the_schema_refuses_is_skipped_and_counted() {
+    let pool = open_memory().await.unwrap();
+    // A second id under the number the first already took.
+    let ndjson = variants(&[&[("collector_number", serde_json::json!("XLN-217"))]]);
+
+    let report = cards::replace(&pool, &bulk("x"), &mut stream(ndjson))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        report,
+        SyncReport {
+            written: 1,
+            cards: 1,
+            skipped: 1
+        }
+    );
+    assert_eq!(cards::count(&pool).await.unwrap(), 1);
+}
+
 /// Builds a stream from the fixture's first card plus mutated copies of it, so
 /// ranking and grouping can be exercised without a second fixture.
 fn variants(mutations: &[&[(&str, serde_json::Value)]]) -> String {

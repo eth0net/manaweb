@@ -19,9 +19,10 @@ pub struct SyncReport {
     pub written: i64,
     /// Distinct cards those printings belong to.
     pub cards: i64,
-    /// Lines that didn't parse. Skipped rather than fatal, so one odd record
-    /// doesn't cost a week's refresh — but a jump here means Scryfall changed
-    /// something, and it's the caller's job to notice.
+    /// Records the cache didn't take, either unparsable or refused by the
+    /// schema. Skipped rather than fatal, so one odd record doesn't cost a
+    /// week's refresh — but a jump here means Scryfall changed something, and
+    /// it's the caller's job to notice.
     pub skipped: i64,
 }
 
@@ -51,7 +52,8 @@ pub async fn last_synced(pool: &SqlitePool, kind: &str) -> Result<Option<String>
 /// # Errors
 ///
 /// Fails on a database error, an unreadable stream, or a stream that yielded no
-/// cards at all — that last one would otherwise empty the cache silently.
+/// cards at all — that last one would otherwise empty the cache silently. A
+/// single row the schema refuses is counted, not raised.
 pub async fn replace(
     pool: &SqlitePool,
     bulk: &BulkData,
@@ -81,9 +83,17 @@ pub async fn replace(
             Ok(None) => break,
             Ok(Some(card)) => {
                 let legalities_id = intern_legalities(&mut tx, &mut legalities, &card).await?;
-                insert_printing(&mut tx, &card, legalities_id).await?;
-                Oracle::absorb(&mut oracles, &card);
-                report.written += 1;
+                match insert_printing(&mut tx, &card, legalities_id).await {
+                    Ok(()) => {
+                        Oracle::absorb(&mut oracles, &card);
+                        report.written += 1;
+                    }
+                    // A printing the schema has no room for: two sharing a
+                    // set, number and language, or one whose faces name no
+                    // oracle between them.
+                    Err(Error::Sqlx(error)) if refused_one_row(&error) => report.skipped += 1,
+                    Err(error) => return Err(error),
+                }
             }
             // One unparsable line shouldn't cost the whole refresh.
             Err(ScryfallError::Parse { .. }) => report.skipped += 1,
@@ -384,6 +394,21 @@ async fn insert_printing(
     .await?;
 
     Ok(())
+}
+
+/// SQLite's constraint failures, which share a low byte and leave the
+/// transaction usable where a disk or protocol error would not.
+const CONSTRAINT: i32 = 19;
+
+/// Whether the database refused one row rather than giving up.
+fn refused_one_row(error: &sqlx::Error) -> bool {
+    let sqlx::Error::Database(refused) = error else {
+        return false;
+    };
+    refused
+        .code()
+        .and_then(|code| code.parse::<i32>().ok())
+        .is_some_and(|code| code & 0xff == CONSTRAINT)
 }
 
 /// What the cache lifts off a face where the top level omits it. Serde fills
