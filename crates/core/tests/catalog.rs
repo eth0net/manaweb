@@ -600,6 +600,37 @@ async fn the_index_holds_every_art_number_the_printings_name() {
     assert!((0..index.rows).all(|at| part.answered(at)));
 }
 
+// The client has no hashing of its own yet, so the number it refuses an index
+// by is written down rather than worked out. Nothing else would notice it
+// going stale.
+#[test]
+fn the_client_refuses_an_index_by_the_same_fingerprint() {
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../web/src/catalog/artwork.ts");
+    let source = std::fs::read_to_string(&path).expect("the client's index reader");
+    let wanted = format!(
+        "const HASHER = \"{:016x}\";",
+        manaweb_scanner::fingerprint()
+    );
+
+    assert!(
+        source.contains(&wanted),
+        "{} wants {wanted}",
+        path.display()
+    );
+}
+
+#[tokio::test]
+async fn the_index_names_the_hash_that_filled_it() {
+    let built = built(&everything()).await;
+    let part = Part::read(&built.artwork.as_ref().expect("an index").bytes);
+
+    assert_eq!(
+        part.header["hasher"].as_str(),
+        Some(format!("{:016x}", manaweb_scanner::fingerprint()).as_str()),
+    );
+}
+
 // The whole part is positional, so hashes in the file in any order at all
 // would satisfy a test that only asks whether they are in it.
 #[tokio::test]

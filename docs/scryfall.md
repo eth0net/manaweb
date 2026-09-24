@@ -484,6 +484,16 @@ lie and only the last is addressed a byte at a time. `fronts` in the header is
 how many of the entries a printing can name, which is the count the printings
 file's own column has to agree with.
 
+**The header also names what filled it.** Two sides compute these from the
+same artwork and never compare notes, so a builder and a reader that resample
+or transform even slightly differently retrieve nothing at all — and a lookup
+with no match cannot say that is why. What the header carries is therefore the
+hashing itself: one frame the code states rather than ships, hashed and folded
+to a word. Being made of the hashing it cannot be left behind by a change to
+it, and a reader that comes out differently refuses the file. The hash store
+carries the same word, which is what stops a top-up run filling half of one
+store with each.
+
 **Either side of a card can be matched.** 3,418 artworks sit on the back of
 one, and a pair names each against the artwork on its front, so a photograph
 of the back resolves to the same printings. A pair adds to what the back

@@ -15,7 +15,7 @@ use sqlx::{SqliteConnection, SqlitePool};
 use tokio::fs;
 
 use crate::{Error, Result};
-use manaweb_scanner::{HASHES, Store, store};
+use manaweb_scanner::{HASHES, Store, fingerprint, store};
 
 /// Bit `i` of a printing's `finishes` is this list's `i`th entry.
 const FINISHES: [&str; 3] = ["nonfoil", "foil", "etched"];
@@ -521,6 +521,10 @@ impl Artworks {
 #[derive(Debug, Serialize)]
 struct ArtworkHeader<'a> {
     version: &'a str,
+    /// What the build that filled the entries hashes to. A reader that comes
+    /// out differently retrieves nothing and has no way to notice, so it
+    /// refuses instead.
+    hasher: String,
     hashes: usize,
     rows: usize,
     /// Of those, the ones the printings file numbers. The rest are backs, and
@@ -615,6 +619,7 @@ fn build_artwork(
 
     let mut out = serde_json::to_vec(&ArtworkHeader {
         version,
+        hasher: format!("{:016x}", fingerprint()),
         hashes: HASHES,
         rows: all.len(),
         fronts,

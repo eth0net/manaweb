@@ -11,6 +11,8 @@ import { part } from "./load";
 
 export interface ArtworkHeader {
   version: string;
+  // What the build that filled the entries hashes to.
+  hasher: string;
   hashes: number;
   rows: number;
   // Of the rows, how many a printing can name. The rest are backs.
@@ -24,6 +26,10 @@ export interface Match {
   // Bits differing, out of 64. Zero is the same illustration.
   distance: number;
 }
+
+// What this client's own hashing comes out as, which the engine will answer
+// for itself once there is one — `docs/scryfall.md`.
+const HASHER = "6c618393dccd0d94";
 
 const NEWLINE = 10;
 const WORD = 8;
@@ -64,6 +70,12 @@ export class Artworks {
     const header = JSON.parse(
       new TextDecoder().decode(bytes.subarray(0, newline)),
     ) as ArtworkHeader;
+
+    if (header.hasher !== HASHER) {
+      throw new Error(
+        `the artwork index was filled by ${header.hasher}, this client hashes ${HASHER}`,
+      );
+    }
 
     // `fronts` is the one count nothing below is sized by, so a missing one
     // reaches every lookup and answers each with no printings.

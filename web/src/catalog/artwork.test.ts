@@ -8,11 +8,16 @@ const PER = 4;
 // eight-byte aligned, the hashes, the back pairs, then the bitmap.
 function file(
   artworks: (bigint[] | null)[],
-  { fronts = artworks.length, backs = [] as [number, number][] } = {},
+  {
+    fronts = artworks.length,
+    backs = [] as [number, number][],
+    hasher = "6c618393dccd0d94",
+  } = {},
 ): Uint8Array {
   const header = new TextEncoder().encode(
     JSON.stringify({
       version: "v1",
+      hasher,
       hashes: PER,
       rows: artworks.length,
       fronts,
@@ -133,6 +138,12 @@ describe("the artwork index", () => {
     const found = index.nearest([TWO ^ 0xfn, ONE ^ 0x3n]);
 
     expect(found).toEqual({ artwork: 0, distance: 2 });
+  });
+
+  test("refuses entries a different hash filled", () => {
+    expect(() => Artworks.read(file([[ONE]], { hasher: "0000" }))).toThrow(
+      "filled by 0000",
+    );
   });
 
   test("refuses a header missing a count", () => {
