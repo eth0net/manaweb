@@ -15,6 +15,10 @@ bun-debug.log*
 # whatever wants keeping until it doesn't. Nobody else needs any of it.
 /local/
 
+# Photographs of real cards, to score the scanner against. Somebody's own
+# collection, hundreds of megabytes of it, and no two people's set is the same.
+/photos/
+
 # Pulled from Scryfall and kept: artwork under `art`, a bulk file under `bulk`
 # if you hold on to one. Gigabytes, derived, and re-pullable, but slowly, so
 # it is worth not deleting.
