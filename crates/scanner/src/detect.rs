@@ -30,7 +30,7 @@ pub struct Quad {
 }
 
 /// What a card measures, in millimeters.
-const RATIO: f32 = 63.0 / 88.0;
+pub const RATIO: f32 = 63.0 / 88.0;
 
 /// How far from [`RATIO`] a quadrilateral may be and still be taken for a
 /// card. Wide, because perspective foreshortens one axis and this is a
@@ -119,8 +119,8 @@ impl Small {
         let mut levels = vec![0u8; width * height];
         for y in 0..height {
             for x in 0..width {
-                // Nearest rather than filtered: this decides which side of a
-                // threshold a pixel falls, not what it looks like.
+                // Nearest rather than filtered: a step between neighbors is
+                // what this is read for, and filtering softens one.
                 levels[y * width + x] = frame.at(
                     ((x as f32 * scale) as usize).min(w - 1),
                     ((y as f32 * scale) as usize).min(h - 1),
@@ -135,75 +135,64 @@ impl Small {
         })
     }
 
-    /// The level that best splits the grid in two, by Otsu's method: the
-    /// threshold putting the most variance between the halves.
-    fn split(&self) -> u8 {
-        let mut counts = [0usize; 256];
-        for level in &self.levels {
-            counts[*level as usize] += 1;
-        }
-        let total = self.levels.len() as f32;
-        let whole: f32 = counts
-            .iter()
-            .enumerate()
-            .map(|(level, count)| level as f32 * *count as f32)
-            .sum();
-
-        let (mut behind, mut sum, mut best, mut at) = (0f32, 0f32, -1f32, 0u8);
-        for (level, count) in counts.iter().enumerate() {
-            behind += *count as f32;
-            if behind == 0.0 {
-                continue;
-            }
-            let ahead = total - behind;
-            if ahead == 0.0 {
-                break;
-            }
-            sum += level as f32 * *count as f32;
-            let between = behind * ahead * (sum / behind - (whole - sum) / ahead).powi(2);
-            if between > best {
-                best = between;
-                at = level as u8;
-            }
-        }
-        at
-    }
-
-    /// Whether the frame's own border is mostly above the threshold, which
-    /// is what says which side of it the card is on.
-    fn border_above(&self, at: u8) -> bool {
-        let (mut above, mut seen) = (0usize, 0usize);
+    /// Everything reachable from the frame's own edge without stepping over
+    /// [`STEP`], which is the table the card is lying on.
+    ///
+    /// A level threshold cannot tell a dark card from the shadow beside it,
+    /// both being dark; the difference is that the card's border is a cliff
+    /// and the shadow is a slope, and a slope is walked down.
+    fn outside(&self) -> Vec<bool> {
+        let mut seen = vec![false; self.levels.len()];
+        let mut stack: Vec<usize> = Vec::new();
         for y in 0..self.height {
             for x in 0..self.width {
-                let edge = x == 0 || y == 0 || x + 1 == self.width || y + 1 == self.height;
-                if edge {
-                    seen += 1;
-                    above += usize::from(self.levels[y * self.width + x] > at);
+                if x == 0 || y == 0 || x + 1 == self.width || y + 1 == self.height {
+                    let at = y * self.width + x;
+                    seen[at] = true;
+                    stack.push(at);
                 }
             }
         }
-        above * 2 > seen
+
+        while let Some(at) = stack.pop() {
+            let (x, y) = (at % self.width, at / self.width);
+            let level = self.levels[at];
+            let mut step = |nx: usize, ny: usize, stack: &mut Vec<usize>| {
+                let next = ny * self.width + nx;
+                if !seen[next] && self.levels[next].abs_diff(level) <= STEP {
+                    seen[next] = true;
+                    stack.push(next);
+                }
+            };
+            if x > 0 {
+                step(x - 1, y, &mut stack);
+            }
+            if x + 1 < self.width {
+                step(x + 1, y, &mut stack);
+            }
+            if y > 0 {
+                step(x, y - 1, &mut stack);
+            }
+            if y + 1 < self.height {
+                step(x, y + 1, &mut stack);
+            }
+        }
+        seen
     }
 }
 
+/// The level difference between neighbors that stops the flood. Below it is
+/// shading across a surface, above it is one thing ending and another
+/// starting.
+const STEP: u8 = 10;
+
 /// The card in a frame, or `None` where nothing in it is shaped like one.
-///
-/// Thresholds the frame in two, takes the largest run of pixels on whichever
-/// side its border is not, and reads the four corners off that run's hull.
 #[must_use]
 pub fn card(frame: &Frame) -> Option<Quad> {
     let small = Small::of(frame)?;
-    let at = small.split();
-    // The card is whichever side of the threshold the frame's edge is not,
-    // so a black border on a white table and a white one on a dark mat are
-    // the same problem.
-    let wanted = !small.border_above(at);
-
-    let inside: Vec<bool> = small
-        .levels
-        .iter()
-        .map(|level| (*level > at) == wanted)
-        .collect();
+    // Whatever the flood could not reach, which is the card and anything else
+    // standing off the surface — no assumption about which is the brighter.
+    let inside: Vec<bool> = small.outside().iter().map(|held| !held).collect();
     let run = largest(&inside, small.width, small.height)?;
     let hull = hull(&run);
     let held = Quad::new(upright(clockwise(widest(&hull)?)))?;

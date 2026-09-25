@@ -183,3 +183,30 @@ fn a_card_seen_at_an_angle_reads_back_even() {
         );
     }
 }
+
+/// A table shading off towards one corner, past the card's own level.
+///
+/// Splitting the frame by level cannot tell the two apart and joins them
+/// into one run reaching the edge of the picture, which is what a real
+/// photograph of a card on a lit surface does.
+#[test]
+fn a_shadow_darker_than_the_card_is_not_part_of_it() {
+    let mut levels = vec![0u8; WIDE * TALL];
+    for down in 0..TALL {
+        let shade = 210 - 185 * down / (TALL - 1);
+        for across in 0..WIDE {
+            levels[down * WIDE + across] = shade as u8;
+        }
+    }
+    for down in 60..236 {
+        for across in 100..226 {
+            levels[down * WIDE + across] = 40;
+        }
+    }
+
+    let frame = Frame::new(&levels, WIDE, TALL, WIDE).expect("a frame");
+    let found = card(&frame).expect("a card in it");
+    let [tl, _, br, _] = found.corners;
+    near(tl, 100.0, 60.0, 8.0);
+    near(br, 225.0, 235.0, 8.0);
+}
