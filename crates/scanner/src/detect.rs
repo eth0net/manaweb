@@ -138,9 +138,7 @@ impl Small {
     /// Everything reachable from the frame's own edge without stepping over
     /// [`STEP`], which is the table the card is lying on.
     ///
-    /// A level threshold cannot tell a dark card from the shadow beside it,
-    /// both being dark; the difference is that the card's border is a cliff
-    /// and the shadow is a slope, and a slope is walked down.
+    /// What this reads that a level could not is `docs/roadmap.md`.
     fn outside(&self) -> Vec<bool> {
         let mut seen = vec![false; self.levels.len()];
         let mut stack: Vec<usize> = Vec::new();

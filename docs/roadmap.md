@@ -127,13 +127,13 @@ wrong with:
 |---|---|---|
 | modern | 100.0% | 55.3% |
 | borderless | 98.3% | 4.8% |
-| older | 95.0% | 30.7% |
+| older | 96.7% | 30.7% |
 | walker | 65.0% | 1.3% |
 | full-art | 58.3% | 1.8% |
 | token | 11.7% | 5.3% |
 | sideways | 6.7% | 0.7% |
 
-**91.8% weighted by how often each shape is printed.** Asking at more
+**92.5% weighted by how often each shape is printed.** Asking at more
 framings than that costs nothing measurable: taking the floor from six
 tenths of the frame to four moved no shape that works, so where a photograph
 sits in that range is not something to ask a person to get right. The split is not
@@ -147,12 +147,43 @@ the card and rectifying it rather than asking the person to frame it, and
 the number a photograph is compared against rather than a target.
 
 **On that set a detection can only be a false positive**, an image of theirs
-being a card and nothing else, and one is still reported in 52% of them: a
-2015 frame's art box measures 0.73 where a card measures 0.716, which is
-what the shape filter is looking for. It costs two shots in 420 and wins
-none of the shapes that work. A photograph has a table in it, where the
-outline is the largest thing there is, so what the figure says is that
-shape alone is not the whole guard rather than that the technique is wrong.
+being a card and nothing else, and one is reported in 74% of them: a 2015
+frame's art box measures 0.73 where a card measures 0.716, so four corners
+of the right shape are sitting inside every ordinary card. It answers 6.7%
+of the shots and takes none of them away, which is the union being asked at
+once — a wrong reading of where the card is has to beat every guess before
+it can cost anything.
+
+**49 photographs of real cards** say what that set cannot. Phone camera, a
+pale surface, even light, the card upright and filling about three fifths of
+the frame:
+
+| shape | shots | printing@1 | detected | read |
+|---|---|---|---|---|
+| borderless | 9 | 100.0% | 100.0% | 77.8% |
+| modern | 17 | 88.2% | 100.0% | 88.2% |
+| older | 7 | 71.4% | 100.0% | 71.4% |
+| full-art | 4 | 25.0% | 100.0% | 75.0% |
+| token | 12 | 8.3% | 91.7% | 0.0% |
+
+`detected` is how often a card was found at all and `read` how often its own
+corners beat every guess at where one sits. **Fourteen of the eighteen misses
+are tokens and full-art**, which is the shape problem above rather than
+anything about the photographs. Set those two shapes aside and the other 33
+score 87.9%, against a ceiling of 98.8% for the same three.
+
+**The whole of that gap is foil.** Of the four misses left, three are foils
+and the fourth is a near thing at ten bits:
+
+| | shots | printing@1 |
+|---|---|---|
+| nonfoil | 22 | 95.5% |
+| foil | 11 | 72.7% |
+
+Under even light and no deliberate glare, which makes it the treatment and
+not the lighting. A foil scatters the light its own way and the hash reads
+luma, so what a camera records off one is not what was printed — the first
+thing a condition has cost that the shape of the card does not explain.
 
 **Color reaches one channel inside the engine**, not at each caller. It is a
 step of the hashing like any other, so the two sides have one statement of it
@@ -212,15 +243,21 @@ Four ways to:
 | an axis-aligned box from gradient energy alone | the cheapest thing that beats guessing | no rotation, no perspective |
 | a small learned detector | robust to all of the above | training data, weights to ship, and the classification this design is built to avoid |
 
-**The first is built**, into the engine so it reaches every platform: split
-the levels in two by Otsu, take the largest connected run on whichever side
-the frame's own border is not, read four corners off that run's hull, and
-refuse anything too small to have been meant, the wrong shape, or not
-mostly made of those four corners. A card is 63 by 88mm, so the ratio is a
-free filter. Refining it with the second is the next step, and the dark
-case is what wants it: a black border on a dark table has no level between
-the two, so the threshold lands inside the border and hands back the card's
-interior, which is card-shaped and passes every check.
+**The first is built**, into the engine so it reaches every platform: the
+table is whatever can be walked to from the edge of the frame without
+climbing a step of ten levels, the card is the largest thing left over, and
+its four corners come off that run's hull. Refused if it is too small to
+have been meant, the wrong shape — a card is 63 by 88mm, so the ratio is a
+free filter — or not mostly made of those four corners.
+
+**A step and not a level**, because a level cannot tell a dark card from the
+shadow lying beside it and joins the two into one run reaching the edge of
+the picture: that was 25 of the first 49 photographs, each coming back with
+its lower corners pinned to the corners of the frame. A card's border is a
+step and shading is not. Ten levels is the middle of a plateau — six to
+twelve score alike and fourteen begins losing cards — rather than a figure
+anything derives. What it still cannot do is a black border on a dark table,
+where there is no step to stop at.
 
 **Rectifying to a canonical rectangle is what makes it worth the work**,
 rather than the art box, which already answers for ordinary cards — nothing
