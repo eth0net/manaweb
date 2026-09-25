@@ -552,7 +552,7 @@ async fn score(
     path: &Path,
     printing: &photo::Printing,
 ) -> Result<Option<photo::Hit>> {
-    let Ok(image) = image::open(path) else {
+    let Some(image) = photo::read(path) else {
         tracing::warn!(shot = %path.display(), "will not decode");
         return Ok(None);
     };

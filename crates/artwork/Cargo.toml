@@ -20,7 +20,11 @@ workspace = true
 manaweb-scanner.workspace = true
 manaweb-scryfall.workspace = true
 
-image = { version = "0.25.9", default-features = false, features = ["jpeg"] }
+# png beside jpeg so a directory of photographs exported either way scores.
+image = { version = "0.25.9", default-features = false, features = [
+    "jpeg",
+    "png",
+] }
 reqwest.workspace = true
 sqlx.workspace = true
 thiserror.workspace = true

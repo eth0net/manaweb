@@ -4,10 +4,30 @@
 //! names, an artwork being shared by every printing that carries it — see
 //! `docs/roadmap.md`.
 
+use std::path::Path;
+
+use image::{DynamicImage, ImageDecoder as _, ImageReader};
 use manaweb_scanner::Frame;
 use sqlx::SqlitePool;
 
 use crate::Result;
+
+/// A photograph, turned the way the camera was held.
+///
+/// A phone writes the sensor's own rows and a tag saying which way up they
+/// go, and nothing below here reads tags, so a portrait shot arrives on its
+/// side unless this is applied.
+#[must_use]
+pub fn read(path: &Path) -> Option<DynamicImage> {
+    // Guessed rather than taken from the extension: an export that renamed a
+    // file it did not re-encode would otherwise decode as nothing.
+    let reader = ImageReader::open(path).ok()?.with_guessed_format().ok()?;
+    let mut decoder = reader.into_decoder().ok()?;
+    let turned = decoder.orientation().ok()?;
+    let mut image = DynamicImage::from_decoder(decoder).ok()?;
+    image.apply_orientation(turned);
+    Some(image)
+}
 
 /// What a filename says a photograph is of: `<set>-<number>-<lang>__<how>`.
 ///
