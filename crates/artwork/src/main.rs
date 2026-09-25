@@ -65,6 +65,7 @@ async fn run() -> Result<()> {
             measure(&artworks, &dir)
         }
         "cards" => cards(&pool, &dir, limit(rest.as_deref())).await,
+        "artbox" => artbox(&pool, &dir, Path::new(rest.as_deref().unwrap_or(CARDS))).await,
         "photos" => {
             photos(
                 &pool,
@@ -75,7 +76,9 @@ async fn run() -> Result<()> {
             .await
         }
         other => {
-            tracing::error!("no such command: {other:?} (pull, hash, measure, cards, photos)");
+            tracing::error!(
+                "no such command: {other:?} (pull, hash, measure, cards, photos, artbox)"
+            );
             Ok(())
         }
     }
@@ -105,6 +108,73 @@ async fn pull(artworks: &[Artwork], dir: &str) -> Result<()> {
     }
 
     tracing::info!(held, pulled, failed, "pulled");
+    Ok(())
+}
+
+/// Where the whole-card images land, which is not where the artwork does.
+const CARDS: &str = "scryfall/cards";
+
+/// How many of each shape are measured for an art box. The spread within one
+/// is small, so this is about outliers rather than precision.
+const MEASURED: u32 = 20;
+
+/// Where the artwork sits on each shape of card, measured rather than taken
+/// from a diagram.
+///
+/// Scryfall's `art_crop` is what the index is keyed by, so finding it inside
+/// their own picture of the whole card says what a scanner has to cut out of
+/// a photograph. Reads what `pull` and `cards` already fetched.
+async fn artbox(pool: &sqlx::SqlitePool, art: &str, cards: &Path) -> Result<()> {
+    let wanted = photo::sample(pool, MEASURED).await?;
+    let mut found: BTreeMap<String, Vec<photo::Rect>> = BTreeMap::new();
+    let (mut read, mut absent) = (0usize, 0usize);
+
+    for (printing, label) in &wanted {
+        let id = &printing.art;
+        let crop = Path::new(art)
+            .join(&id[0..2])
+            .join(&id[2..4])
+            .join(format!("{id}.jpg"));
+        let (Ok(whole), Ok(part)) = (image::open(cards.join(label.name())), image::open(&crop))
+        else {
+            absent += 1;
+            continue;
+        };
+
+        let (whole, part) = (Plane::new(&whole), Plane::new(&part));
+        let (Some(whole), Some(part)) = (whole.frame(), part.frame()) else {
+            absent += 1;
+            continue;
+        };
+        if let Some(rect) = photo::locate(&whole, &part) {
+            found
+                .entry(printing.stratum.clone())
+                .or_default()
+                .push(rect);
+            read += 1;
+        }
+    }
+
+    tracing::info!(read, absent, "located");
+    println!(
+        "{:<12} {:>6} {:>7} {:>7} {:>7} {:>7}",
+        "shape", "shots", "left", "top", "right", "bottom"
+    );
+    for (shape, rects) in &found {
+        let edge = |pick: fn(&photo::Rect) -> f32| {
+            let mut held: Vec<f32> = rects.iter().map(pick).collect();
+            held.sort_by(f32::total_cmp);
+            held[held.len() / 2]
+        };
+        println!(
+            "{shape:<12} {:>6} {:>7.3} {:>7.3} {:>7.3} {:>7.3}",
+            rects.len(),
+            edge(|r| r.left),
+            edge(|r| r.top),
+            edge(|r| r.right),
+            edge(|r| r.bottom),
+        );
+    }
     Ok(())
 }
 
@@ -623,6 +693,7 @@ async fn score(
     let Some(best) = best else {
         return Ok(None);
     };
+
     let candidates = photo::carrying(pool, best).await?;
     Ok(Some(photo::Hit {
         printing: candidates.contains(&printing.id),

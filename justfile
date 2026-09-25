@@ -140,6 +140,12 @@ measure-art dir="scryfall/art":
 photo-cards dir="scryfall/cards" each="60":
     cargo run --release -p manaweb-artwork -- cards {{ db }} {{ dir }} {{ each }}
 
+# Where the artwork sits on each shape of card, read out of what `photo-cards`
+# and `pull` already fetched. Seconds, and the source of `photo::BOXES`.
+[doc('measure the art box of every card shape')]
+artbox art="scryfall/art" cards="scryfall/cards":
+    cargo run --release -p manaweb-artwork -- artbox {{ db }} {{ art }} {{ cards }}
+
 # Which printing a photograph names, which is the question `measure-art` does
 # not ask. Each file is named for what it shows: `crates/artwork/src/photo.rs`.
 [doc('score a directory of card photographs against the published store')]

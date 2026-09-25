@@ -263,14 +263,12 @@ pub struct Rect {
 
 /// Where the artwork sits on a modern card.
 ///
-/// Measured rather than taken from a diagram: Scryfall's own `art_crop` of a
-/// 2015-frame printing is 626x457 of a 745x1040 card, at 59,119. Every other
-/// frame puts it somewhere else, which is what the strata are there to show.
+/// Measured rather than taken from a diagram, by `just artbox`.
 pub const ART: Rect = Rect {
-    left: 0.079,
-    top: 0.114,
+    left: 0.082,
+    top: 0.118,
     right: 0.920,
-    bottom: 0.554,
+    bottom: 0.556,
 };
 
 /// How much of a photograph's height the card is taken to fill, for when
@@ -325,6 +323,131 @@ impl Rect {
         let bottom = across(self.bottom, frame.height());
         frame.window(x, y, right.saturating_sub(x), bottom.saturating_sub(y))
     }
+}
+
+/// Side of the grid two pictures are compared over when one is being located
+/// in the other. Small, because this asks where a crop sits and not what is
+/// in it.
+const PATCH: usize = 16;
+
+/// A frame's running totals, so the mean of any rectangle is four lookups
+/// rather than its area.
+struct Totals {
+    sums: Vec<f64>,
+    width: usize,
+    height: usize,
+}
+
+// Every number here crosses between a pixel count and the real arithmetic a
+// mean and a fraction are worked out in.
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
+impl Totals {
+    fn of(frame: &Frame) -> Self {
+        let (width, height) = (frame.width(), frame.height());
+        let mut sums = vec![0f64; (width + 1) * (height + 1)];
+        for y in 0..height {
+            let mut row = 0f64;
+            for x in 0..width {
+                row += f64::from(frame.at(x, y).unwrap_or(0));
+                sums[(y + 1) * (width + 1) + x + 1] = sums[y * (width + 1) + x + 1] + row;
+            }
+        }
+        Self {
+            sums,
+            width,
+            height,
+        }
+    }
+
+    fn mean(&self, x0: usize, y0: usize, x1: usize, y1: usize) -> f32 {
+        let (x1, y1) = (x1.min(self.width), y1.min(self.height));
+        if x1 <= x0 || y1 <= y0 {
+            return 0.0;
+        }
+        let at = |x: usize, y: usize| self.sums[y * (self.width + 1) + x];
+        let whole = at(x1, y1) - at(x0, y1) - at(x1, y0) + at(x0, y0);
+        (whole / ((x1 - x0) * (y1 - y0)) as f64) as f32
+    }
+
+    /// One rectangle as a [`PATCH`] grid of means, centered on zero and
+    /// scaled, so two exposures of one thing compare alike.
+    fn patch(&self, x: usize, y: usize, width: usize, height: usize) -> Vec<f32> {
+        let mut out = Vec::with_capacity(PATCH * PATCH);
+        for down in 0..PATCH {
+            for across in 0..PATCH {
+                out.push(self.mean(
+                    x + across * width / PATCH,
+                    y + down * height / PATCH,
+                    x + (across + 1) * width / PATCH,
+                    y + (down + 1) * height / PATCH,
+                ));
+            }
+        }
+        let mean = out.iter().sum::<f32>() / out.len() as f32;
+        let spread = (out.iter().map(|held| (held - mean).powi(2)).sum::<f32>() / out.len() as f32)
+            .sqrt()
+            .max(1.0);
+        for held in &mut out {
+            *held = (*held - mean) / spread;
+        }
+        out
+    }
+}
+
+/// How much of a card's width the artwork is searched for at, and in what
+/// steps. Scryfall's own crops run from a third of one to nearly all of it.
+const SCALES: (f32, f32, f32) = (0.30, 1.0, 0.02);
+
+/// Where `art` sits inside `card`, searched over position and scale.
+///
+/// The crop's own proportions fix the height once a width is chosen, so what
+/// is left is two offsets and one scale.
+// Same crossing as [`Totals`].
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
+#[must_use]
+pub fn locate(card: &Frame, art: &Frame) -> Option<Rect> {
+    let wanted = Totals::of(art).patch(0, 0, art.width(), art.height());
+    let tall = art.height() as f32 / art.width() as f32;
+    let totals = Totals::of(card);
+    let (wide, high) = (card.width(), card.height());
+
+    let (mut scale, mut best) = (SCALES.0, None::<(f32, Rect)>);
+    while scale <= SCALES.1 {
+        let width = (wide as f32 * scale) as usize;
+        let height = (width as f32 * tall) as usize;
+        scale += SCALES.2;
+        if width < PATCH || height < PATCH || height > high {
+            continue;
+        }
+
+        let (across, down) = ((wide / 48).max(1), (high / 64).max(1));
+        for y in (0..=(high - height)).step_by(down) {
+            for x in (0..=(wide - width)).step_by(across) {
+                let held = totals.patch(x, y, width, height);
+                let cost: f32 = held.iter().zip(&wanted).map(|(a, b)| (a - b).powi(2)).sum();
+                if best.as_ref().is_none_or(|(low, _)| cost < *low) {
+                    best = Some((
+                        cost,
+                        Rect {
+                            left: x as f32 / wide as f32,
+                            top: y as f32 / high as f32,
+                            right: (x + width) as f32 / wide as f32,
+                            bottom: (y + height) as f32 / high as f32,
+                        },
+                    ));
+                }
+            }
+        }
+    }
+    best.map(|(_, rect)| rect)
 }
 
 /// What one condition scored over every photograph taken under it.
