@@ -231,6 +231,13 @@ which would leave the dev server the one place the policy is not enforced, so
 the dev server parses it and sends the same headers. A policy that only
 production has is a policy found in production.
 
+**`script-src 'self'` refuses to instantiate WebAssembly** until it names
+`'wasm-unsafe-eval'` as well, which the scanner will need and nothing yet
+justifies — so the widening waits for the thing that fetches the module.
+`SharedArrayBuffer` is not worth the COOP/COEP headers it wants, which would
+complicate the OAuth popup, and a transferred `ArrayBuffer` already copies
+nothing.
+
 ## Preview deployments
 
 Two Pages behaviors decide what a preview can do:

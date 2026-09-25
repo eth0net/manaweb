@@ -192,10 +192,8 @@ impl Small {
 
 /// How much of a frame has to be the surface a card is lying on.
 ///
-/// Below this nothing was flooded, so the frame is a picture of a card
-/// rather than a photograph of one and whatever was found is inside it: the
-/// art box of an ordinary card is a card's own proportions to within a
-/// hundredth, and passes every other check here.
+/// What it keeps out, and why raising it costs more than it keeps, is
+/// `docs/roadmap.md`.
 const LEAST_TABLE: f32 = 0.25;
 
 /// The level difference between neighbors that stops the flood. Below it is
