@@ -133,8 +133,8 @@ impl Small {
                 // Nearest rather than filtered: a step between neighbors is
                 // what this is read for, and filtering softens one.
                 levels[y * width + x] = frame.at(
-                    ((x as f32 * scale) as usize).min(w - 1),
-                    ((y as f32 * scale) as usize).min(h - 1),
+                    (((x as f32 + 0.5) * scale) as usize).min(w - 1),
+                    (((y as f32 + 0.5) * scale) as usize).min(h - 1),
                 )?;
             }
         }
