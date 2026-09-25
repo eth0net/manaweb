@@ -263,11 +263,18 @@ pub struct Rect {
 
 /// Where the artwork sits on a card, one shape of card at a time.
 ///
-/// Measured by `just artbox` rather than taken from a diagram, and only
-/// three because the rest land within an inset the index already holds an
-/// artwork at. Which shape a photograph is of is not known when it is being
-/// read, so every one of these is asked.
-pub const BOXES: [Rect; 3] = [
+/// Measured by `just artbox` rather than taken from a diagram. Which shape
+/// a photograph is of is not known while it is being read, so every one of
+/// these is asked; a shape not listed shares one of them to within an inset
+/// the index already holds an artwork at.
+pub const BOXES: [Rect; 4] = [
+    // The 1993 and 1997 frames, which are narrower and sit higher.
+    Rect {
+        left: 0.123,
+        top: 0.103,
+        right: 0.881,
+        bottom: 0.541,
+    },
     // Modern, borderless, older and a planeswalker between them.
     Rect {
         left: 0.082,
