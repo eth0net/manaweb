@@ -235,10 +235,36 @@ the PDS will take already exists — see [`data-model.md`](data-model.md).
 It asks nothing of the lexicons: `container` is already a field a card may
 carry, `source` already says what the cards were read out of, and the file a
 CSV names is already optional. What it does ask is that the review settle a
-**finish**, which a card record requires and no hash of an artwork can see:
-foil and nonfoil share a collector number, so a scan proposes the one and
-the person holding the card corrects it. That is the same fact the premium
-stamp above would read, and the reason it is worth reading.
+**finish**, which a card record requires and no hash of an artwork can see.
+
+**Half of that question is already answered.** 52.4% of paper printings were
+made in one finish only — 40.3% nonfoil, 11.3% foil, 0.8% etched — and the
+catalog carries `finishes` per printing, so for those there is nothing to
+ask and nothing to get wrong. The rest default to nonfoil with a toggle.
+
+**Two priors are worth having, and both are priors rather than answers.**
+Someone working through a foil binder says so once; someone opening packs of
+one set says so once. What each buys:
+
+| told | what it settles |
+|---|---|
+| this is a foil | the finish, where the printing was made in both |
+| these are from this set | the printing, 86.9% of the time |
+
+That second figure is the one to notice. An artwork is reprinted, which is
+why 54% of right answers still carry more than one printing — but within a
+single set an artwork is one printing in 58.2% of cases and already unique
+in a further 28.7%, leaving an eighth where two treatments of the same art sit
+in the same set and a person has to look at them.
+
+**A prior never overrides what was read.** A finish the catalog rules out is
+not offered whatever the session says; a card found to be from another set
+is taken at its word and marked, because scanning the wrong pile is a thing
+that happens. Where a reading and a prior disagree the reading wins and the
+entry carries the disagreement, so review is somewhere to look first rather
+than a list to go through. The same holds when a premium stamp is read off
+the card: it is evidence, and the session setting is what it is weighed
+against.
 
 ### What else a scanner could be made of
 
