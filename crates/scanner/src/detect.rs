@@ -62,6 +62,17 @@ impl Quad {
         enclosed(&self.corners)
     }
 
+    /// The same card, taken to be the other way up.
+    ///
+    /// Which end of a short side is the card's top is not known, so a reader
+    /// asks both rather than betting on one.
+    #[must_use]
+    pub fn turned(&self) -> Self {
+        Self {
+            corners: std::array::from_fn(|at| self.corners[(at + 2) % 4]),
+        }
+    }
+
     /// The longer and shorter of the mean opposing side lengths.
     #[must_use]
     pub fn sides(&self) -> (f32, f32) {

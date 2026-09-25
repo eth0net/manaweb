@@ -71,6 +71,11 @@ impl Label {
         })
     }
 
+    /// What was varied, one piece at a time, so the report can cut by each.
+    pub fn tags(&self) -> impl Iterator<Item = &str> {
+        self.condition.split('-')
+    }
+
     /// How a shot of this printing is named, which is what `cards` writes and
     /// what a photograph has to be called to be scored.
     #[must_use]

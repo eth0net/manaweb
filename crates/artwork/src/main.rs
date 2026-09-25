@@ -498,10 +498,11 @@ async fn photos(
             continue;
         };
 
-        conditions
-            .entry(label.condition.clone())
-            .or_default()
-            .record(&hit);
+        // Each piece of the condition on its own, a shot under two of them
+        // counting for both: fifty names one to a shot say nothing.
+        for tag in std::iter::once("(all)").chain(label.tags()) {
+            conditions.entry(tag.to_owned()).or_default().record(&hit);
+        }
         strata
             .entry(printing.stratum.clone())
             .or_default()
@@ -520,7 +521,7 @@ async fn photos(
 
     tracing::info!(shots = shots.len(), unknown, unreadable, "scored");
 
-    photo::Tally::header("condition");
+    photo::Tally::header("varied");
     for (name, tally) in &conditions {
         tally.report(name);
     }
@@ -563,11 +564,16 @@ async fn score(
     // The card as detection reads it back, then every framing it might have
     // had if nothing found one. Both in one query, so a single run says
     // which of them answered — see `docs/roadmap.md`.
-    let read = detect::card(&frame).and_then(|quad| detect::rectify(&frame, &quad));
+    let found = detect::card(&frame);
     let mut want: Vec<Hash> = Vec::new();
-    if let Some(card) = read.as_ref().and_then(detect::Card::frame)
-        && let Some(art) = photo::ART.of(&card)
-    {
+    for quad in found.iter().flat_map(|quad| [*quad, quad.turned()]) {
+        let Some(read) = detect::rectify(&frame, &quad) else {
+            continue;
+        };
+        let Some(card) = read.frame() else { continue };
+        let Some(art) = photo::ART.of(&card) else {
+            continue;
+        };
         want.extend(manaweb_scanner::entry(&art));
     }
     let detected = want.len();
