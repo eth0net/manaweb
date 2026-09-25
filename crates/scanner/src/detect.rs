@@ -190,6 +190,14 @@ impl Small {
     }
 }
 
+/// How much of a frame has to be the surface a card is lying on.
+///
+/// Below this nothing was flooded, so the frame is a picture of a card
+/// rather than a photograph of one and whatever was found is inside it: the
+/// art box of an ordinary card is a card's own proportions to within a
+/// hundredth, and passes every other check here.
+const LEAST_TABLE: f32 = 0.25;
+
 /// The level difference between neighbors that stops the flood. Below it is
 /// shading across a surface, above it is one thing ending and another
 /// starting.
@@ -201,7 +209,13 @@ pub fn card(frame: &Frame) -> Option<Quad> {
     let small = Small::of(frame)?;
     // Whatever the flood could not reach, which is the card and anything else
     // standing off the surface — no assumption about which is the brighter.
-    let inside: Vec<bool> = small.outside().iter().map(|held| !held).collect();
+    let outside = small.outside();
+    let table = outside.iter().filter(|held| **held).count() as f32 / outside.len() as f32;
+    if table < LEAST_TABLE {
+        return None;
+    }
+
+    let inside: Vec<bool> = outside.iter().map(|held| !held).collect();
     let run = largest(&inside, small.width, small.height)?;
     let hull = hull(&run);
     let held = Quad::new(upright(clockwise(widest(&hull)?)))?;
