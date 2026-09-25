@@ -615,6 +615,15 @@ async fn photos(
     Ok(())
 }
 
+/// Every art box asked of one card, the shape of it not being known.
+fn boxed(card: &Frame) -> Vec<Hash> {
+    photo::BOXES
+        .iter()
+        .filter_map(|held| Some(manaweb_scanner::entry(&held.of(card)?)))
+        .flatten()
+        .collect()
+}
+
 /// One photograph against the index, or nothing where it will not decode.
 async fn score(
     pool: &sqlx::SqlitePool,
@@ -641,22 +650,20 @@ async fn score(
             continue;
         };
         let Some(card) = read.frame() else { continue };
-        let Some(art) = photo::ART.of(&card) else {
-            continue;
-        };
-        want.extend(manaweb_scanner::entry(&art));
+        want.extend(boxed(&card));
     }
     let detected = want.len();
 
-    want.extend(
-        photo::FILLS
-            .iter()
-            .filter_map(|&fill| {
-                let card = photo::Rect::filling(&frame, fill).of(&frame)?;
-                Some(manaweb_scanner::entry(&photo::ART.of(&card)?))
-            })
-            .flatten(),
-    );
+    // Only where nothing was found: a guess asked beside an answer is one
+    // more artwork the answer has to beat — see `docs/roadmap.md`.
+    if want.is_empty() {
+        want.extend(
+            photo::FILLS
+                .iter()
+                .filter_map(|&fill| Some(boxed(&photo::Rect::filling(&frame, fill).of(&frame)?)))
+                .flatten(),
+        );
+    }
     if want.is_empty() {
         tracing::warn!(shot = %path.display(), "no art box in it");
         return Ok(None);
@@ -664,34 +671,29 @@ async fn score(
 
     let arts = printing.arts();
     let (mut best, mut found, mut next, mut truth) = (None, u32::MAX, u32::MAX, u32::MAX);
-    let mut framing = if detected > 0 {
-        photo::Framing::Guessed
-    } else {
-        photo::Framing::Missed
-    };
     for (id, entry) in index {
-        let (distance, which) = closest(entry, &want);
-        if arts.contains(id) {
-            truth = truth.min(distance);
-        }
-        if distance < found {
-            next = found;
-            found = distance;
-            best = Some(*id);
-            if detected > 0 {
-                framing = if which < detected {
-                    photo::Framing::Read
-                } else {
-                    photo::Framing::Guessed
-                };
+        for crop in want.as_chunks::<HASHES>().0 {
+            let distance = nearest(entry, crop);
+            if arts.contains(id) {
+                truth = truth.min(distance);
             }
-        } else if distance < next {
-            next = distance;
+            if distance < found {
+                next = found;
+                found = distance;
+                best = Some(*id);
+            } else if distance < next {
+                next = distance;
+            }
         }
     }
 
     let Some(best) = best else {
         return Ok(None);
+    };
+    let framing = if detected > 0 {
+        photo::Framing::Read
+    } else {
+        photo::Framing::Missed
     };
 
     let candidates = photo::carrying(pool, best).await?;

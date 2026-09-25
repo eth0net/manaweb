@@ -261,15 +261,35 @@ pub struct Rect {
     pub bottom: f32,
 }
 
-/// Where the artwork sits on a modern card.
+/// Where the artwork sits on a card, one shape of card at a time.
 ///
-/// Measured rather than taken from a diagram, by `just artbox`.
-pub const ART: Rect = Rect {
-    left: 0.082,
-    top: 0.118,
-    right: 0.920,
-    bottom: 0.556,
-};
+/// Measured by `just artbox` rather than taken from a diagram, and only
+/// three because the rest land within an inset the index already holds an
+/// artwork at. Which shape a photograph is of is not known when it is being
+/// read, so every one of these is asked.
+pub const BOXES: [Rect; 3] = [
+    // Modern, borderless, older and a planeswalker between them.
+    Rect {
+        left: 0.082,
+        top: 0.118,
+        right: 0.920,
+        bottom: 0.556,
+    },
+    // Full-art, which reaches half as far down again.
+    Rect {
+        left: 0.082,
+        top: 0.118,
+        right: 0.920,
+        bottom: 0.835,
+    },
+    // A token, wider and taller than either.
+    Rect {
+        left: 0.041,
+        top: 0.118,
+        right: 0.959,
+        bottom: 0.666,
+    },
+];
 
 /// How much of a photograph's height the card is taken to fill, for when
 /// nothing is detected and a phone will not focus on a card against its lens.
