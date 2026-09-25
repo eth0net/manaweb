@@ -410,24 +410,11 @@ const RANKS: [usize; 3] = [1, 5, 10];
 
 /// The nearest any hash the index holds comes to any the query was asked at.
 fn nearest(entry: &[Hash], want: &[Hash]) -> u32 {
-    closest(entry, want).0
-}
-
-/// The same, and which of the query's hashes it was — one framing per
-/// [`HASHES`] of them, so this says which framing answered.
-fn closest(entry: &[Hash], want: &[Hash]) -> (u32, usize) {
-    want.iter()
-        .enumerate()
-        .map(|(at, &want)| {
-            let distance = entry
-                .iter()
-                .map(|&held| hash::distance(want, held))
-                .min()
-                .unwrap_or(u32::MAX);
-            (distance, at)
-        })
+    entry
+        .iter()
+        .flat_map(|&held| want.iter().map(move |&want| hash::distance(want, held)))
         .min()
-        .unwrap_or((u32::MAX, 0))
+        .unwrap_or(u32::MAX)
 }
 
 impl Scores {
@@ -686,39 +673,33 @@ async fn score(
     let arts = printing.arts();
     let (mut best, mut found, mut next, mut truth) = (None, u32::MAX, u32::MAX, u32::MAX);
     for (id, entry) in index {
-        for crop in want.as_chunks::<HASHES>().0 {
-            let distance = nearest(entry, crop);
-            if arts.contains(id) {
-                truth = truth.min(distance);
-            }
-            if distance < found {
-                next = found;
-                found = distance;
-                best = Some(*id);
-            } else if distance < next {
-                next = distance;
-            }
+        // The whole query against one entry, so the runner-up is another
+        // artwork rather than this one read at a second crop.
+        let distance = nearest(entry, &want);
+        if arts.contains(id) {
+            truth = truth.min(distance);
+        }
+        if distance < found {
+            next = found;
+            found = distance;
+            best = Some(*id);
+        } else if distance < next {
+            next = distance;
         }
     }
 
     let Some(best) = best else {
         return Ok(None);
     };
-    let framing = if detected > 0 {
-        photo::Framing::Read
-    } else {
-        photo::Framing::Missed
-    };
 
     let candidates = photo::carrying(pool, best).await?;
     Ok(Some(photo::Hit {
         printing: candidates.contains(&printing.id),
-        artwork: arts.contains(&best),
         candidates: candidates.len(),
         found,
         margin: i64::from(next) - i64::from(found),
         art: best.to_owned(),
         truth,
-        framing,
+        detected: detected > 0,
     }))
 }

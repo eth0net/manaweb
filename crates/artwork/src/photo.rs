@@ -483,47 +483,33 @@ pub struct Tally {
     shots: usize,
     /// The photograph's own printing came back.
     printings: usize,
-    /// An artwork the photograph's printing carries came back, which is the
-    /// number `measure` reports and the weaker of the two.
-    artworks: usize,
     /// How many printings the artwork that came back narrows to, which is
     /// what a set code and a collector number are left to pick between.
     candidates: Vec<usize>,
-    /// Distance to the artwork retrieved, and how much further the next one
-    /// was. A near miss and a confident wrong answer read the same in a
-    /// recall figure and differently here.
+    /// Distance to the artwork retrieved, and how much further the nearest
+    /// other one was. A near miss and a confident wrong answer read the same
+    /// in a recall figure and differently here.
     found: Vec<u32>,
     margins: Vec<i64>,
-    /// Shots a card was found in, and shots where the crop that found it
-    /// beat every guess at where one was.
+    /// Shots a card was found in at all.
     detected: usize,
-    won: usize,
 }
 
 impl Tally {
     pub fn record(&mut self, hit: &Hit) {
         self.shots += 1;
         self.printings += usize::from(hit.printing);
-        self.artworks += usize::from(hit.artwork);
         self.candidates.push(hit.candidates);
         self.found.push(hit.found);
         self.margins.push(hit.margin);
-        self.detected += usize::from(hit.framing != Framing::Missed);
-        self.won += usize::from(hit.framing == Framing::Read);
+        self.detected += usize::from(hit.detected);
     }
 
     /// The header the rows below line up under.
     pub fn header(of: &str) {
         println!(
-            "{of:<16} {:>6} {:>11} {:>10} {:>11} {:>8} {:>7} {:>9} {:>6}",
-            "shots",
-            "printing@1",
-            "artwork@1",
-            "candidates",
-            "d(found)",
-            "margin",
-            "detected",
-            "won"
+            "{of:<16} {:>6} {:>11} {:>11} {:>8} {:>7} {:>9}",
+            "shots", "printing@1", "candidates", "d(found)", "margin", "detected"
         );
     }
 
@@ -537,15 +523,13 @@ impl Tally {
             f64::from(count) * 100.0 / f64::from(shots)
         };
         println!(
-            "{of:<16} {:>6} {:>10.1}% {:>9.1}% {:>11} {:>8} {:>7} {:>8.1}% {:>5.1}%",
+            "{of:<16} {:>6} {:>10.1}% {:>11} {:>8} {:>7} {:>8.1}%",
             self.shots,
             share(self.printings),
-            share(self.artworks),
             median(&self.candidates),
             median(&self.found),
             median(&self.margins),
             share(self.detected),
-            share(self.won),
         );
     }
 }
@@ -553,8 +537,10 @@ impl Tally {
 /// What one photograph scored.
 #[derive(Debug)]
 pub struct Hit {
+    /// The photograph's own printing came back, which is the same question as
+    /// whether one of its artworks did: every printing an artwork retrieves
+    /// carries it.
     pub printing: bool,
-    pub artwork: bool,
     pub candidates: usize,
     /// Distance to the artwork that came back.
     pub found: u32,
@@ -565,18 +551,8 @@ pub struct Hit {
     /// Distance to the artwork the photograph is actually of, which says
     /// whether a miss was a near thing or the art box landing nowhere near.
     pub truth: u32,
-    pub framing: Framing,
-}
-
-/// Where the art box was taken from, for the answer that came back.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Framing {
-    /// Nothing in the frame was shaped like a card.
-    Missed,
-    /// One was, and a guess at where a card sits still answered nearer.
-    Guessed,
-    /// One was, and reading it back off its own corners is what answered.
-    Read,
+    /// Whether a card was found in the frame at all.
+    pub detected: bool,
 }
 
 /// One photograph that did not name its own printing.

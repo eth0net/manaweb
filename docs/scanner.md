@@ -159,13 +159,13 @@ came back within two bits of its runner-up, and no right one was beaten:
 
 | | shots | printing@1 |
 |---|---|---|
-| margin 4 or more | 48 | 100.0% |
-| margin 2 or less | 44 | 70.5% |
+| margin 4 or more | 65 | 100.0% |
+| margin 2 or less | 27 | 51.9% |
 
-So a scan can be accepted without asking about half the time, and the rest
-is a question worth putting to whoever is holding the camera rather than a
-failure. **54% of the answers that were right still carry more than one
-printing** — a median of two, out to fourteen — because an artwork is
+So a scan can be accepted without asking about seven times in ten, and the
+rest is a question worth putting to whoever is holding the camera rather
+than a failure. **54% of the answers that were right still carry more than
+one printing** — a median of two, out to fourteen — because an artwork is
 reprinted. No hash settles that, and it is why a scanner asks at all.
 
 **A scan lands in a scratch list, and the collection is what someone agreed
@@ -223,12 +223,12 @@ and there the distance means something. Measured over the 92:
 
 | how far the next artwork was | shots | named its own printing |
 |---|---|---|
-| 6 bits or more | 27 | 100% |
-| 4 | 21 | 100% |
-| 2 | 24 | 83% |
-| 0 | 20 | 55% |
+| 6 bits or more | 45 | 100% |
+| 4 | 20 | 100% |
+| 2 | 15 | 73% |
+| 0 | 12 | 25% |
 
-Bands rather than a percentage, because 92 photographs put twenty-odd in
+Bands rather than a percentage, because 92 photographs put a dozen or two in
 each row and a decimal read off that would be a fiction. The table is what
 calibrates them, so it is worth keeping as the set grows; a number nothing
 measured should not be shown at all.
@@ -236,7 +236,7 @@ measured should not be shown at all.
 **What was discarded is worth keeping too.** The index reader returns only
 the nearest entry today, which is also why no margin reaches the client —
 one change gives both, and a few more rows are what lets someone see what
-came second at 55% and say it was that one. Behind a setting, since most
+came second and say it was that one. Behind a setting, since most
 people are being asked to recognize their own card rather than to read a
 Hamming distance.
 
