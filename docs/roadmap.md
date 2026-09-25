@@ -152,35 +152,39 @@ frame's art box measures 0.73 where a card measures 0.716, so four corners
 of the right shape are sitting inside every ordinary card. It answers 6.7%
 of the shots and takes none of them away.
 
-**49 photographs of real cards** say what that set cannot. Phone camera, a
-pale surface, even light, the card upright and filling about three fifths of
-the frame:
+**92 photographs of real cards** say what that set cannot. Phone camera, a
+pale surface, even light, and mostly upright at about three fifths of the
+frame:
 
 | shape | shots | printing@1 | detected | read |
 |---|---|---|---|---|
-| borderless | 9 | 100.0% | 100.0% | 77.8% |
-| modern | 17 | 88.2% | 100.0% | 88.2% |
-| older | 7 | 71.4% | 100.0% | 71.4% |
-| full-art | 4 | 25.0% | 100.0% | 75.0% |
-| token | 12 | 8.3% | 91.7% | 0.0% |
+| borderless | 22 | 90.9% | 100.0% | 81.8% |
+| modern | 33 | 81.8% | 97.0% | 81.8% |
+| older | 13 | 69.2% | 100.0% | 69.2% |
+| full-art | 12 | 33.3% | 100.0% | 50.0% |
+| token | 12 | 8.3% | 91.7% | 8.3% |
 
 `detected` is how often a card was found at all and `read` how often its own
-corners beat every guess at where one sits. **Fourteen of the eighteen misses
-are tokens and full-art**, which is the shape problem above rather than
-anything about the photographs. Set those two shapes aside and the other 33
-score 87.9%, against a ceiling of 98.8% for the same three.
+corners beat every guess at where one sits. **Tokens and full-art are 19 of
+the 31 misses**, which is the shape problem above rather than anything about
+the photographs. The 68 shots of the other three score 82.4% against a
+ceiling of 98.8% for the same shapes.
 
-**The whole of that gap is foil.** Of the four misses left, three are foils
-and the fourth is a near thing at ten bits:
+**Nothing a card was done to accounts for the rest yet.** Over those 68:
 
 | | shots | printing@1 |
 |---|---|---|
-| nonfoil | 22 | 95.5% |
-| foil | 11 | 72.7% |
+| bare, nonfoil | 32 | 84.4% |
+| bare, foil | 26 | 84.6% |
+| sleeved | 10 | 70.0% |
 
-Under even light and no deliberate glare, so it is the treatment and not the
-lighting. A foil scatters light its own way and the hash reads luma, so what
-a camera records off one is not what was printed.
+A foil costs nothing measurable, which corrects a reading of 72.7% taken
+when the set held eleven of them: three of those eleven missed, and the
+fifteen added since have missed once between them. Ten sleeved shots is too
+few to say anything in its turn, and is the cut worth filling out next.
+
+**The condition is read one piece at a time**, so a shot of a sleeved foil
+counts for both. Fifty conditions named one to a shot answer nothing.
 
 **Color reaches one channel inside the engine**, not at each caller. It is a
 step of the hashing like any other, so the two sides have one statement of it
