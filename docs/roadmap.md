@@ -112,25 +112,28 @@ the pair, so a confusion the measurement scores as a miss is not one. What
 wants measuring is which printing a photograph names, which `just photos`
 scores over a directory of them, each named for the printing it shows.
 
-**A card has to be found in a photograph before it can be hashed**, and
-nothing detects one yet, so the card is looked for at each of five fractions
-of the frame it might fill, down to half of it, and the artwork where it
-sits on a 2015 frame —
-`0.079..0.920` across and `0.114..0.554` down, measured off Scryfall's own
-crop rather than taken from a diagram. Scored against 420 of their card
-images, sixty of each shape, which is the capture nothing is wrong with:
+**A card has to be found in a photograph before it can be hashed.** One is
+looked for by its own outline and read back standing upright; where nothing
+is found, the card is taken to fill each of five fractions of the frame in
+turn, down to half of it. Either way the artwork is where it sits on a 2015
+frame — `0.079..0.920` across and `0.114..0.554` down, measured off
+Scryfall's own crop rather than taken from a diagram. Both go into the one
+query and the report names which of them answered, so a run says what
+detection is worth and not only what the two together score. Against 420 of
+their card images, sixty of each shape, which is the capture nothing is
+wrong with:
 
 | shape | printing@1 | share of printings |
 |---|---|---|
 | modern | 100.0% | 55.3% |
 | borderless | 98.3% | 4.8% |
 | older | 95.0% | 30.7% |
-| walker | 66.7% | 1.3% |
+| walker | 65.0% | 1.3% |
 | full-art | 58.3% | 1.8% |
-| token | 13.3% | 5.3% |
+| token | 11.7% | 5.3% |
 | sideways | 6.7% | 0.7% |
 
-**91.9% weighted by how often each shape is printed.** Asking at more
+**91.8% weighted by how often each shape is printed.** Asking at more
 framings than that costs nothing measurable: taking the floor from six
 tenths of the frame to four moved no shape that works, so where a photograph
 sits in that range is not something to ask a person to get right. The split is not
@@ -142,6 +145,14 @@ are read sideways, and full-art has none — 9.1% of printings between them,
 and no single rectangle reaches any of it. That is the case for detecting
 the card and rectifying it rather than asking the person to frame it, and
 the number a photograph is compared against rather than a target.
+
+**On that set a detection can only be a false positive**, an image of theirs
+being a card and nothing else, and one is still reported in 52% of them: a
+2015 frame's art box measures 0.73 where a card measures 0.716, which is
+what the shape filter is looking for. It costs two shots in 420 and wins
+none of the shapes that work. A photograph has a table in it, where the
+outline is the largest thing there is, so what the figure says is that
+shape alone is not the whole guard rather than that the technique is wrong.
 
 **Color reaches one channel inside the engine**, not at each caller. It is a
 step of the hashing like any other, so the two sides have one statement of it
@@ -192,7 +203,7 @@ than the only thing anyone thought of. The three stages want different
 techniques and are not alternatives to each other.
 
 **Finding the card is the gap, and it is worth more than any better hash.**
-Nothing detects one today. Four ways to:
+Four ways to:
 
 | how | what it buys | where it fails |
 |---|---|---|
@@ -201,12 +212,23 @@ Nothing detects one today. Four ways to:
 | an axis-aligned box from gradient energy alone | the cheapest thing that beats guessing | no rotation, no perspective |
 | a small learned detector | robust to all of the above | training data, weights to ship, and the classification this design is built to avoid |
 
-The first refined by the second is what to build, into the engine so it
-reaches every platform. **Rectifying to a canonical rectangle is what makes
-it worth the work**, rather than the art box, which already answers for
-ordinary cards: it settles rotation, framing and perspective at once, and
-nothing below can begin without a known position on a known shape. A card
-is 63 by 88mm, so anything far from that ratio is not one — a free filter.
+**The first is built**, into the engine so it reaches every platform: split
+the levels in two by Otsu, take the largest connected run on whichever side
+the frame's own border is not, read four corners off that run's hull, and
+refuse anything too small to have been meant, the wrong shape, or not
+mostly made of those four corners. A card is 63 by 88mm, so the ratio is a
+free filter. Refining it with the second is the next step, and the dark
+case is what wants it: a black border on a dark table has no level between
+the two, so the threshold lands inside the border and hands back the card's
+interior, which is card-shaped and passes every check.
+
+**Rectifying to a canonical rectangle is what makes it worth the work**,
+rather than the art box, which already answers for ordinary cards — nothing
+below can begin without a known position on a known shape. Built with it: a
+card is read back through the projection its four corners came from, at its
+own 63 by 88, which settles framing and perspective together and stands one
+lying on its side back up. Which end of it is the card's top is the one
+thing left over, and nothing answers that yet.
 
 **Matching the artwork wants leaving alone.** The alternatives are real and
 each trades away something this design is built on:
@@ -233,9 +255,9 @@ not. And nearest-neighbor always returns something, so a wrong printing
 enters a collection silently; a confidence floor read off the margin is what
 lets it say to try again instead.
 
-The order, then: detection and rectification, frame selection, a confidence
-floor, then reading the collector number. Color, or anything heavier, only
-where a measurement asks for it.
+The order, then: which way up a rectified card is, frame selection, a
+confidence floor, then reading the collector number. Color, or anything
+heavier, only where a measurement asks for it.
 
 ## Phase 2 — Valuation
 
