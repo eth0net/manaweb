@@ -185,6 +185,58 @@ unenforceable under AGPL. If a paid tier is ever wanted it's the server-side
 fallback for cases client inference fails on — foil glare, poor lighting,
 damage, non-English printings — plus bulk scanning from uploaded photos.
 
+### What else a scanner could be made of
+
+Surveyed 2026-09-25, so that what is built minimally now is a choice rather
+than the only thing anyone thought of. The three stages want different
+techniques and are not alternatives to each other.
+
+**Finding the card is the gap, and it is worth more than any better hash.**
+Nothing detects one today. Four ways to:
+
+| how | what it buys | where it fails |
+|---|---|---|
+| gradients to contours to the largest quadrilateral | the document-scanner pipeline; deterministic, no training data, pure arithmetic | a dark card on a dark table, a card on a card, an edge a highlight breaks |
+| a line fit over those gradients | survives a gap, so a finger across one edge loses nothing | heavier, and wants its angles binned sensibly |
+| an axis-aligned box from gradient energy alone | the cheapest thing that beats guessing | no rotation, no perspective |
+| a small learned detector | robust to all of the above | training data, weights to ship, and the classification this design is built to avoid |
+
+The first refined by the second is what to build, into the engine so it
+reaches every platform. **Rectifying to a canonical rectangle is what makes
+it worth the work**, rather than the art box, which already answers for
+ordinary cards: it settles rotation, framing and perspective at once, and
+nothing below can begin without a known position on a known shape. A card
+is 63 by 88mm, so anything far from that ratio is not one — a free filter.
+
+**Matching the artwork wants leaving alone.** The alternatives are real and
+each trades away something this design is built on:
+
+| how | index for 54,585 artworks | why not now |
+|---|---|---|
+| a perceptual hash, as built | 2.6MB | — |
+| local features and a geometric check | gigabytes | robust to occlusion and perspective, and it ends shipping the index to a browser |
+| a learned embedding | 7–27MB and weights | the answer if the hash proves insufficient, which nothing has shown |
+| color beside the hash | 2.6MB more | cheap, and the one worth watching for |
+
+That last is the gap in what exists: the hash reads luma and throws color
+away, so two artworks of similar composition and different palette are the
+confusion it cannot see. A four-by-four grid of mean color is forty-eight
+bytes an artwork. Not added speculatively — the margin a photograph scores
+by is the diagnostic, and adding it before that says which artworks are
+being confused would be answering a question nobody has asked.
+
+**Two cheap things are missing that are not techniques at all.** A camera
+gives thirty frames a second where this thinks in photographs, and taking
+the sharpest by gradient energy, or voting across several, is most of the
+answer to blur and glare — the glare moves between frames and the card does
+not. And nearest-neighbor always returns something, so a wrong printing
+enters a collection silently; a confidence floor read off the margin is what
+lets it say to try again instead.
+
+The order, then: detection and rectification, frame selection, a confidence
+floor, then reading the collector number. Color, or anything heavier, only
+where a measurement asks for it.
+
 ## Phase 2 — Valuation
 
 - Price cache table, separate from the card cache, keyed `scryfall_id` +
