@@ -150,9 +150,7 @@ the number a photograph is compared against rather than a target.
 being a card and nothing else, and one is reported in 74% of them: a 2015
 frame's art box measures 0.73 where a card measures 0.716, so four corners
 of the right shape are sitting inside every ordinary card. It answers 6.7%
-of the shots and takes none of them away, which is the union being asked at
-once — a wrong reading of where the card is has to beat every guess before
-it can cost anything.
+of the shots and takes none of them away.
 
 **49 photographs of real cards** say what that set cannot. Phone camera, a
 pale surface, even light, the card upright and filling about three fifths of
@@ -180,10 +178,9 @@ and the fourth is a near thing at ten bits:
 | nonfoil | 22 | 95.5% |
 | foil | 11 | 72.7% |
 
-Under even light and no deliberate glare, which makes it the treatment and
-not the lighting. A foil scatters the light its own way and the hash reads
-luma, so what a camera records off one is not what was printed — the first
-thing a condition has cost that the shape of the card does not explain.
+Under even light and no deliberate glare, so it is the treatment and not the
+lighting. A foil scatters light its own way and the hash reads luma, so what
+a camera records off one is not what was printed.
 
 **Color reaches one channel inside the engine**, not at each caller. It is a
 step of the hashing like any other, so the two sides have one statement of it

@@ -419,9 +419,8 @@ const EACH: usize = 60;
 
 /// Pulls whole-card images to photograph, named as a photograph has to be.
 ///
-/// Scryfall's own image of a card is the capture nothing is wrong with, so
-/// scoring these is the ceiling every photograph is measured against — and
-/// the one way to ask what the art box costs without a camera.
+/// Scoring these is the ceiling a photograph is measured against, and the
+/// one way to ask what the art box costs without a camera.
 async fn cards(pool: &sqlx::SqlitePool, dir: &str, each: usize) -> Result<()> {
     let each = u32::try_from(each.min(EACH)).unwrap_or(u32::MAX);
     let wanted = photo::sample(pool, each).await?;

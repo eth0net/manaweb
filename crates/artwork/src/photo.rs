@@ -215,7 +215,7 @@ pub async fn sample(pool: &SqlitePool, each: u32) -> Result<Vec<(Printing, Label
                 set,
                 number,
                 lang,
-                // Scryfall's own image: the capture nothing is wrong with.
+                // Their own image of the card, not a photograph of one.
                 condition: "scryfall".to_owned(),
             };
             let printing = Printing {
@@ -271,10 +271,8 @@ pub const ART: Rect = Rect {
 /// How much of a photograph's height the card is taken to fill, for when
 /// nothing is detected and a phone will not focus on a card against its lens.
 ///
-/// Every one is tried and the nearest kept, the same bargain the index makes
-/// by holding an artwork at several crops: a few framings of one small frame
-/// cost microseconds, and being wrong about this costs the retrieval. Down
-/// to half the frame, measured to cost nothing a shape that works.
+/// Every one is tried and the nearest kept. What the floor costs, and why it
+/// is not asked of the person holding the camera, is `docs/roadmap.md`.
 pub const FILLS: [f32; 5] = [1.0, 0.85, 0.72, 0.6, 0.5];
 
 impl Rect {
