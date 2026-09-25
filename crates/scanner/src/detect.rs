@@ -19,9 +19,11 @@ pub struct Point {
     pub y: f32,
 }
 
-/// The four corners of a card, clockwise from the top left of the card
-/// itself rather than of the frame — so a card lying on its side names its
-/// own top left, and rectifying it stands it back up.
+/// The four corners of a card, clockwise from one end of a short side, so
+/// that rectifying one stands it portrait whichever way round it lay.
+///
+/// Which end of that side is the card's top is a different question, and one
+/// nothing answers yet — see `docs/roadmap.md`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quad {
     pub corners: [Point; 4],
@@ -39,6 +41,13 @@ const RATIO_SLACK: f32 = 0.35;
 /// this it is something in the background rather than what was pointed at.
 const LEAST_AREA: f32 = 0.04;
 
+/// How much of an outline's own hull its four corners have to enclose.
+///
+/// A card's outline is four straight edges, so its hull is a quadrilateral
+/// and this is nearly one. A bright patch of artwork is not, and four
+/// corners fitted inside that leave the rest of it outside.
+const LEAST_FILL: f32 = 0.92;
+
 impl Quad {
     /// Corners in the order [`Quad`] states, or `None` for a degenerate one.
     #[must_use]
@@ -47,16 +56,10 @@ impl Quad {
         (held.area() > 0.0).then_some(held)
     }
 
-    /// The shoelace area, which is positive for the order stated and
-    /// negative for the other way round.
+    /// What the four corners enclose, whichever way round they are wound.
     #[must_use]
     pub fn area(&self) -> f32 {
-        let mut sum = 0.0;
-        for at in 0..4 {
-            let (a, b) = (self.corners[at], self.corners[(at + 1) % 4]);
-            sum += a.x * b.y - b.x * a.y;
-        }
-        sum.abs() / 2.0
+        enclosed(&self.corners)
     }
 
     /// The longer and shorter of the mean opposing side lengths.
@@ -203,16 +206,30 @@ pub fn card(frame: &Frame) -> Option<Quad> {
         .collect();
     let run = largest(&inside, small.width, small.height)?;
     let hull = hull(&run);
-    let quad = widest(&hull)?;
+    let held = Quad::new(upright(clockwise(widest(&hull)?)))?;
+    if held.area() < enclosed(&hull) * LEAST_FILL {
+        return None;
+    }
 
     // Back to the frame's own pixels, the grid having been a way of looking
     // rather than what was being looked at.
-    let corners = quad.map(|held| Point {
-        x: held.x * small.scale,
-        y: held.y * small.scale,
-    });
-    let found = Quad::new(clockwise(corners))?;
+    let found = Quad {
+        corners: held.corners.map(|at| Point {
+            x: at.x * small.scale,
+            y: at.y * small.scale,
+        }),
+    };
     found.card_like(frame).then_some(found)
+}
+
+/// The area a closed run of points encloses, by the shoelace formula.
+fn enclosed(points: &[Point]) -> f32 {
+    let mut sum = 0.0;
+    for at in 0..points.len() {
+        let (a, b) = (points[at], points[(at + 1) % points.len()]);
+        sum += a.x * b.y - b.x * a.y;
+    }
+    sum.abs() / 2.0
 }
 
 /// Every pixel of the largest connected run of `inside`, four-connected.
@@ -343,9 +360,6 @@ fn widest(hull: &[Point]) -> Option<[Point; 4]> {
 
 /// The same four corners wound clockwise from the one nearest the frame's
 /// own origin.
-///
-/// Which of them is the card's top is a different question, and one nothing
-/// answers yet — see `docs/roadmap.md`.
 fn clockwise(corners: [Point; 4]) -> [Point; 4] {
     let mid = Point {
         x: corners.iter().map(|at| at.x).sum::<f32>() / 4.0,
@@ -363,4 +377,151 @@ fn clockwise(corners: [Point; 4]) -> [Point; 4] {
         .min_by(|(_, a), (_, b)| (a.x + a.y).total_cmp(&(b.x + b.y)))
         .map_or(0, |(at, _)| at);
     std::array::from_fn(|at| held[(nearest + at) % 4])
+}
+
+/// The same winding, started at whichever corner leaves the short side first.
+fn upright(corners: [Point; 4]) -> [Point; 4] {
+    let (across, down) = Quad { corners }.sides();
+    if across <= down {
+        return corners;
+    }
+    std::array::from_fn(|at| corners[(at + 1) % 4])
+}
+
+/// A card read back as a rectangle of its own proportions, owning its levels.
+#[derive(Debug)]
+pub struct Card {
+    levels: Vec<u8>,
+    width: usize,
+    height: usize,
+}
+
+impl Card {
+    /// The card as the hashing reads it.
+    #[must_use]
+    pub fn frame(&self) -> Option<Frame<'_>> {
+        Frame::new(&self.levels, self.width, self.height, self.width)
+    }
+}
+
+/// The tallest a card is read back at. Past here the extra pixels reach no
+/// finer than the hashing's own grid does.
+const TALL: usize = 1024;
+
+/// The shortest, so a card far enough away to be a smear is still a picture.
+const SHORT: usize = 64;
+
+/// The card standing upright, its foreshortening undone.
+///
+/// The quadrilateral is taken for a rectangle seen in perspective, so what
+/// reads it back is the projection carrying one to the other rather than a
+/// stretch: the edge nearer the camera covers more of the frame than the one
+/// opposite, and a stretch would keep that difference.
+#[must_use]
+pub fn rectify(frame: &Frame, quad: &Quad) -> Option<Card> {
+    let (_, down) = quad.sides();
+    let height = (down.round() as usize).clamp(SHORT, TALL);
+    let width = ((height as f32 * RATIO).round() as usize).max(SHORT / 2);
+    let projection = Projection::of(&quad.corners)?;
+
+    let mut levels = vec![0u8; width * height];
+    for (y, row) in levels.chunks_exact_mut(width).enumerate() {
+        let down = (y as f32 + 0.5) / height as f32;
+        for (x, held) in row.iter_mut().enumerate() {
+            let across = (x as f32 + 0.5) / width as f32;
+            let (at_x, at_y) = projection.at(across, down)?;
+            *held = level(frame, at_x, at_y);
+        }
+    }
+
+    Some(Card {
+        levels,
+        width,
+        height,
+    })
+}
+
+/// The projection carrying the unit square's corners to four points.
+///
+/// Closed form because the source is a square: [`Projection::skew`] is what
+/// an affine map has no room for, and it falls out of the diagonal.
+struct Projection {
+    /// A row each for `x` and `y`, read against `u`, `v` and 1.
+    rows: [[f32; 3]; 2],
+    /// The divisor those two are over, read against `u` and `v`, plus 1.
+    skew: [f32; 2],
+}
+
+impl Projection {
+    fn of(corners: &[Point; 4]) -> Option<Self> {
+        let [first, second, third, fourth] = *corners;
+        let slip = [
+            first.x - second.x + third.x - fourth.x,
+            first.y - second.y + third.y - fourth.y,
+        ];
+
+        // Opposite edges already parallel: nothing is foreshortened, and the
+        // divisor below would be solving for two zeroes.
+        if slip.iter().all(|term| term.abs() < f32::EPSILON) {
+            return Some(Self {
+                rows: [
+                    [second.x - first.x, fourth.x - first.x, first.x],
+                    [second.y - first.y, fourth.y - first.y, first.y],
+                ],
+                skew: [0.0, 0.0],
+            });
+        }
+
+        let one = [second.x - third.x, second.y - third.y];
+        let other = [fourth.x - third.x, fourth.y - third.y];
+        let den = one[0] * other[1] - other[0] * one[1];
+        if den.abs() < f32::EPSILON {
+            return None;
+        }
+        let skew = [
+            (slip[0] * other[1] - other[0] * slip[1]) / den,
+            (one[0] * slip[1] - slip[0] * one[1]) / den,
+        ];
+
+        Some(Self {
+            rows: [
+                [
+                    skew[0].mul_add(second.x, second.x - first.x),
+                    skew[1].mul_add(fourth.x, fourth.x - first.x),
+                    first.x,
+                ],
+                [
+                    skew[0].mul_add(second.y, second.y - first.y),
+                    skew[1].mul_add(fourth.y, fourth.y - first.y),
+                    first.y,
+                ],
+            ],
+            skew,
+        })
+    }
+
+    /// Where one point of the unit square lands in the frame.
+    fn at(&self, across: f32, down: f32) -> Option<(f32, f32)> {
+        let divisor = self.skew[0].mul_add(across, self.skew[1] * down) + 1.0;
+        if divisor.abs() < f32::EPSILON {
+            return None;
+        }
+        let along = |row: &[f32; 3]| (row[0].mul_add(across, row[1] * down) + row[2]) / divisor;
+        Some((along(&self.rows[0]), along(&self.rows[1])))
+    }
+}
+
+/// One point of the frame, between pixels, and the nearest edge past one.
+fn level(frame: &Frame, x: f32, y: f32) -> u8 {
+    let (last_x, last_y) = (frame.width() - 1, frame.height() - 1);
+    let x = x.clamp(0.0, last_x as f32);
+    let y = y.clamp(0.0, last_y as f32);
+    let (x0, y0) = (x as usize, y as usize);
+    let (x1, y1) = ((x0 + 1).min(last_x), (y0 + 1).min(last_y));
+    let (fx, fy) = (x - x0 as f32, y - y0 as f32);
+
+    let at = |x, y| f32::from(frame.at(x, y).unwrap_or(0));
+    let across = |y| (at(x1, y) - at(x0, y)).mul_add(fx, at(x0, y));
+    let (top, bottom) = (across(y0), across(y1));
+    (bottom - top).mul_add(fy, top).round().clamp(0.0, 255.0) as u8
 }

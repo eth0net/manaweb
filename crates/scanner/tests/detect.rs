@@ -4,8 +4,16 @@
 //! wants photographs, and these hold the arithmetic between one and a
 //! rectangle.
 
+// A drawn card is put at whole pixels and read back at fractions of one, so
+// every cast here crosses between the two.
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
+
 use manaweb_scanner::Frame;
-use manaweb_scanner::detect::{Point, card};
+use manaweb_scanner::detect::{Point, card, rectify};
 
 const WIDE: usize = 400;
 const TALL: usize = 300;
@@ -92,4 +100,86 @@ fn the_corners_read_clockwise_from_the_nearest() {
     assert!(tr.y < br.y, "{tr:?} {br:?}");
     assert!(br.x > bl.x, "{br:?} {bl:?}");
     assert!(bl.y > tl.y, "{bl:?} {tl:?}");
+}
+
+/// A card seen from low down: its far edge narrower than its near one, and a
+/// band across the top of the card itself to say where the top went.
+fn tapered(background: u8, front: u8, mark: u8) -> Vec<u8> {
+    let mut out = vec![background; WIDE * TALL];
+    let (top, bottom) = (40usize, 260usize);
+    for down in top..bottom {
+        let part = (down - top) as f32 / (bottom - top) as f32;
+        let half = 40.0 + part * 40.0;
+        let level = if part < 0.3 { mark } else { front };
+        for across in (200.0 - half) as usize..(200.0 + half) as usize {
+            out[down * WIDE + across] = level;
+        }
+    }
+    out
+}
+
+/// Whatever it measured in the frame, a card reads back taller than it is
+/// wide and in the proportions one is printed at.
+#[test]
+fn a_card_on_its_side_is_read_back_standing() {
+    let levels = drawn(30, 220, 90, 70, 176, 126);
+    let frame = Frame::new(&levels, WIDE, TALL, WIDE).expect("a frame");
+    let found = card(&frame).expect("a card in it");
+    let read = rectify(&frame, &found).expect("read back");
+    let out = read.frame().expect("a frame");
+
+    assert!(out.height() > out.width(), "{out:?}");
+    let ratio = out.width() as f32 / out.height() as f32;
+    assert!((ratio - 63.0 / 88.0).abs() < 0.02, "{ratio}");
+}
+
+#[test]
+fn what_was_on_the_card_reads_back_where_it_was() {
+    let mut levels = drawn(30, 150, 100, 60, 126, 176);
+    for down in 60..104 {
+        for across in 100..163 {
+            levels[down * WIDE + across] = 250;
+        }
+    }
+    let frame = Frame::new(&levels, WIDE, TALL, WIDE).expect("a frame");
+    let found = card(&frame).expect("a card in it");
+    let read = rectify(&frame, &found).expect("read back");
+    let out = read.frame().expect("a frame");
+
+    let at = |across: f32, down: f32| {
+        let x = (out.width() as f32 * across) as usize;
+        let y = (out.height() as f32 * down) as usize;
+        out.at(x, y).expect("a pixel")
+    };
+    assert!(at(0.2, 0.1).abs_diff(250) < 20, "{}", at(0.2, 0.1));
+    assert!(at(0.8, 0.8).abs_diff(150) < 20, "{}", at(0.8, 0.8));
+}
+
+/// The far edge of a card covers less of the frame than the near one, so a
+/// band that is straight across the card is not straight across the frame.
+#[test]
+fn a_card_seen_at_an_angle_reads_back_even() {
+    let levels = tapered(30, 150, 250);
+    let frame = Frame::new(&levels, WIDE, TALL, WIDE).expect("a frame");
+    let found = card(&frame).expect("a card in it");
+    let read = rectify(&frame, &found).expect("read back");
+    let out = read.frame().expect("a frame");
+
+    let at = |across: f32, down: f32| {
+        let x = (out.width() as f32 * across) as usize;
+        let y = (out.height() as f32 * down) as usize;
+        out.at(x, y).expect("a pixel")
+    };
+    for across in [0.15, 0.5, 0.85] {
+        assert!(
+            at(across, 0.15).abs_diff(250) < 25,
+            "{across} {}",
+            at(across, 0.15)
+        );
+        assert!(
+            at(across, 0.7).abs_diff(150) < 25,
+            "{across} {}",
+            at(across, 0.7)
+        );
+    }
 }
