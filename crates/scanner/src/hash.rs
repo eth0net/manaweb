@@ -105,6 +105,12 @@ impl<'a> Frame<'a> {
             .unwrap_or(*self)
     }
 
+    /// One pixel's level, or `None` past an edge.
+    #[must_use]
+    pub fn at(&self, x: usize, y: usize) -> Option<u8> {
+        (x < self.width && y < self.height).then(|| self.luma[y * self.stride + x])
+    }
+
     fn row(&self, y: usize) -> &[u8] {
         let at = y * self.stride;
         &self.luma[at..at + self.width]
