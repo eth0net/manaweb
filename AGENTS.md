@@ -12,9 +12,10 @@ what can be *built*, not only what can be charged for.
 `data-model.md` for owned versus referenced and history, `architecture.md` for
 the AppView shape and storage, `scryfall.md` for the cache and the client
 artifact, `search.md` for querying it, `configuration.md` for the environment,
-`atproto.md` for lexicons and the PDS and OAuth limits, `ip.md` for the WotC
-and Scryfall constraints. This file is the condensed orientation for picking
-the project back up; each crate describes itself in its `Cargo.toml`.
+`atproto.md` for lexicons and the PDS and OAuth limits, `scanner.md` for
+reading a card out of a photograph, `ip.md` for the WotC and Scryfall
+constraints. This file is the condensed orientation for picking the project
+back up; each crate describes itself in its `Cargo.toml`.
 
 Prose here and in `lexicons/` is read more often than it is written, so keep it
 short: the non-obvious fact and its one consequence. Two lines of comment is a

@@ -534,7 +534,7 @@ export class Catalog {
   #byArtwork: Map<number, number[]> | null = null;
 
   // Every printing whose front carries this artwork, with the card each
-  // belongs to. What an art match narrows to — see `docs/roadmap.md`.
+  // belongs to. What an art match narrows to — see `docs/scanner.md`.
   artwork(number: number): { card: Card; print: Print }[] {
     this.#byArtwork ??= this.#groupArtwork();
     return (this.#byArtwork.get(number) ?? []).map((at) => ({

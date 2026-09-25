@@ -43,7 +43,7 @@ fn a_degraded_query_still_picks_its_own_artwork() {
         let plane = Plane::new(&(degradation.apply)(&images[0]));
         let query = plane.frame().expect("a frame");
         // Several framings of the query against several of the artwork, which
-        // is how a scanner asks — see `docs/roadmap.md`.
+        // is how a scanner asks — see `docs/scanner.md`.
         let asked: Vec<u64> = hash::INSETS
             .iter()
             .map(|&inset| phash(&query.inset(inset)))

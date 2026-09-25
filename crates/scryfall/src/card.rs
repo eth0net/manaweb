@@ -72,7 +72,7 @@ pub struct Card {
     pub frame: String,
     pub artist: Option<String>,
     /// Which artwork this printing carries. Printings sharing one are what an
-    /// art match narrows to — see `docs/roadmap.md`.
+    /// art match narrows to — see `docs/scanner.md`.
     pub illustration_id: Option<Uuid>,
     pub flavor_text: Option<String>,
 

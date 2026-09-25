@@ -187,7 +187,7 @@ fn a_card_seen_at_an_angle_reads_back_even() {
 /// A table shading off towards one corner, past the card's own level.
 ///
 /// What a card on a lit surface looks like, and what a level alone made of
-/// it, is `docs/roadmap.md`.
+/// it, is `docs/scanner.md`.
 #[test]
 fn a_shadow_darker_than_the_card_is_not_part_of_it() {
     let mut levels = vec![0u8; WIDE * TALL];

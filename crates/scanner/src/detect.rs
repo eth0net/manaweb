@@ -1,6 +1,6 @@
 //! Finding a card in a frame, and reading it back as a rectangle.
 //!
-//! What this is for and what it replaces is `docs/roadmap.md`.
+//! What this is for and what it replaces is `docs/scanner.md`.
 
 // Every cast here crosses between a pixel grid and the real numbers a
 // gradient and a projection are worked out in.
@@ -23,7 +23,7 @@ pub struct Point {
 /// that rectifying one stands it portrait whichever way round it lay.
 ///
 /// Which end of that side is the card's top is a different question, and one
-/// nothing answers yet — see `docs/roadmap.md`.
+/// nothing answers yet — see `docs/scanner.md`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quad {
     pub corners: [Point; 4],
@@ -149,7 +149,7 @@ impl Small {
     /// Everything reachable from the frame's own edge without stepping over
     /// [`STEP`], which is the table the card is lying on.
     ///
-    /// What this reads that a level could not is `docs/roadmap.md`.
+    /// What this reads that a level could not is `docs/scanner.md`.
     fn outside(&self) -> Vec<bool> {
         let mut seen = vec![false; self.levels.len()];
         let mut stack: Vec<usize> = Vec::new();
@@ -193,7 +193,7 @@ impl Small {
 /// How much of a frame has to be the surface a card is lying on.
 ///
 /// What it keeps out, and why raising it costs more than it keeps, is
-/// `docs/roadmap.md`.
+/// `docs/scanner.md`.
 const LEAST_TABLE: f32 = 0.25;
 
 /// The level difference between neighbors that stops the flood. Below it is

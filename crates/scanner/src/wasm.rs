@@ -1,7 +1,7 @@
 //! The C ABI the engine is reached through off-Rust.
 //!
 //! Built with `cargo rustc --crate-type cdylib`, and why it is shaped this
-//! way is `docs/roadmap.md`.
+//! way is `docs/scanner.md`.
 
 use std::alloc::{Layout, alloc, dealloc};
 

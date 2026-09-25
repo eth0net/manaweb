@@ -2,7 +2,7 @@
 //!
 //! What this answers that `measure` cannot is which *printing* a photograph
 //! names, an artwork being shared by every printing that carries it — see
-//! `docs/roadmap.md`.
+//! `docs/scanner.md`.
 
 use std::path::Path;
 
@@ -103,7 +103,7 @@ pub struct Printing {
     pub art: String,
     pub back_art: Option<String>,
     /// Which shape of card this is, for the report's second cut. What each
-    /// of them costs is `docs/roadmap.md`.
+    /// of them costs is `docs/scanner.md`.
     pub stratum: String,
 }
 
@@ -302,7 +302,7 @@ pub const BOXES: [Rect; 4] = [
 /// nothing is detected and a phone will not focus on a card against its lens.
 ///
 /// Every one is tried and the nearest kept. What the floor costs, and why it
-/// is not asked of the person holding the camera, is `docs/roadmap.md`.
+/// is not asked of the person holding the camera, is `docs/scanner.md`.
 pub const FILLS: [f32; 5] = [1.0, 0.85, 0.72, 0.6, 0.5];
 
 impl Rect {

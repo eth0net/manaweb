@@ -656,7 +656,7 @@ async fn score(
     };
     // The card as detection reads it back, then every framing it might have
     // had if nothing found one. Both in one query, so a single run says
-    // which of them answered — see `docs/roadmap.md`.
+    // which of them answered — see `docs/scanner.md`.
     let found = detect::card(&frame);
     let mut want: Vec<Hash> = Vec::new();
     for quad in found.iter().flat_map(|quad| [*quad, quad.turned()]) {
@@ -669,7 +669,7 @@ async fn score(
     let detected = want.len();
 
     // Only where nothing was found: a guess asked beside an answer is one
-    // more artwork the answer has to beat — see `docs/roadmap.md`.
+    // more artwork the answer has to beat — see `docs/scanner.md`.
     if want.is_empty() {
         want.extend(
             photo::FILLS

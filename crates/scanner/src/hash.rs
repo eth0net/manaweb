@@ -1,7 +1,7 @@
 //! Perceptual hashes of an artwork, and the distance between two.
 //!
 //! Which hash the index ships, and what it was measured at, is in
-//! `docs/roadmap.md`.
+//! `docs/scanner.md`.
 
 // Resampling is arithmetic between one pixel grid and a smaller one, so every
 // cast here is a coordinate crossing between the two.
@@ -33,7 +33,7 @@ const DCT_KEPT: usize = 8;
 /// A grayscale image, or a window onto one.
 ///
 /// Stride apart from width because a camera's rows carry padding past the
-/// pixels — see `docs/roadmap.md`.
+/// pixels — see `docs/scanner.md`.
 #[derive(Debug, Clone, Copy)]
 pub struct Frame<'a> {
     luma: &'a [u8],
