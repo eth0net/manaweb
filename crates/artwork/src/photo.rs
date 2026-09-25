@@ -268,8 +268,8 @@ pub const ART: Rect = Rect {
     bottom: 0.554,
 };
 
-/// How much of a photograph the card is taken to fill, since nothing detects
-/// one yet and a phone will not focus on a card pressed up against its lens.
+/// How much of a photograph's height the card is taken to fill, for when
+/// nothing is detected and a phone will not focus on a card against its lens.
 ///
 /// Every one is tried and the nearest kept, the same bargain the index makes
 /// by holding an artwork at several crops: a few framings of one small frame
@@ -278,15 +278,27 @@ pub const ART: Rect = Rect {
 pub const FILLS: [f32; 5] = [1.0, 0.85, 0.72, 0.6, 0.5];
 
 impl Rect {
-    /// The middle `fill` of a frame, which is where the card is assumed to be.
+    /// The middle of a frame, `fill` of it tall and a card's own shape.
+    ///
+    /// Its shape and not the frame's: a phone shoots four by three and a card
+    /// is 63 by 88, so insetting both axes alike leaves the art box stretched
+    /// by the difference.
+    // The card's proportions against the frame's are a ratio of two pixel
+    // counts, so the casts are that crossing.
+    #[allow(clippy::cast_precision_loss)]
     #[must_use]
-    pub fn filling(fill: f32) -> Self {
-        let edge = (1.0 - fill.clamp(0.1, 1.0)) / 2.0;
+    pub fn filling(frame: &Frame, fill: f32) -> Self {
+        let (across, down) = (frame.width() as f32, frame.height() as f32);
+        let tall = (fill.clamp(0.1, 1.0) * down).min(across / manaweb_scanner::detect::RATIO);
+        let (half_wide, half_tall) = (
+            tall * manaweb_scanner::detect::RATIO / across / 2.0,
+            tall / down / 2.0,
+        );
         Self {
-            left: edge,
-            top: edge,
-            right: 1.0 - edge,
-            bottom: 1.0 - edge,
+            left: 0.5 - half_wide,
+            top: 0.5 - half_tall,
+            right: 0.5 + half_wide,
+            bottom: 0.5 + half_tall,
         }
     }
 

@@ -577,7 +577,7 @@ async fn score(
         photo::FILLS
             .iter()
             .filter_map(|&fill| {
-                let card = photo::Rect::filling(fill).of(&frame)?;
+                let card = photo::Rect::filling(&frame, fill).of(&frame)?;
                 Some(manaweb_scanner::entry(&photo::ART.of(&card)?))
             })
             .flatten(),
