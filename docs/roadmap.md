@@ -225,10 +225,20 @@ the panel is somewhere to look rather than somewhere to answer. A scratch
 entry therefore has to carry the printings its artwork matched, or a review
 that changes one is a rescan.
 
-Where that list lives is open. A scanning session is one device, which makes
-the browser's own storage enough and costs no writes; reviewing on another
-device is what a record would buy, and `app.manaweb.import` already stages a
-CSV the same way — see [`data-model.md`](data-model.md).
+**The list is the browser's own until someone commits it**, and committing
+is the import path: planned against what is held, landed as
+`app.manaweb.import` parts and drained into cards, optionally all into one
+container. A scanning session is one device, so nothing is owed to a PDS
+until there is something to keep, and the path that drains a CSV at whatever
+the PDS will take already exists — see [`data-model.md`](data-model.md).
+
+It asks nothing of the lexicons: `container` is already a field a card may
+carry, `source` already says what the cards were read out of, and the file a
+CSV names is already optional. What it does ask is that the review settle a
+**finish**, which a card record requires and no hash of an artwork can see:
+foil and nonfoil share a collector number, so a scan proposes the one and
+the person holding the card corrects it. That is the same fact the premium
+stamp above would read, and the reason it is worth reading.
 
 ### What else a scanner could be made of
 
