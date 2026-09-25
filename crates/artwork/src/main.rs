@@ -19,6 +19,7 @@ use std::process::ExitCode;
 use manaweb_artwork::fetch::Fetcher;
 use manaweb_artwork::luma::Plane;
 use manaweb_artwork::{Artwork, Result, artwork, degrade, photo};
+use manaweb_scanner::detect;
 use manaweb_scanner::hash::{self, Frame, Hash};
 use manaweb_scanner::{HASHES, Store, store};
 
@@ -336,11 +337,24 @@ const RANKS: [usize; 3] = [1, 5, 10];
 
 /// The nearest any hash the index holds comes to any the query was asked at.
 fn nearest(entry: &[Hash], want: &[Hash]) -> u32 {
-    entry
-        .iter()
-        .flat_map(|&held| want.iter().map(move |&want| hash::distance(want, held)))
+    closest(entry, want).0
+}
+
+/// The same, and which of the query's hashes it was — one framing per
+/// [`HASHES`] of them, so this says which framing answered.
+fn closest(entry: &[Hash], want: &[Hash]) -> (u32, usize) {
+    want.iter()
+        .enumerate()
+        .map(|(at, &want)| {
+            let distance = entry
+                .iter()
+                .map(|&held| hash::distance(want, held))
+                .min()
+                .unwrap_or(u32::MAX);
+            (distance, at)
+        })
         .min()
-        .unwrap_or(u32::MAX)
+        .unwrap_or((u32::MAX, 0))
 }
 
 impl Scores {
@@ -547,16 +561,27 @@ async fn score(
         tracing::warn!(shot = %path.display(), "no pixels in it");
         return Ok(None);
     };
-    // Every framing the card might have, since none is detected — the
-    // rectangle and what it costs are in `docs/roadmap.md`.
-    let want: Vec<Hash> = photo::FILLS
-        .iter()
-        .filter_map(|&fill| {
-            let card = photo::Rect::filling(fill).of(&frame)?;
-            Some(manaweb_scanner::entry(&photo::ART.of(&card)?))
-        })
-        .flatten()
-        .collect();
+    // The card as detection reads it back, then every framing it might have
+    // had if nothing found one. Both in one query, so a single run says
+    // which of them answered — see `docs/roadmap.md`.
+    let read = detect::card(&frame).and_then(|quad| detect::rectify(&frame, &quad));
+    let mut want: Vec<Hash> = Vec::new();
+    if let Some(card) = read.as_ref().and_then(detect::Card::frame)
+        && let Some(art) = photo::ART.of(&card)
+    {
+        want.extend(manaweb_scanner::entry(&art));
+    }
+    let detected = want.len();
+
+    want.extend(
+        photo::FILLS
+            .iter()
+            .filter_map(|&fill| {
+                let card = photo::Rect::filling(fill).of(&frame)?;
+                Some(manaweb_scanner::entry(&photo::ART.of(&card)?))
+            })
+            .flatten(),
+    );
     if want.is_empty() {
         tracing::warn!(shot = %path.display(), "no art box in it");
         return Ok(None);
@@ -564,8 +589,13 @@ async fn score(
 
     let arts = printing.arts();
     let (mut best, mut found, mut next, mut truth) = (None, u32::MAX, u32::MAX, u32::MAX);
+    let mut framing = if detected > 0 {
+        photo::Framing::Guessed
+    } else {
+        photo::Framing::Missed
+    };
     for (id, entry) in index {
-        let distance = nearest(entry, &want);
+        let (distance, which) = closest(entry, &want);
         if arts.contains(id) {
             truth = truth.min(distance);
         }
@@ -573,6 +603,13 @@ async fn score(
             next = found;
             found = distance;
             best = Some(*id);
+            if detected > 0 {
+                framing = if which < detected {
+                    photo::Framing::Read
+                } else {
+                    photo::Framing::Guessed
+                };
+            }
         } else if distance < next {
             next = distance;
         }
@@ -590,5 +627,6 @@ async fn score(
         margin: i64::from(next) - i64::from(found),
         art: best.to_owned(),
         truth,
+        framing,
     }))
 }

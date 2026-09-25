@@ -290,6 +290,10 @@ pub struct Tally {
     /// recall figure and differently here.
     found: Vec<u32>,
     margins: Vec<i64>,
+    /// Shots a card was found in, and shots where the crop that found it
+    /// beat every guess at where one was.
+    detected: usize,
+    won: usize,
 }
 
 impl Tally {
@@ -300,13 +304,22 @@ impl Tally {
         self.candidates.push(hit.candidates);
         self.found.push(hit.found);
         self.margins.push(hit.margin);
+        self.detected += usize::from(hit.framing != Framing::Missed);
+        self.won += usize::from(hit.framing == Framing::Read);
     }
 
     /// The header the rows below line up under.
     pub fn header(of: &str) {
         println!(
-            "{of:<16} {:>6} {:>11} {:>10} {:>11} {:>8} {:>7}",
-            "shots", "printing@1", "artwork@1", "candidates", "d(found)", "margin"
+            "{of:<16} {:>6} {:>11} {:>10} {:>11} {:>8} {:>7} {:>9} {:>6}",
+            "shots",
+            "printing@1",
+            "artwork@1",
+            "candidates",
+            "d(found)",
+            "margin",
+            "detected",
+            "won"
         );
     }
 
@@ -320,13 +333,15 @@ impl Tally {
             f64::from(count) * 100.0 / f64::from(shots)
         };
         println!(
-            "{of:<16} {:>6} {:>10.1}% {:>9.1}% {:>11} {:>8} {:>7}",
+            "{of:<16} {:>6} {:>10.1}% {:>9.1}% {:>11} {:>8} {:>7} {:>8.1}% {:>5.1}%",
             self.shots,
             share(self.printings),
             share(self.artworks),
             median(&self.candidates),
             median(&self.found),
             median(&self.margins),
+            share(self.detected),
+            share(self.won),
         );
     }
 }
@@ -346,6 +361,18 @@ pub struct Hit {
     /// Distance to the artwork the photograph is actually of, which says
     /// whether a miss was a near thing or the art box landing nowhere near.
     pub truth: u32,
+    pub framing: Framing,
+}
+
+/// Where the art box was taken from, for the answer that came back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Framing {
+    /// Nothing in the frame was shaped like a card.
+    Missed,
+    /// One was, and a guess at where a card sits still answered nearer.
+    Guessed,
+    /// One was, and reading it back off its own corners is what answered.
+    Read,
 }
 
 /// One photograph that did not name its own printing.
