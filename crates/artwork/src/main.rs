@@ -11,6 +11,9 @@
 //!
 //! Each takes the cache and a directory, then `pull`, `measure` and `cards`
 //! take how many to stop at and `hash` takes where the store goes.
+//!
+//! `MANAWEB_SHOTS` makes `photos` print a row per photograph rather than
+//! only the misses, which is what a confidence floor is read off.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -578,6 +581,17 @@ async fn photos(
             .or_default()
             .record(&hit);
 
+        if std::env::var_os("MANAWEB_SHOTS").is_some() {
+            println!(
+                "shot\t{}\t{}\t{}\t{}\t{}\t{}",
+                label.name(),
+                printing.stratum,
+                u8::from(hit.printing),
+                hit.found,
+                hit.margin,
+                hit.candidates,
+            );
+        }
         if !hit.printing {
             misses.push(photo::Miss {
                 shot: label.name(),
