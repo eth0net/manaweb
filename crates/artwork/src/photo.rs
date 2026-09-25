@@ -29,7 +29,7 @@ pub fn read(path: &Path) -> Option<DynamicImage> {
     Some(image)
 }
 
-/// What a filename says a photograph is of: `<set>-<number>-<lang>__<how>`.
+/// What a filename says a photograph is of: `<set>-<number>[-<lang>]__<how>`.
 ///
 /// A collector number carries hyphens of its own, so the set is read off the
 /// front and the language off the back, leaving whatever is between.
@@ -42,14 +42,28 @@ pub struct Label {
     pub condition: String,
 }
 
+/// What a printing can be printed in, so the last piece of a name can be told
+/// from the end of a collector number. Scryfall's own set, and no collector
+/// number in the cache reads as one of them.
+const LANGS: [&str; 19] = [
+    "ar", "de", "dw", "en", "es", "fr", "grc", "he", "it", "ja", "ko", "la", "ph", "pt", "qya",
+    "ru", "sa", "zhs", "zht",
+];
+
+/// The one a printing is in unless the name says otherwise.
+const ENGLISH: &str = "en";
+
 impl Label {
     #[must_use]
     pub fn read(name: &str) -> Option<Self> {
         let stem = name.rsplit_once('.').map_or(name, |(stem, _)| stem);
         let (named, condition) = stem.rsplit_once("__")?;
-        let (named, lang) = named.rsplit_once('-')?;
-        let (set, number) = named.split_once('-')?;
-        (!set.is_empty() && !number.is_empty() && !lang.is_empty()).then(|| Self {
+        let (set, rest) = named.split_once('-')?;
+        let (number, lang) = match rest.rsplit_once('-') {
+            Some((number, lang)) if LANGS.contains(&lang) => (number, lang),
+            _ => (rest, ENGLISH),
+        };
+        (!set.is_empty() && !number.is_empty()).then(|| Self {
             set: set.to_owned(),
             number: number.to_owned(),
             lang: lang.to_owned(),
@@ -67,7 +81,12 @@ impl Label {
             lang,
             condition,
         } = self;
-        format!("{set}-{number}-{lang}__{condition}.jpg")
+        let lang = if lang == ENGLISH {
+            String::new()
+        } else {
+            format!("-{lang}")
+        };
+        format!("{set}-{number}{lang}__{condition}.jpg")
     }
 }
 
