@@ -233,9 +233,10 @@ pub const ART: Rect = Rect {
 /// one yet and a phone will not focus on a card pressed up against its lens.
 ///
 /// Every one is tried and the nearest kept, the same bargain the index makes
-/// by holding an artwork at several crops: four framings of one small frame
-/// cost microseconds, and being wrong about this costs the retrieval.
-pub const FILLS: [f32; 4] = [1.0, 0.85, 0.72, 0.6];
+/// by holding an artwork at several crops: a few framings of one small frame
+/// cost microseconds, and being wrong about this costs the retrieval. Down
+/// to half the frame, measured to cost nothing a shape that works.
+pub const FILLS: [f32; 5] = [1.0, 0.85, 0.72, 0.6, 0.5];
 
 impl Rect {
     /// The middle `fill` of a frame, which is where the card is assumed to be.

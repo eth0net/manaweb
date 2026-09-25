@@ -113,8 +113,9 @@ wants measuring is which printing a photograph names, which `just photos`
 scores over a directory of them, each named for the printing it shows.
 
 **A card has to be found in a photograph before it can be hashed**, and
-nothing detects one yet, so the card is looked for at each of four fractions
-of the frame it might fill and the artwork where it sits on a 2015 frame —
+nothing detects one yet, so the card is looked for at each of five fractions
+of the frame it might fill, down to half of it, and the artwork where it
+sits on a 2015 frame —
 `0.079..0.920` across and `0.114..0.554` down, measured off Scryfall's own
 crop rather than taken from a diagram. Scored against 420 of their card
 images, sixty of each shape, which is the capture nothing is wrong with:
@@ -129,7 +130,10 @@ images, sixty of each shape, which is the capture nothing is wrong with:
 | token | 13.3% | 5.3% |
 | sideways | 6.7% | 0.7% |
 
-**91.9% weighted by how often each shape is printed.** The split is not
+**91.9% weighted by how often each shape is printed.** Asking at more
+framings than that costs nothing measurable: taking the floor from six
+tenths of the frame to four moved no shape that works, so where a photograph
+sits in that range is not something to ask a person to get right. The split is not
 between frames but between shapes that have an art box and shapes that do
 not: ordinary cards of either frame era are 86% of printings and the
 rectangle is exactly right for them, down to a median distance of zero.
