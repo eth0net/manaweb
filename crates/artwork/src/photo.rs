@@ -7,7 +7,8 @@
 use std::path::Path;
 
 use image::{DynamicImage, ImageDecoder as _, ImageReader};
-use manaweb_scanner::Frame;
+use manaweb_scanner::art::Rect;
+use manaweb_scanner::{Frame, detect};
 use sqlx::SqlitePool;
 
 use crate::Result;
@@ -263,52 +264,6 @@ pub fn card_image(print: &str) -> String {
     format!("https://cards.scryfall.io/normal/front/{a}/{b}/{print}.jpg")
 }
 
-/// A rectangle of something, as fractions of its width and height.
-#[derive(Debug, Clone, Copy)]
-pub struct Rect {
-    pub left: f32,
-    pub top: f32,
-    pub right: f32,
-    pub bottom: f32,
-}
-
-/// Where the artwork sits on a card, one shape of card at a time.
-///
-/// Measured by `just artbox` rather than taken from a diagram. Which shape
-/// a photograph is of is not known while it is being read, so every one of
-/// these is asked; a shape not listed shares one of them to within an inset
-/// the index already holds an artwork at.
-pub const BOXES: [Rect; 4] = [
-    // The 1993 and 1997 frames, which are narrower and sit higher.
-    Rect {
-        left: 0.123,
-        top: 0.103,
-        right: 0.881,
-        bottom: 0.541,
-    },
-    // Modern, borderless, older and a planeswalker between them.
-    Rect {
-        left: 0.082,
-        top: 0.118,
-        right: 0.920,
-        bottom: 0.556,
-    },
-    // Full-art, which reaches half as far down again.
-    Rect {
-        left: 0.082,
-        top: 0.118,
-        right: 0.920,
-        bottom: 0.835,
-    },
-    // A token, wider and taller than either.
-    Rect {
-        left: 0.041,
-        top: 0.118,
-        right: 0.959,
-        bottom: 0.666,
-    },
-];
-
 /// How much of a photograph's height the card is taken to fill, for when
 /// nothing is detected and a phone will not focus on a card against its lens.
 ///
@@ -316,50 +271,24 @@ pub const BOXES: [Rect; 4] = [
 /// is not asked of the person holding the camera, is `docs/scanner.md`.
 pub const FILLS: [f32; 5] = [1.0, 0.85, 0.72, 0.6, 0.5];
 
-impl Rect {
-    /// The middle of a frame, `fill` of it tall and a card's own shape.
-    ///
-    /// Its shape and not the frame's: a phone shoots four by three and a card
-    /// is 63 by 88, so insetting both axes alike leaves the art box stretched
-    /// by the difference.
-    // The card's proportions against the frame's are a ratio of two pixel
-    // counts, so the casts are that crossing.
-    #[allow(clippy::cast_precision_loss)]
-    #[must_use]
-    pub fn filling(frame: &Frame, fill: f32) -> Self {
-        let (across, down) = (frame.width() as f32, frame.height() as f32);
-        let tall = (fill.clamp(0.1, 1.0) * down).min(across / manaweb_scanner::detect::RATIO);
-        let (half_wide, half_tall) = (
-            tall * manaweb_scanner::detect::RATIO / across / 2.0,
-            tall / down / 2.0,
-        );
-        Self {
-            left: 0.5 - half_wide,
-            top: 0.5 - half_tall,
-            right: 0.5 + half_wide,
-            bottom: 0.5 + half_tall,
-        }
-    }
-
-    /// This rectangle of a frame the card fills, or `None` where it lands
-    /// outside one.
-    // A fraction of a pixel grid is a crossing between a real number and a
-    // coordinate, so every cast here is one of those.
-    #[allow(
-        clippy::cast_precision_loss,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
-    )]
-    #[must_use]
-    pub fn of<'a>(&self, frame: &Frame<'a>) -> Option<Frame<'a>> {
-        let across = |at: f32, of: usize| (at.clamp(0.0, 1.0) * of as f32) as usize;
-        let (x, y) = (
-            across(self.left, frame.width()),
-            across(self.top, frame.height()),
-        );
-        let right = across(self.right, frame.width());
-        let bottom = across(self.bottom, frame.height());
-        frame.window(x, y, right.saturating_sub(x), bottom.saturating_sub(y))
+/// The middle of a frame, `fill` of it tall and a card's own shape.
+///
+/// Its shape and not the frame's: a phone shoots four by three and a card is
+/// 63 by 88, so insetting both axes alike leaves the art box stretched by the
+/// difference.
+// The card's proportions against the frame's are a ratio of two pixel counts,
+// so the casts are that crossing.
+#[allow(clippy::cast_precision_loss)]
+#[must_use]
+pub fn filling(frame: &Frame, fill: f32) -> Rect {
+    let (across, down) = (frame.width() as f32, frame.height() as f32);
+    let tall = (fill.clamp(0.1, 1.0) * down).min(across / detect::RATIO);
+    let (half_wide, half_tall) = (tall * detect::RATIO / across / 2.0, tall / down / 2.0);
+    Rect {
+        left: 0.5 - half_wide,
+        top: 0.5 - half_tall,
+        right: 0.5 + half_wide,
+        bottom: 0.5 + half_tall,
     }
 }
 

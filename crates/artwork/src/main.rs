@@ -22,6 +22,7 @@ use std::process::ExitCode;
 use manaweb_artwork::fetch::Fetcher;
 use manaweb_artwork::luma::Plane;
 use manaweb_artwork::{Artwork, Result, artwork, degrade, photo};
+use manaweb_scanner::art::{self, Rect};
 use manaweb_scanner::detect;
 use manaweb_scanner::hash::{self, Frame, Hash};
 use manaweb_scanner::{HASHES, Store, store};
@@ -129,7 +130,7 @@ const MEASURED: u32 = 20;
 /// a photograph. Reads what `pull` and `cards` already fetched.
 async fn artbox(pool: &sqlx::SqlitePool, art: &str, cards: &Path) -> Result<()> {
     let wanted = photo::sample(pool, MEASURED).await?;
-    let mut found: BTreeMap<String, Vec<photo::Rect>> = BTreeMap::new();
+    let mut found: BTreeMap<String, Vec<Rect>> = BTreeMap::new();
     let (mut read, mut absent) = (0usize, 0usize);
 
     for (printing, label) in &wanted {
@@ -168,7 +169,7 @@ async fn artbox(pool: &sqlx::SqlitePool, art: &str, cards: &Path) -> Result<()> 
     for (shape, rects) in &found {
         // A median alone hid that one shape was two boxes, so each edge
         // carries how far its own readings reach either side of it.
-        let edge = |pick: fn(&photo::Rect) -> f32| {
+        let edge = |pick: fn(&Rect) -> f32| {
             let mut held: Vec<f32> = rects.iter().map(pick).collect();
             held.sort_by(f32::total_cmp);
             let mid = held[held.len() / 2];
@@ -623,7 +624,7 @@ async fn photos(
 
 /// Every art box asked of one card, the shape of it not being known.
 fn boxed(card: &Frame) -> Vec<Hash> {
-    photo::BOXES
+    art::BOXES
         .iter()
         .filter_map(|held| Some(manaweb_scanner::entry(&held.of(card)?)))
         .flatten()
@@ -666,7 +667,7 @@ async fn score(
         want.extend(
             photo::FILLS
                 .iter()
-                .filter_map(|&fill| Some(boxed(&photo::Rect::filling(&frame, fill).of(&frame)?)))
+                .filter_map(|&fill| Some(boxed(&photo::filling(&frame, fill).of(&frame)?)))
                 .flatten(),
         );
     }

@@ -5,6 +5,7 @@
 //! fills the store is `manaweb-artwork`; the index it publishes is described
 //! in `docs/scryfall.md`.
 
+pub mod art;
 pub mod detect;
 pub mod hash;
 pub mod luma;
