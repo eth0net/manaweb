@@ -327,12 +327,24 @@ Against that 1.78MB:
 | how | bytes an artwork | the download becomes | why not now |
 |---|---|---|---|
 | a perceptual hash, as built | 33 | 1.78MB | — |
-| which boxes its crop can be | +1 | 1.84MB | taken: two bits, and the builder already has the picture open |
+| which boxes its crop can be | +1 | 1.84MB | built and dropped, below |
 | a 2x2 grid of mean color | +12 | 2.44MB | the tie-breaker, once a tie is what is losing |
 | a gradient hash beside it | +32 | 3.53MB | doubles a key nothing has shown short |
 | a 4x4 grid of mean color | +48 | 4.40MB | a finer grid than a tie needs |
 | local features and a geometric check | thousands | gigabytes | robust to occlusion and perspective, and it ends shipping the index to a browser |
 | a learned embedding | 128–512 | 9–30MB and weights | the answer if the hash proves insufficient, which nothing has shown |
+
+**A mask of which boxes a crop can be was built and dropped.** A crop's own
+proportions name one of the four to within 2% and never two — 92.8% of the
+index on a single box, 7.2% on none, over a tolerance anywhere between 0.015
+and 0.03. Asked only where its crop could have been cut, an artwork answers
+one more photograph of 92 while Scryfall's 420 lose 0.6 points weighted. The
+band a scan can be accepted on falls from 65 of 92 to 51: a thinner field
+leaves the runner-up further off whether the winner was right or wrong, and
+one wrong answer comes back at a margin of 4. Measuring that margin over the
+whole index instead leaves 80 right and 64 accepted, so the best of it trades
+one card for one card, which is not what a byte an artwork and a format both
+sides read costs.
 
 Reading the card rather than the artwork is the other axis, and it settles
 what no artwork can: which printing, and which finish. Full text recognition
