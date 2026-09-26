@@ -14,7 +14,7 @@ worth switching for.
 
 - Constrain, don't classify. Art match narrows to the printings sharing that
   art; set symbol and collector number pick among those, which is a handful-way
-  decision rather than 900-way classification.
+  decision rather than a thousand-way classification.
 - Collector number is the strongest signal. On modern frames the bottom line
   carries number, set code and rarity in a known font with a tiny alphabet, so
   a small purpose-trained model beats general OCR at a few hundred KB rather
@@ -25,16 +25,16 @@ worth switching for.
   language per printing; m10 #146 has nine ids. The language code sits beside
   the foil marker on the line the model already reads, so it costs nothing,
   but WotC's codes are their own rather than ISO 639 and need mapping to
-  Scryfall's `lang`. Pre-M15 cards carry no code, leaving the printed name's
-  own script as the signal.
+  Scryfall's `lang`. Cards before the 2015 frame carry no code, leaving the
+  printed name's own script as the signal.
 - Foil is glyph classification, not computer vision. The premium indicator sits
   between set code and language on that same line: `BLB • EN` nonfoil,
   `BLB ★ EN` foil. Traditional foils share collector numbers with nonfoils, so
   this marker is the only differentiator.
-- Era caveats: the M15 frame (2015+) puts it there; the Exodus frame
-  (1998-2014) put a star next to the collector number. Older cards have no
-  collector line, but foils didn't exist before Urza's Legacy (1999), so
-  absence is itself a reliable nonfoil signal.
+- Era caveats: the 2015 frame puts it there; the frames before it put a star
+  next to the collector number. Older cards have no collector line, but foils
+  didn't exist before Urza's Legacy (1999), so absence is itself a reliable
+  nonfoil signal.
 - Usually it doesn't arise — `finishes` narrows most pinned printings to one
   possibility.
 - Proxies and alters defeat any scanner and always will. Accepted limitation.
@@ -63,7 +63,7 @@ one small frame, and is worth 0.8 points there and 1.4 on rotation alone, the
 corners a rotation swings out of the picture being the same kind of error as
 a bad crop.
 
-Asking all four framings against every one of the index's 54,585 entries is
+Asking all four framings against every one of the index's 54,584 entries is
 1.3ms in plain JavaScript, and 0.4ms at one, so WASM is for the detection and
 rectification ahead of the hash rather than for the lookup.
 
