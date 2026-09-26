@@ -150,8 +150,10 @@ async fn artbox(pool: &sqlx::SqlitePool, art: &str, cards: &Path) -> Result<()> 
             continue;
         };
         if let Some(rect) = photo::locate(&whole, &part) {
+            // By frame as well as shape, because three frame eras share the
+            // shape `older` and do not share an art box.
             found
-                .entry(printing.stratum.clone())
+                .entry(format!("{} {}", printing.stratum, printing.frame))
                 .or_default()
                 .push(rect);
             read += 1;

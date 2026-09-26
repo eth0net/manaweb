@@ -105,6 +105,9 @@ pub struct Printing {
     /// Which shape of card this is, for the report's second cut. What each
     /// of them costs is `docs/scanner.md`.
     pub stratum: String,
+    /// Scryfall's name for the frame it was printed in, which a shape does
+    /// not imply: three of them share `older`, and not an art box.
+    pub frame: String,
 }
 
 impl Printing {
@@ -131,6 +134,7 @@ pub async fn find(pool: &SqlitePool, label: &Label) -> Result<Option<Printing>> 
         "SELECT c.id,
                 c.illustration_id AS art,
                 json_extract(c.card_faces, '$[1].illustration_id') AS back_art,
+                c.frame AS frame,
                 CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
                           THEN 'token'
                      WHEN c.layout IN ('split', 'flip', 'planar', 'scheme')
@@ -184,7 +188,8 @@ pub async fn sample(pool: &SqlitePool, each: u32) -> Result<Vec<(Printing, Label
              SELECT c.id, c.set_code, c.collector_number, c.lang,
                     c.illustration_id AS art,
                     json_extract(c.card_faces, '$[1].illustration_id') AS back_art,
-                        CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
+                    c.frame AS frame,
+                    CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
                           THEN 'token'
                      WHEN c.layout IN ('split', 'flip', 'planar', 'scheme')
                           OR o.type_line LIKE 'Battle%' THEN 'sideways'
@@ -210,7 +215,7 @@ pub async fn sample(pool: &SqlitePool, each: u32) -> Result<Vec<(Printing, Label
                AND c.illustration_id IS NOT NULL
                AND c.image_status IN ('highres_scan', 'lowres')
          )
-         SELECT id, set_code, collector_number, lang, art, back_art, stratum
+         SELECT id, set_code, collector_number, lang, art, back_art, frame, stratum
          FROM held WHERE rank <= ? ORDER BY stratum, rank",
     )
     .bind(each)
@@ -219,7 +224,7 @@ pub async fn sample(pool: &SqlitePool, each: u32) -> Result<Vec<(Printing, Label
 
     Ok(rows
         .into_iter()
-        .map(|(id, set, number, lang, art, back_art, stratum)| {
+        .map(|(id, set, number, lang, art, back_art, frame, stratum)| {
             let label = Label {
                 set,
                 number,
@@ -232,6 +237,7 @@ pub async fn sample(pool: &SqlitePool, each: u32) -> Result<Vec<(Printing, Label
                 art,
                 back_art,
                 stratum,
+                frame,
             };
             (printing, label)
         })
@@ -246,6 +252,7 @@ type Row = (
     String,
     String,
     Option<String>,
+    String,
     String,
 );
 
