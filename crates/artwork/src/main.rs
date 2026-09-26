@@ -160,17 +160,20 @@ async fn artbox(pool: &sqlx::SqlitePool, art: &str, cards: &Path) -> Result<()> 
 
     tracing::info!(read, absent, "located");
     println!(
-        "{:<12} {:>6} {:>7} {:>7} {:>7} {:>7}",
-        "shape", "shots", "left", "top", "right", "bottom"
+        "{:<18} {:>6} {:>13} {:>13} {:>13} {:>13}",
+        "shape and frame", "shots", "left", "top", "right", "bottom"
     );
     for (shape, rects) in &found {
+        // A median alone hid that one shape was two boxes, so each edge
+        // carries how far its own readings reach either side of it.
         let edge = |pick: fn(&photo::Rect) -> f32| {
             let mut held: Vec<f32> = rects.iter().map(pick).collect();
             held.sort_by(f32::total_cmp);
-            held[held.len() / 2]
+            let mid = held[held.len() / 2];
+            format!("{mid:.3}±{:.3}", held[held.len() - 1] - held[0])
         };
         println!(
-            "{shape:<12} {:>6} {:>7.3} {:>7.3} {:>7.3} {:>7.3}",
+            "{shape:<18} {:>6} {:>13} {:>13} {:>13} {:>13}",
             rects.len(),
             edge(|r| r.left),
             edge(|r| r.top),

@@ -117,7 +117,11 @@ impl Printing {
     }
 }
 
-/// The printing a label names, or nothing where the cache has no such row.
+/// The printing a label names, or nothing where the cache has no paper row.
+///
+/// Paper, because a digital printing carries an artwork that no printing a
+/// scan could name carries, and would read as a miss rather than as a label
+/// nothing answers.
 ///
 /// # Errors
 ///
@@ -138,7 +142,7 @@ pub async fn find(pool: &SqlitePool, label: &Label) -> Result<Option<Printing>> 
                      ELSE 'older' END AS stratum
          FROM cards c JOIN oracle o ON o.id = c.oracle_id
          WHERE c.set_code = ? AND c.collector_number = ? AND c.lang = ?
-           AND c.illustration_id IS NOT NULL",
+           AND c.illustration_id IS NOT NULL AND NOT c.digital",
     )
     .bind(&label.set)
     .bind(&label.number)
@@ -180,7 +184,7 @@ pub async fn sample(pool: &SqlitePool, each: u32) -> Result<Vec<(Printing, Label
              SELECT c.id, c.set_code, c.collector_number, c.lang,
                     c.illustration_id AS art,
                     json_extract(c.card_faces, '$[1].illustration_id') AS back_art,
-                    CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
+                        CASE WHEN c.layout IN ('token', 'double_faced_token', 'emblem', 'art_series')
                           THEN 'token'
                      WHEN c.layout IN ('split', 'flip', 'planar', 'scheme')
                           OR o.type_line LIKE 'Battle%' THEN 'sideways'
