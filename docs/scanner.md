@@ -233,12 +233,11 @@ each row and a decimal read off that would be a fiction. The table is what
 calibrates them, so it is worth keeping as the set grows; a number nothing
 measured should not be shown at all.
 
-**What was discarded is worth keeping too.** The index reader returns only
-the nearest entry today, which is also why no margin reaches the client —
-one change gives both, and a few more rows are what lets someone see what
-came second and say it was that one. Behind a setting, since most
-people are being asked to recognize their own card rather than to read a
-Hamming distance.
+**What was discarded is worth keeping too.** The index reader answers with
+the nearest five rather than the nearest, which is where the margin comes
+from and what lets someone see what came second and say it was that one.
+Behind a setting, since most people are being asked to recognize their own
+card rather than to read a Hamming distance.
 
 Preferences have had nowhere to live (`todo(settings)`), and the scanner is
 the first thing to need them locally rather than on a PDS: a scratch list, a
@@ -397,10 +396,10 @@ keeps it honest is the same check: it is read beside a build made here and
 held to the same exports and the same answers. Byte-for-byte would be the
 wrong test, the toolchain being unpinned. `just engine` rewrites it.
 
-Two ends are still missing. The index reader keeps only the nearest entry and
-so cannot report a margin, and nothing captures a frame from a camera.
+A margin reaches it too: the reader answers with the nearest five, so a scan
+carries how much further the runner-up was. What is left is the camera —
+nothing captures a frame from one yet.
 
-The order, then: a confidence floor read off the margin, and a scan landing
-somewhere it can be reviewed rather than in a collection. Color, a second
-hash, or anything read off the card itself, only where a measurement asks for
-it.
+The order, then: a camera, and a scan landing somewhere it can be reviewed
+rather than in a collection. Color, a second hash, or anything read off the
+card itself, only where a measurement asks for it.

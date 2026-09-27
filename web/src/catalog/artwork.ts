@@ -27,6 +27,27 @@ export interface Match {
   distance: number;
 }
 
+export interface Nearest {
+  // Nearest first, at most as many as were asked for.
+  matches: Match[];
+  // How much further the second artwork was than the first, which is what an
+  // accept turns on — `docs/scanner.md`. Where nothing else came within
+  // reach it is the widest one there is.
+  margin: number;
+}
+
+// The margin a scan can be taken on without asking. Measured, not chosen —
+// `docs/scanner.md`.
+export const FLOOR = 4;
+
+// How many to keep. Enough to offer a person the runner-up when the margin
+// is too thin to accept on, and no more: each is a row nobody may read.
+const KEEP = 5;
+
+// No hash differs by this much, so it stands for one that has not been
+// compared yet.
+const APART = 65;
+
 // What this client's own hashing comes out as, which the engine will answer
 // for itself once there is one — `docs/scryfall.md`.
 const HASHER = "1c1f64e991d4d1cc";
@@ -159,9 +180,10 @@ export class Artworks {
     return byte !== undefined && (byte & (1 << (artwork & 7))) !== 0;
   }
 
-  // The artwork nearest any of these hashes, or null where the index holds
-  // nothing. Several, because a query is asked at several framings.
-  nearest(hashes: readonly bigint[]): Match | null {
+  // The artworks nearest any of these hashes, nearest first, or null where
+  // the index holds nothing. Several hashes, because a query is asked at
+  // several framings.
+  nearest(hashes: readonly bigint[], keep = KEEP): Nearest | null {
     // Null is the index holding nothing, so asking nothing has to be the
     // caller's bug rather than the same answer.
     if (hashes.length === 0) throw new Error("no hash to retrieve against");
@@ -175,29 +197,46 @@ export class Artworks {
     const words = this.#words;
     const held = this.#held;
     const each = this.hashes * 2;
+    const matches: Match[] = [];
 
-    let artwork = -1;
-    let distance = 65;
     for (let at = 0; at < this.rows; at++) {
       if (((held[at >> 3] as number) & (1 << (at & 7))) === 0) continue;
 
+      // The whole query against one artwork before any other is considered,
+      // so what comes second is another artwork rather than this one read at
+      // a second crop.
+      let distance = APART;
       const base = at * each;
       for (let which = 0; which < each; which += 2) {
         const lo = words[base + which] as number;
         const hi = words[base + which + 1] as number;
         for (let ask = 0; ask < asked.length; ask += 2) {
-          const found =
+          const apart =
             bits(lo ^ (asked[ask] as number)) +
             bits(hi ^ (asked[ask + 1] as number));
-          if (found < distance) {
-            distance = found;
-            artwork = at;
-          }
+          if (apart < distance) distance = apart;
         }
       }
+
+      // The common case is an artwork no nearer than the ones already kept,
+      // which costs the one comparison.
+      const last = matches[matches.length - 1];
+      if (matches.length === keep && last && distance >= last.distance) {
+        continue;
+      }
+      let to = matches.length;
+      while (to > 0 && (matches[to - 1] as Match).distance > distance) to--;
+      matches.splice(to, 0, { artwork: at, distance });
+      if (matches.length > keep) matches.pop();
     }
 
-    return artwork < 0 ? null : { artwork, distance };
+    const first = matches[0];
+    if (!first) return null;
+    const second = matches[1];
+    return {
+      matches,
+      margin: (second ? second.distance : APART) - first.distance,
+    };
   }
 
   // Which numbers a printings column could carry for this artwork: its own
@@ -219,24 +258,23 @@ export async function artworks(manifest: Manifest): Promise<Artworks | null> {
   return Artworks.read(new Uint8Array(await part(manifest.artwork)));
 }
 
-export interface Retrieved {
-  match: Match;
+export interface Retrieved extends Nearest {
+  // The printings of the nearest, which is the one being answered with.
   prints: { card: Card; print: Print }[];
 }
 
-// What a query retrieves: the artwork nearest it, then every printing that
-// artwork appears on, whichever side of the card it sits on.
+// What a query retrieves: the artworks nearest it, then every printing the
+// first appears on, whichever side of the card it sits on.
 export function retrieve(
   catalog: Catalog,
   index: Artworks,
   hashes: readonly bigint[],
 ): Retrieved | null {
-  const match = index.nearest(hashes);
-  if (!match) return null;
+  const found = index.nearest(hashes);
+  if (!found) return null;
+  const first = found.matches[0] as Match;
   return {
-    match,
-    prints: index
-      .faces(match.artwork)
-      .flatMap((number) => catalog.artwork(number)),
+    ...found,
+    prints: index.faces(first.artwork).flatMap((at) => catalog.artwork(at)),
   };
 }

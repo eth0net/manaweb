@@ -79,22 +79,31 @@ describe("the artwork index", () => {
 
   test("retrieves the artwork a hash came from", () => {
     const index = Artworks.read(file([[ONE], [TWO]]));
-    expect(index.nearest([ONE])).toEqual({ artwork: 0, distance: 0 });
-    expect(index.nearest([TWO])).toEqual({ artwork: 1, distance: 0 });
+    expect(index.nearest([ONE])?.matches[0]).toEqual({
+      artwork: 0,
+      distance: 0,
+    });
+    expect(index.nearest([TWO])?.matches[0]).toEqual({
+      artwork: 1,
+      distance: 0,
+    });
   });
 
   // The whole reason an artwork carries several: the query landed between
   // two framings and only the nearer one is close.
   test("reads every hash an artwork carries", () => {
     const index = Artworks.read(file([[ONE, ONE, TWO, ONE], [ONE ^ 0xffn]]));
-    expect(index.nearest([TWO])).toEqual({ artwork: 0, distance: 0 });
+    expect(index.nearest([TWO])?.matches[0]).toEqual({
+      artwork: 0,
+      distance: 0,
+    });
   });
 
   // An artwork nothing hashed is zeroed, and so is a frame of pure black.
   test("never retrieves an artwork the build had no image for", () => {
     const index = Artworks.read(file([null, [TWO]]));
     const found = index.nearest([0n]);
-    expect(found?.artwork).toBe(1);
+    expect(found?.matches[0]?.artwork).toBe(1);
   });
 
   test("holds nothing when it holds nothing", () => {
@@ -137,7 +146,46 @@ describe("the artwork index", () => {
     const index = Artworks.read(file([[ONE], [TWO]]));
     const found = index.nearest([TWO ^ 0xfn, ONE ^ 0x3n]);
 
-    expect(found).toEqual({ artwork: 0, distance: 2 });
+    expect(found?.matches[0]).toEqual({ artwork: 0, distance: 2 });
+  });
+
+  // What the whole accept turns on: a near miss and a confident wrong answer
+  // read alike in a distance and differently here.
+  test("says how much further the runner-up was", () => {
+    const index = Artworks.read(file([[ONE], [ONE ^ 0x3fn]]));
+    const found = index.nearest([ONE]);
+
+    expect(found?.matches[0]).toEqual({ artwork: 0, distance: 0 });
+    expect(found?.margin).toBe(6);
+  });
+
+  // A second crop of the winner is not a runner-up: every hash an artwork
+  // carries is one artwork, so the margin is a gap between two of them.
+  test("measures the margin against another artwork", () => {
+    const index = Artworks.read(file([[ONE, ONE ^ 0x1n], [ONE ^ 0x3fn]]));
+    const found = index.nearest([ONE]);
+
+    expect(found?.matches.map((held) => held.artwork)).toEqual([0, 1]);
+    expect(found?.margin).toBe(6);
+  });
+
+  test("keeps the nearest few, nearest first", () => {
+    const index = Artworks.read(
+      file([[ONE ^ 0x3fn], [ONE], [ONE ^ 0x7n], [ONE ^ 0x1n]]),
+    );
+    const found = index.nearest([ONE], 3);
+
+    expect(found?.matches).toEqual([
+      { artwork: 1, distance: 0 },
+      { artwork: 3, distance: 1 },
+      { artwork: 2, distance: 3 },
+    ]);
+  });
+
+  // Nothing else within reach, so there is no runner-up to be nearer than.
+  test("gives the widest margin there is against one artwork", () => {
+    const found = Artworks.read(file([[ONE]])).nearest([ONE]);
+    expect(found?.margin).toBe(65);
   });
 
   test("refuses entries a different hash filled", () => {
@@ -181,7 +229,10 @@ describe("the artwork index", () => {
     shifted.set(whole, 3);
 
     const index = Artworks.read(shifted.subarray(3));
-    expect(index.nearest([TWO])).toEqual({ artwork: 1, distance: 0 });
+    expect(index.nearest([TWO])?.matches[0]).toEqual({
+      artwork: 1,
+      distance: 0,
+    });
   });
 });
 
@@ -255,7 +306,7 @@ describe("a hash against the catalog", () => {
     const index = Artworks.read(file([[ONE]]));
     const found = retrieve(catalog, index, [ONE]);
 
-    expect(found?.match).toEqual({ artwork: 0, distance: 0 });
+    expect(found?.matches[0]).toEqual({ artwork: 0, distance: 0 });
     expect(found?.prints.map((one) => one.print.id)).toEqual([ID("0101")]);
     expect(found?.prints[0]?.card.name).toBe("Delver of Secrets");
   });
@@ -268,7 +319,7 @@ describe("a hash against the catalog", () => {
     );
     const found = retrieve(catalog, index, [TWO]);
 
-    expect(found?.match.artwork).toBe(1);
+    expect(found?.matches[0]?.artwork).toBe(1);
     expect(found?.prints.map((one) => one.print.id)).toEqual([ID("0101")]);
   });
 
