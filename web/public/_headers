@@ -5,8 +5,9 @@
 
 # A token in the browser makes XSS token compromise, and script-src is the line
 # that carries it: no list of origins can stop an injected script sending a
-# token to a PDS — see `docs/architecture.md`.
+# token to a PDS — see `docs/architecture.md`. `wasm-unsafe-eval` is the
+# scanner engine: it permits compiling a module and leaves `eval` shut.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cards.scryfall.io https://svgs.scryfall.io; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cards.scryfall.io https://svgs.scryfall.io; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff

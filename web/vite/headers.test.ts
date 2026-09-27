@@ -55,9 +55,9 @@ describe("letting the dev server's own scripts through", () => {
       string,
       string,
     ];
-    expect(nonced(policy, "abc123")).toContain(
-      "script-src 'self' 'nonce-abc123'",
-    );
+    // Matched rather than spelled: what this asserts is that the nonce lands
+    // inside `script-src`, not what else the directive happens to carry.
+    expect(nonced(policy, "abc123")).toMatch(/script-src [^;]*'nonce-abc123'/);
     expect(policy).not.toContain("unsafe-inline'; script");
   });
 });
@@ -84,6 +84,6 @@ describe("reaching the catalog in development", () => {
     ];
     const held = reachable(nonced(policy, "abc123"), "127.0.0.1:5173");
     expect(held).toContain("connect-src 'self' https: http://127.0.0.1:8080;");
-    expect(held).toContain("script-src 'self' 'nonce-abc123'");
+    expect(held).toMatch(/script-src [^;]*'nonce-abc123'/);
   });
 });

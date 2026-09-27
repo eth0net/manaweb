@@ -19,13 +19,18 @@ const TABLE: (usize, usize) = (400, 300);
 /// millimeter.
 const DRAWN: (usize, usize, usize, usize) = (100, 60, 126, 176);
 
+/// And one drawn too big to be a card, leaving too little table for anything
+/// to be found in it. What a query falls back to is only asked over a frame
+/// like this one.
+const FILLED: (usize, usize, usize, usize) = (0, 0, 400, 260);
+
 /// A card on a table, the card carrying a gradient so that hashing one says
 /// something and the table flat so that finding one can.
 ///
 /// Arithmetic a port can restate rather than a fixture it has to ship.
-fn table() -> Vec<u8> {
+fn table(drawn: (usize, usize, usize, usize)) -> Vec<u8> {
     let (width, height) = TABLE;
-    let (x, y, wide, tall) = DRAWN;
+    let (x, y, wide, tall) = drawn;
     let mut out = vec![30u8; width * height];
     for down in y..y + tall {
         for across in x..x + wide {
@@ -48,7 +53,7 @@ fn main() {
     println!("fingerprint {:016x}", fingerprint());
 
     let (width, height) = TABLE;
-    let levels = table();
+    let levels = table(DRAWN);
     let frame = Frame::new(&levels, width, height, width).expect("the table is a frame");
 
     let found = detect::card(&frame).expect("a card on the table");
@@ -66,6 +71,19 @@ fn main() {
     let asked = query::query(&frame);
     print!(
         "query {} {}",
+        asked.hashes.len(),
+        u8::from(asked.found.is_some())
+    );
+    for hash in &asked.hashes {
+        print!(" {hash:016x}");
+    }
+    println!();
+
+    let levels = table(FILLED);
+    let frame = Frame::new(&levels, width, height, width).expect("the table is a frame");
+    let asked = query::query(&frame);
+    print!(
+        "guessed {} {}",
         asked.hashes.len(),
         u8::from(asked.found.is_some())
     );

@@ -390,6 +390,13 @@ holds the wasm build to what a native one answers over a drawn card as well
 as over the probe frame, with and without `+simd128`: the vector extension
 gives the compiler no license to reassociate a float.
 
+**The module is committed rather than built by whatever deploys the app.**
+49KB, built for size, and the client imports it for its URL so the build
+hashes it and the service worker holds it with the rest of the shell. What
+keeps it honest is the same check: it is read beside a build made here and
+held to the same exports and the same answers. Byte-for-byte would be the
+wrong test, the toolchain being unpinned. `just engine` rewrites it.
+
 Two ends are still missing. The index reader keeps only the nearest entry and
 so cannot report a margin, and nothing captures a frame from a camera.
 

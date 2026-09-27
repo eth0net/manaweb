@@ -74,6 +74,16 @@ lexicons: deps
     cd tools/lexicon-check && bun run check
     cd tools/lex-gen && bun run gen --check
 
+# RUSTFLAGS is passed rather than left to the environment: what ships has to
+# be the plain build, since nothing feature-detects `simd128` in a browser.
+# The remap is because panic locations in `core` are absolute and this is a
+# file we serve — without it the build machine's username ships with it.
+[doc('rebuild the engine the client ships (needs the wasm32 target)')]
+[group('dev')]
+engine:
+    RUSTFLAGS="--remap-path-prefix=$(rustc --print sysroot)=/rust" cargo rustc -q -p manaweb-scanner --target wasm32-unknown-unknown --profile wasm --crate-type cdylib
+    cp target/wasm32-unknown-unknown/wasm/manaweb_scanner.wasm web/src/scan/engine.wasm
+
 # prek's own installer, which reads the hook types out of `prek.toml`. Here
 # because `just --list` is the index, and a contributor who has to be told the
 # command separately is one the index failed.

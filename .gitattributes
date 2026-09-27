@@ -1,3 +1,7 @@
 # Windows is a CI platform, and the Scryfall sync fixtures will be compared
 # byte for byte, so the working tree is pinned rather than left to each checkout.
 * text=auto eol=lf
+
+# The engine is a build artifact rather than source, so no end-of-line rule
+# may touch it: a browser rejects a module a byte out.
+*.wasm binary

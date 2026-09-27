@@ -12,14 +12,29 @@ import { Engine } from "../../web/src/scan/engine";
 
 const ROOT = dirname(dirname(import.meta.dir));
 const TARGET = "wasm32-unknown-unknown";
-const MODULE = join(ROOT, "target", TARGET, "release", "manaweb_scanner.wasm");
+const PROFILE = "wasm";
+const MODULE = join(ROOT, "target", TARGET, PROFILE, "manaweb_scanner.wasm");
+const SHIPPED = join(ROOT, "web", "src", "scan", "engine.wasm");
 
-// What ships, and what a plain build does. Both, because the vector extension
-// is the one thing here that changes the arithmetic the compiler emits.
+// The module a browser is served is committed, so it is read here beside one
+// built now and held to the same answers — `docs/scanner.md`.
 const BUILDS = [
+  { name: "committed", from: SHIPPED },
   { name: "plain", flags: "" },
+  // The vector extension is the one thing here that changes the arithmetic
+  // the compiler emits, so it is asked as well as what ships.
   { name: "simd128", flags: "-C target-feature=+simd128" },
 ];
+
+// Names and kinds, which say whether the committed module answers the same
+// calls. A probe cannot: an export nothing asks about would go unnoticed.
+function surface(bytes: Uint8Array<ArrayBuffer>): string[] {
+  return WebAssembly.Module.exports(new WebAssembly.Module(bytes))
+    .map((held) => `${held.kind} ${held.name}`)
+    .sort();
+}
+
+const surfaces = new Map<string, string[]>();
 
 // `crates/scanner`'s own probe, restated rather than shipped — see the
 // engine's golden vectors. Color, so the conversion is on the way through.
@@ -28,6 +43,7 @@ const PROBE = { width: 64, height: 48 };
 // And the table, restated the same way.
 const TABLE = { width: 400, height: 300 };
 const DRAWN = { x: 100, y: 60, width: 126, height: 176 };
+const FILLED = { x: 0, y: 0, width: 400, height: 260 };
 const CHANNELS: [number, number][] = [
   [7, 11],
   [13, 5],
@@ -46,11 +62,11 @@ function probe(): Uint8Array {
   return out;
 }
 
-function table(): Uint8Array {
+function table(drawn: typeof DRAWN): Uint8Array {
   const out = new Uint8Array(TABLE.width * TABLE.height).fill(30);
-  for (let down = 0; down < DRAWN.height; down++) {
-    for (let across = 0; across < DRAWN.width; across++) {
-      const at = (DRAWN.y + down) * TABLE.width + DRAWN.x + across;
+  for (let down = 0; down < drawn.height; down++) {
+    for (let across = 0; across < drawn.width; across++) {
+      const at = (drawn.y + down) * TABLE.width + drawn.x + across;
       out[at] = 140 + ((across * 7 + down * 11) % 100);
     }
   }
@@ -135,25 +151,29 @@ const color = probe();
 
 for (const build of BUILDS) {
   console.log(`\n${build.name}:`);
-  // Passed rather than left in a config file: CI sets RUSTFLAGS itself, and an
-  // environment one silently replaces what the config says.
-  await run(
-    [
-      "cargo",
-      "rustc",
-      "-q",
-      "-p",
-      "manaweb-scanner",
-      "--target",
-      TARGET,
-      "--release",
-      "--crate-type",
-      "cdylib",
-    ],
-    { RUSTFLAGS: build.flags },
-  );
+  if (build.flags !== undefined) {
+    // Passed rather than left in a config file: CI sets RUSTFLAGS itself, and an
+    // environment one silently replaces what the config says.
+    await run(
+      [
+        "cargo",
+        "rustc",
+        "-q",
+        "-p",
+        "manaweb-scanner",
+        "--target",
+        TARGET,
+        "--profile",
+        PROFILE,
+        "--crate-type",
+        "cdylib",
+      ],
+      { RUSTFLAGS: build.flags },
+    );
+  }
 
-  const bytes = await Bun.file(MODULE).bytes();
+  const bytes = await Bun.file(build.from ?? MODULE).bytes();
+  surfaces.set(build.name, surface(bytes));
   const engine = await Engine.load(bytes);
 
   if (engine.hashes !== want.length) {
@@ -191,7 +211,7 @@ for (const build of BUILDS) {
     ok(`room for ${engine.words} words`);
   }
 
-  const drawn = table();
+  const drawn = table(DRAWN);
   const quad = engine.detect(drawn, TABLE.width, TABLE.height);
   if (!quad) {
     fail("no card on the table");
@@ -220,19 +240,39 @@ for (const build of BUILDS) {
     }
   }
 
-  const asked = engine.query(drawn, TABLE.width, TABLE.height);
-  const held = [
-    String(asked.hashes.length),
-    asked.quad ? "1" : "0",
-    ...asked.hashes.map(hex),
-  ];
-  if (held.join() !== said("query").join()) {
-    fail(`${held.length - 2} hashes against ${said("query").length - 2}`);
-  } else {
-    ok(
-      `${asked.hashes.length} hashes, framed by ${asked.quad ? "a card" : "guesswork"}`,
-    );
+  // Both frames: the guessed framings are reached only over one nothing is
+  // found in, so a query asked once never runs them at all.
+  for (const [name, at] of [
+    ["query", DRAWN],
+    ["guessed", FILLED],
+  ] as const) {
+    const asked = engine.query(table(at), TABLE.width, TABLE.height);
+    const held = [
+      String(asked.hashes.length),
+      asked.quad ? "1" : "0",
+      ...asked.hashes.map(hex),
+    ];
+    if (held.join() !== said(name).join()) {
+      fail(`${name} gave ${held.length - 2} hashes, framed ${held[1]}`);
+    } else {
+      ok(
+        `${asked.hashes.length} hashes, framed by ${asked.quad ? "a card" : "guesswork"}`,
+      );
+    }
   }
+}
+
+// Last, because it wants both modules read. A committed one that answers the
+// probe alike but exports something else is a source change nobody rebuilt.
+const shipped = surfaces.get("committed") ?? [];
+const built = surfaces.get("plain") ?? [];
+console.log("\nshipped:");
+if (shipped.join("\n") !== built.join("\n")) {
+  fail(
+    `${shipped.length} exports against ${built.length}: run \`just engine\``,
+  );
+} else {
+  ok(`${shipped.length} exports, the same a build here answers`);
 }
 
 console.log(failed ? "\nsomething disagrees" : "\nall green");

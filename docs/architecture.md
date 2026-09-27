@@ -55,8 +55,13 @@ catalog change for different reasons:
 
 | | origin | built from | changes on |
 |---|---|---|---|
-| app, client metadata | `manaweb.app`, Pages | the repo | a commit |
+| app, client metadata, engine | `manaweb.app`, Pages | the repo | a commit |
 | catalog, manifest | `static.manaweb.app`, R2 | the cache | a set |
+
+The engine is in the first row rather than the second because it is code:
+it changes when the scanner does, and a commit is what deploys it. The
+artwork index it reads is data on Scryfall's cadence, so that stays in the
+second.
 
 `static` rather than `catalog` because more artifacts of that shape are coming
 — a scanner index, precomputed recommendations — and the Phase 3 query API
@@ -231,9 +236,10 @@ which would leave the dev server the one place the policy is not enforced, so
 the dev server parses it and sends the same headers. A policy that only
 production has is a policy found in production.
 
-**`script-src 'self'` refuses to instantiate WebAssembly** until it names
-`'wasm-unsafe-eval'` as well, which the scanner will need and nothing yet
-justifies — so the widening waits for the thing that fetches the module.
+**`script-src 'self'` refuses to instantiate WebAssembly**, so it names
+`'wasm-unsafe-eval'` as well for the scanner engine. That keyword permits
+compiling a module and nothing more, so the line above still holds: `eval`
+stays shut, and an injected script is no closer to running.
 `SharedArrayBuffer` is not worth the COOP/COEP headers it wants, which would
 complicate the OAuth popup, and a transferred `ArrayBuffer` already copies
 nothing.
