@@ -9,6 +9,7 @@ pub mod art;
 pub mod detect;
 pub mod hash;
 pub mod luma;
+pub mod query;
 pub mod store;
 
 mod error;

@@ -22,9 +22,9 @@ use std::process::ExitCode;
 use manaweb_artwork::fetch::Fetcher;
 use manaweb_artwork::luma::Plane;
 use manaweb_artwork::{Artwork, Result, artwork, degrade, photo};
-use manaweb_scanner::art::{self, Rect};
-use manaweb_scanner::detect;
+use manaweb_scanner::art::Rect;
 use manaweb_scanner::hash::{self, Frame, Hash};
+use manaweb_scanner::query;
 use manaweb_scanner::{HASHES, Store, store};
 
 #[tokio::main]
@@ -622,15 +622,6 @@ async fn photos(
     Ok(())
 }
 
-/// Every art box asked of one card, the shape of it not being known.
-fn boxed(card: &Frame) -> Vec<Hash> {
-    art::BOXES
-        .iter()
-        .filter_map(|held| Some(manaweb_scanner::entry(&held.of(card)?)))
-        .flatten()
-        .collect()
-}
-
 /// One photograph against the index, or nothing where it will not decode.
 async fn score(
     pool: &sqlx::SqlitePool,
@@ -647,30 +638,8 @@ async fn score(
         tracing::warn!(shot = %path.display(), "no pixels in it");
         return Ok(None);
     };
-    // The card as detection reads it back, then every framing it might have
-    // had if nothing found one. Both in one query, so a single run says
-    // which of them answered — see `docs/scanner.md`.
-    let found = detect::card(&frame);
-    let mut want: Vec<Hash> = Vec::new();
-    for quad in found.iter().flat_map(|quad| [*quad, quad.turned()]) {
-        let Some(read) = detect::rectify(&frame, &quad) else {
-            continue;
-        };
-        let Some(card) = read.frame() else { continue };
-        want.extend(boxed(&card));
-    }
-    let detected = want.len();
-
-    // Only where nothing was found: a guess asked beside an answer is one
-    // more artwork the answer has to beat — see `docs/scanner.md`.
-    if want.is_empty() {
-        want.extend(
-            photo::FILLS
-                .iter()
-                .filter_map(|&fill| Some(boxed(&photo::filling(&frame, fill).of(&frame)?)))
-                .flatten(),
-        );
-    }
+    let asked = query::query(&frame);
+    let want = asked.hashes;
     if want.is_empty() {
         tracing::warn!(shot = %path.display(), "no art box in it");
         return Ok(None);
@@ -706,6 +675,6 @@ async fn score(
         margin: i64::from(next) - i64::from(found),
         art: best.to_owned(),
         truth,
-        detected: detected > 0,
+        detected: asked.found.is_some(),
     }))
 }

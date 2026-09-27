@@ -7,8 +7,8 @@
 use std::path::Path;
 
 use image::{DynamicImage, ImageDecoder as _, ImageReader};
+use manaweb_scanner::Frame;
 use manaweb_scanner::art::Rect;
-use manaweb_scanner::{Frame, detect};
 use sqlx::SqlitePool;
 
 use crate::Result;
@@ -262,34 +262,6 @@ type Row = (
 pub fn card_image(print: &str) -> String {
     let (a, b) = (&print[0..1], &print[1..2]);
     format!("https://cards.scryfall.io/normal/front/{a}/{b}/{print}.jpg")
-}
-
-/// How much of a photograph's height the card is taken to fill, for when
-/// nothing is detected and a phone will not focus on a card against its lens.
-///
-/// Every one is tried and the nearest kept. What the floor costs, and why it
-/// is not asked of the person holding the camera, is `docs/scanner.md`.
-pub const FILLS: [f32; 5] = [1.0, 0.85, 0.72, 0.6, 0.5];
-
-/// The middle of a frame, `fill` of it tall and a card's own shape.
-///
-/// Its shape and not the frame's: a phone shoots four by three and a card is
-/// 63 by 88, so insetting both axes alike leaves the art box stretched by the
-/// difference.
-// The card's proportions against the frame's are a ratio of two pixel counts,
-// so the casts are that crossing.
-#[allow(clippy::cast_precision_loss)]
-#[must_use]
-pub fn filling(frame: &Frame, fill: f32) -> Rect {
-    let (across, down) = (frame.width() as f32, frame.height() as f32);
-    let tall = (fill.clamp(0.1, 1.0) * down).min(across / detect::RATIO);
-    let (half_wide, half_tall) = (tall * detect::RATIO / across / 2.0, tall / down / 2.0);
-    Rect {
-        left: 0.5 - half_wide,
-        top: 0.5 - half_tall,
-        right: 0.5 + half_wide,
-        bottom: 0.5 + half_tall,
-    }
 }
 
 /// Side of the grid two pictures are compared over when one is being located
