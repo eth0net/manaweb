@@ -101,6 +101,11 @@ export class Engine {
     this.fingerprint = wasm.scan_fingerprint();
   }
 
+  // The fingerprint as the artwork index spells it in its own header.
+  get hasher(): string {
+    return this.fingerprint.toString(16).padStart(16, "0");
+  }
+
   // A Response streams and compiles at once; bytes are for a caller that
   // already has them, which is every check and no browser.
   static async load(

@@ -181,8 +181,8 @@ for (const build of BUILDS) {
     continue;
   }
 
-  if (hex(engine.fingerprint) !== fingerprint) {
-    fail(`fingerprint ${hex(engine.fingerprint)} against ${fingerprint}`);
+  if (engine.hasher !== fingerprint) {
+    fail(`fingerprint ${engine.hasher} against ${fingerprint}`);
   } else {
     ok(`fingerprint ${fingerprint}`);
   }

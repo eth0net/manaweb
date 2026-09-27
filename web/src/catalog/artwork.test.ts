@@ -4,6 +4,11 @@ import { Artworks, artworks, retrieve } from "./artwork";
 
 const PER = 4;
 
+// What the engine answers for itself, which the client takes from it rather
+// than holding.
+const HASHER = "1c1f64e991d4d1cc";
+const read = (bytes: Uint8Array) => Artworks.read(bytes, HASHER);
+
 // The file as the exporter writes it: a header line padded so what follows is
 // eight-byte aligned, the hashes, the back pairs, then the bitmap.
 function file(
@@ -11,7 +16,7 @@ function file(
   {
     fronts = artworks.length,
     backs = [] as [number, number][],
-    hasher = "1c1f64e991d4d1cc",
+    hasher = HASHER,
   } = {},
 ): Uint8Array {
   const header = new TextEncoder().encode(
@@ -66,7 +71,7 @@ const TWO = 0xfedc_ba98_7654_3210n;
 
 describe("the artwork index", () => {
   test("says what the header said", () => {
-    const index = Artworks.read(file([[ONE], [TWO], null]));
+    const index = read(file([[ONE], [TWO], null]));
     expect(index.version).toBe("v1");
     expect(index.rows).toBe(3);
     expect(index.hashes).toBe(PER);
@@ -78,7 +83,7 @@ describe("the artwork index", () => {
   });
 
   test("retrieves the artwork a hash came from", () => {
-    const index = Artworks.read(file([[ONE], [TWO]]));
+    const index = read(file([[ONE], [TWO]]));
     expect(index.nearest([ONE])?.matches[0]).toEqual({
       artwork: 0,
       distance: 0,
@@ -92,7 +97,7 @@ describe("the artwork index", () => {
   // The whole reason an artwork carries several: the query landed between
   // two framings and only the nearer one is close.
   test("reads every hash an artwork carries", () => {
-    const index = Artworks.read(file([[ONE, ONE, TWO, ONE], [ONE ^ 0xffn]]));
+    const index = read(file([[ONE, ONE, TWO, ONE], [ONE ^ 0xffn]]));
     expect(index.nearest([TWO])?.matches[0]).toEqual({
       artwork: 0,
       distance: 0,
@@ -101,19 +106,19 @@ describe("the artwork index", () => {
 
   // An artwork nothing hashed is zeroed, and so is a frame of pure black.
   test("never retrieves an artwork the build had no image for", () => {
-    const index = Artworks.read(file([null, [TWO]]));
+    const index = read(file([null, [TWO]]));
     const found = index.nearest([0n]);
     expect(found?.matches[0]?.artwork).toBe(1);
   });
 
   test("holds nothing when it holds nothing", () => {
-    expect(Artworks.read(file([null])).nearest([0n])).toBeNull();
+    expect(read(file([null])).nearest([0n])).toBeNull();
   });
 
   test("names the front a back shares a printing with", () => {
     // Artwork 2 is only ever a back; 1 is the front of one card and the back
     // of another, so a match on it means either.
-    const index = Artworks.read(
+    const index = read(
       file([[ONE], [TWO], [ONE ^ 1n]], {
         fronts: 2,
         backs: [
@@ -132,18 +137,21 @@ describe("the artwork index", () => {
   // manifest has no scanner rather than no catalog.
   test("is absent from a manifest that names no part", async () => {
     expect(
-      await artworks({
-        version: "v1",
-        cards: { name: "cards.aa.json", rows: 1, bytes: 1 },
-        prints: { name: "prints.bb.json", rows: 1, bytes: 1 },
-      }),
+      await artworks(
+        {
+          version: "v1",
+          cards: { name: "cards.aa.json", rows: 1, bytes: 1 },
+          prints: { name: "prints.bb.json", rows: 1, bytes: 1 },
+        },
+        HASHER,
+      ),
     ).toBeNull();
   });
 
   // Neither framing lands on the artwork alone; together they do, which is
   // the whole reason a query carries several.
   test("takes the nearest of every framing it is asked at", () => {
-    const index = Artworks.read(file([[ONE], [TWO]]));
+    const index = read(file([[ONE], [TWO]]));
     const found = index.nearest([TWO ^ 0xfn, ONE ^ 0x3n]);
 
     expect(found?.matches[0]).toEqual({ artwork: 0, distance: 2 });
@@ -152,7 +160,7 @@ describe("the artwork index", () => {
   // What the whole accept turns on: a near miss and a confident wrong answer
   // read alike in a distance and differently here.
   test("says how much further the runner-up was", () => {
-    const index = Artworks.read(file([[ONE], [ONE ^ 0x3fn]]));
+    const index = read(file([[ONE], [ONE ^ 0x3fn]]));
     const found = index.nearest([ONE]);
 
     expect(found?.matches[0]).toEqual({ artwork: 0, distance: 0 });
@@ -162,7 +170,7 @@ describe("the artwork index", () => {
   // A second crop of the winner is not a runner-up: every hash an artwork
   // carries is one artwork, so the margin is a gap between two of them.
   test("measures the margin against another artwork", () => {
-    const index = Artworks.read(file([[ONE, ONE ^ 0x1n], [ONE ^ 0x3fn]]));
+    const index = read(file([[ONE, ONE ^ 0x1n], [ONE ^ 0x3fn]]));
     const found = index.nearest([ONE]);
 
     expect(found?.matches.map((held) => held.artwork)).toEqual([0, 1]);
@@ -170,7 +178,7 @@ describe("the artwork index", () => {
   });
 
   test("keeps the nearest few, nearest first", () => {
-    const index = Artworks.read(
+    const index = read(
       file([[ONE ^ 0x3fn], [ONE], [ONE ^ 0x7n], [ONE ^ 0x1n]]),
     );
     const found = index.nearest([ONE], 3);
@@ -184,12 +192,12 @@ describe("the artwork index", () => {
 
   // Nothing else within reach, so there is no runner-up to be nearer than.
   test("gives the widest margin there is against one artwork", () => {
-    const found = Artworks.read(file([[ONE]])).nearest([ONE]);
+    const found = read(file([[ONE]])).nearest([ONE]);
     expect(found?.margin).toBe(65);
   });
 
   test("refuses entries a different hash filled", () => {
-    expect(() => Artworks.read(file([[ONE]], { hasher: "0000" }))).toThrow(
+    expect(() => read(file([[ONE]], { hasher: "0000" }))).toThrow(
       "filled by 0000",
     );
   });
@@ -208,17 +216,17 @@ describe("the artwork index", () => {
     short.fill(0x20, 0, at);
     short.set(text, 0);
 
-    expect(() => Artworks.read(short)).toThrow("no fronts");
+    expect(() => read(short)).toThrow("no fronts");
   });
 
   test("refuses being asked against no hash at all", () => {
-    expect(() => Artworks.read(file([[ONE]])).nearest([])).toThrow();
+    expect(() => read(file([[ONE]])).nearest([])).toThrow();
   });
 
   test("refuses a file it cannot place", () => {
     const whole = file([[ONE]]);
-    expect(() => Artworks.read(whole.subarray(0, whole.length - 1))).toThrow();
-    expect(() => Artworks.read(new Uint8Array([1, 2, 3]))).toThrow();
+    expect(() => read(whole.subarray(0, whole.length - 1))).toThrow();
+    expect(() => read(new Uint8Array([1, 2, 3]))).toThrow();
   });
 
   // A file fetched on its own starts at zero, but nothing in the format says
@@ -228,7 +236,7 @@ describe("the artwork index", () => {
     const shifted = new Uint8Array(whole.length + 3);
     shifted.set(whole, 3);
 
-    const index = Artworks.read(shifted.subarray(3));
+    const index = read(shifted.subarray(3));
     expect(index.nearest([TWO])?.matches[0]).toEqual({
       artwork: 1,
       distance: 0,
@@ -303,7 +311,7 @@ describe("a hash against the catalog", () => {
   const catalog = Catalog.read(bytes(CARDS), bytes(PRINTS));
 
   test("names the printings the artwork is on", () => {
-    const index = Artworks.read(file([[ONE]]));
+    const index = read(file([[ONE]]));
     const found = retrieve(catalog, index, [ONE]);
 
     expect(found?.matches[0]).toEqual({ artwork: 0, distance: 0 });
@@ -314,9 +322,7 @@ describe("a hash against the catalog", () => {
   // A photograph of the back has to resolve to the same printing as one of
   // the front, and no column names the back.
   test("resolves a back through the front it shares a printing with", () => {
-    const index = Artworks.read(
-      file([[ONE], [TWO]], { fronts: 1, backs: [[1, 0]] }),
-    );
+    const index = read(file([[ONE], [TWO]], { fronts: 1, backs: [[1, 0]] }));
     const found = retrieve(catalog, index, [TWO]);
 
     expect(found?.matches[0]?.artwork).toBe(1);

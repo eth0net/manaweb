@@ -48,10 +48,6 @@ const KEEP = 5;
 // compared yet.
 const APART = 65;
 
-// What this client's own hashing comes out as, which the engine will answer
-// for itself once there is one — `docs/scryfall.md`.
-const HASHER = "1c1f64e991d4d1cc";
-
 const NEWLINE = 10;
 const WORD = 8;
 const HALF = 4;
@@ -81,7 +77,9 @@ export class Artworks {
   // The fronts each back shares a printing with.
   #backs: Map<number, number[]>;
 
-  static read(bytes: Uint8Array): Artworks {
+  // `hasher` is the engine's own fingerprint, passed in rather than held
+  // here: a copy of a derived number is a copy that can go stale.
+  static read(bytes: Uint8Array, hasher: string): Artworks {
     if (!LITTLE_ENDIAN) {
       throw new Error("the artwork index wants a little-endian machine");
     }
@@ -92,9 +90,9 @@ export class Artworks {
       new TextDecoder().decode(bytes.subarray(0, newline)),
     ) as ArtworkHeader;
 
-    if (header.hasher !== HASHER) {
+    if (header.hasher !== hasher) {
       throw new Error(
-        `the artwork index was filled by ${header.hasher}, this client hashes ${HASHER}`,
+        `the artwork index was filled by ${header.hasher}, this client hashes ${hasher}`,
       );
     }
 
@@ -253,9 +251,12 @@ export class Artworks {
 
 // The index this manifest names, or null where the export had no hashes to
 // build one from.
-export async function artworks(manifest: Manifest): Promise<Artworks | null> {
+export async function artworks(
+  manifest: Manifest,
+  hasher: string,
+): Promise<Artworks | null> {
   if (!manifest.artwork) return null;
-  return Artworks.read(new Uint8Array(await part(manifest.artwork)));
+  return Artworks.read(new Uint8Array(await part(manifest.artwork)), hasher);
 }
 
 export interface Retrieved extends Nearest {
