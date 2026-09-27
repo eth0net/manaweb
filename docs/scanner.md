@@ -368,15 +368,11 @@ not. And nearest-neighbor always returns something, so a wrong printing
 enters a collection silently; a confidence floor read off the margin is what
 lets it say to try again instead.
 
-**The engine is reached over a C ABI, not a bindings generator.** The whole
-surface is a luma plane in and four words out, so a pointer and a length say
-it, and the same signatures serve a browser's `WebAssembly.Instance` and
-later Swift and Kotlin. It builds with `cargo rustc --crate-type cdylib`
-rather than a second crate, which keeps every native build free of exported
-symbols. `tools/scanner-check` compiles it and holds it to what the native
-build answers over the same probe — the hashes and the fingerprint, with and
-without `+simd128`, which changes nothing: the vector extension gives the
-compiler no license to reassociate a float. 45KB unoptimized.
+**The engine is reached over a C ABI, not a bindings generator.** Every call
+is pointers and lengths, so the same signatures serve a browser's
+`WebAssembly.Instance` and later Swift and Kotlin. It builds with `cargo
+rustc --crate-type cdylib` rather than a second crate, which keeps every
+native build free of exported symbols. 74KB unoptimized.
 
 **The index is a build-time artifact, not a runtime service.** Building it
 means pulling ~100k images (~10GB) and hashing them, which is hours on 1 vCPU.
@@ -385,15 +381,19 @@ Incremental per-set rebuilds (~300 cards) are fine on the box. Throttle the
 initial pull: hammering Scryfall's CDN is the "repeated mishandling" that gets
 API access restricted.
 
-**None of this is reachable from a browser yet.** The engine exports color
-conversion and hashing over its C ABI and nothing else, so detection and
-rectification — the whole of what the measurements above are about — stop at
-the Rust boundary. The art boxes live in the builder rather than the engine,
-the index reader keeps only the nearest entry and so cannot report a margin,
-and nothing captures a frame from a camera. The retrieval is good enough to
-build against; the way in is not built.
+**A browser reaches the whole read.** `scan_detect` answers the four corners,
+`scan_rectify` reads a card back as a rectangle, and `scan_query` does
+everything above in one call, saying whether a card was found or the framing
+was guessed at instead. That cascade is the engine's, so the crops a scan is
+retrieved at are the crops `just photos` measured. `tools/scanner-check`
+holds the wasm build to what a native one answers over a drawn card as well
+as over the probe frame, with and without `+simd128`: the vector extension
+gives the compiler no license to reassociate a float.
 
-The order, then: the engine's own boundary, a confidence floor read off the
-margin, and a scan landing somewhere it can be reviewed rather than in a
-collection. Color, a second hash, or anything read off the card itself, only
-where a measurement asks for it.
+Two ends are still missing. The index reader keeps only the nearest entry and
+so cannot report a margin, and nothing captures a frame from a camera.
+
+The order, then: a confidence floor read off the margin, and a scan landing
+somewhere it can be reviewed rather than in a collection. Color, a second
+hash, or anything read off the card itself, only where a measurement asks for
+it.

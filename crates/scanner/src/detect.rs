@@ -421,6 +421,18 @@ const TALL: usize = 1024;
 /// The shortest, so a card far enough away to be a smear is still a picture.
 const SHORT: usize = 64;
 
+/// What [`rectify`] reads a card back at, which falls out of the corners
+/// rather than being chosen.
+///
+/// Separate so that asking how much room one needs costs nothing.
+#[must_use]
+pub fn size(quad: &Quad) -> (usize, usize) {
+    let (_, down) = quad.sides();
+    let height = (down.round() as usize).clamp(SHORT, TALL);
+    let width = ((height as f32 * RATIO).round() as usize).max(SHORT / 2);
+    (width, height)
+}
+
 /// The card standing upright, its foreshortening undone.
 ///
 /// The quadrilateral is taken for a rectangle seen in perspective, so what
@@ -429,9 +441,7 @@ const SHORT: usize = 64;
 /// opposite, and a stretch would keep that difference.
 #[must_use]
 pub fn rectify(frame: &Frame, quad: &Quad) -> Option<Card> {
-    let (_, down) = quad.sides();
-    let height = (down.round() as usize).clamp(SHORT, TALL);
-    let width = ((height as f32 * RATIO).round() as usize).max(SHORT / 2);
+    let (width, height) = size(quad);
     let projection = Projection::of(&quad.corners)?;
 
     let mut levels = vec![0u8; width * height];

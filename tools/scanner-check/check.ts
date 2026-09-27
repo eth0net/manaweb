@@ -24,6 +24,10 @@ const BUILDS = [
 // `crates/scanner`'s own probe, restated rather than shipped — see the
 // engine's golden vectors. Color, so the conversion is on the way through.
 const PROBE = { width: 64, height: 48 };
+
+// And the table, restated the same way.
+const TABLE = { width: 400, height: 300 };
+const DRAWN = { x: 100, y: 60, width: 126, height: 176 };
 const CHANNELS: [number, number][] = [
   [7, 11],
   [13, 5],
@@ -38,6 +42,17 @@ function probe(): Uint8Array {
       out[at * CHANNELS.length + which] =
         ((at % width) * across + Math.floor(at / width) * down) % 251;
     });
+  }
+  return out;
+}
+
+function table(): Uint8Array {
+  const out = new Uint8Array(TABLE.width * TABLE.height).fill(30);
+  for (let down = 0; down < DRAWN.height; down++) {
+    for (let across = 0; across < DRAWN.width; across++) {
+      const at = (DRAWN.y + down) * TABLE.width + DRAWN.x + across;
+      out[at] = 140 + ((across * 7 + down * 11) % 100);
+    }
   }
   return out;
 }
@@ -77,24 +92,45 @@ async function run(cmd: string[], env: Record<string, string> = {}) {
 }
 
 console.log("native:");
-const stated = (
-  await run([
-    "cargo",
-    "run",
-    "-q",
-    "-p",
-    "manaweb-scanner",
-    "--example",
-    "probe",
-  ])
-)
-  .trim()
-  .split("\n");
-const want = stated.slice(0, -1);
-const fingerprint = stated.at(-1) as string;
+// A line a call, named, because floats and counts go out beside hashes.
+const stated = new Map(
+  (
+    await run([
+      "cargo",
+      "run",
+      "-q",
+      "-p",
+      "manaweb-scanner",
+      "--example",
+      "probe",
+    ])
+  )
+    .trim()
+    .split("\n")
+    .map((line) => {
+      const [name, ...rest] = line.split(" ");
+      return [name as string, rest] as const;
+    }),
+);
+
+const said = (name: string): string[] => {
+  const held = stated.get(name);
+  if (!held) throw new Error(`the probe stated no ${name}`);
+  return held;
+};
+
+const want = said("entry");
+const fingerprint = said("fingerprint")[0] as string;
 ok(`${want.length} hashes and fingerprint ${fingerprint}`);
+ok(`a card at ${said("detect").join(" ")}`);
 
 const hex = (hash: bigint) => hash.toString(16).padStart(16, "0");
+
+// Floats as the probe prints them.
+const bits = (held: number[]) =>
+  Array.from(new Uint32Array(Float32Array.from(held).buffer), (word) =>
+    word.toString(16).padStart(8, "0"),
+  );
 const color = probe();
 
 for (const build of BUILDS) {
@@ -147,6 +183,55 @@ for (const build of BUILDS) {
     fail(`padded rows gave ${same.join()}`);
   } else {
     ok(`${stride} bytes a row reads the same ${PROBE.width}`);
+  }
+
+  if (engine.words !== Number(said("words")[0])) {
+    fail(`room for ${engine.words} words against ${said("words")[0]}`);
+  } else {
+    ok(`room for ${engine.words} words`);
+  }
+
+  const drawn = table();
+  const quad = engine.detect(drawn, TABLE.width, TABLE.height);
+  if (!quad) {
+    fail("no card on the table");
+    continue;
+  }
+  const corners = bits(quad.flatMap((point) => [point.x, point.y]));
+  if (corners.join() !== said("detect").join()) {
+    fail(`corners ${corners.join(" ")} against ${said("detect").join(" ")}`);
+  } else {
+    ok(`a card at ${corners.join(" ")}`);
+  }
+
+  const card = engine.rectify(drawn, TABLE.width, TABLE.height, quad);
+  const [wide, tall, first] = said("rectify") as [string, string, string];
+  if (!card) {
+    fail("the card did not read back");
+  } else {
+    const read = hex(
+      engine.entry(card.levels, card.width, card.height)[0] as bigint,
+    );
+    const held = `${card.width} ${card.height} ${read}`;
+    if (held !== `${wide} ${tall} ${first}`) {
+      fail(`read back ${held} against ${wide} ${tall} ${first}`);
+    } else {
+      ok(`read back ${held}`);
+    }
+  }
+
+  const asked = engine.query(drawn, TABLE.width, TABLE.height);
+  const held = [
+    String(asked.hashes.length),
+    asked.quad ? "1" : "0",
+    ...asked.hashes.map(hex),
+  ];
+  if (held.join() !== said("query").join()) {
+    fail(`${held.length - 2} hashes against ${said("query").length - 2}`);
+  } else {
+    ok(
+      `${asked.hashes.length} hashes, framed by ${asked.quad ? "a card" : "guesswork"}`,
+    );
   }
 }
 
