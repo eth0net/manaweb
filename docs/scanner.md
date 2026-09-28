@@ -397,9 +397,15 @@ held to the same exports and the same answers. Byte-for-byte would be the
 wrong test, the toolchain being unpinned. `just engine` rewrites it.
 
 A margin reaches it too: the reader answers with the nearest five, so a scan
-carries how much further the runner-up was. What is left is the camera —
-nothing captures a frame from one yet.
+carries how much further the runner-up was. So does a camera: the scan page
+opens one, takes a frame at 1280 on its longer side, and shows what came back
+— with the runners-up where the margin was too thin to take it on.
 
-The order, then: a camera, and a scan landing somewhere it can be reviewed
-rather than in a collection. Color, a second hash, or anything read off the
+**The server publishes the index only when it is given a store.**
+`MANAWEB_HASHES` names one, and a catalog published without it has no scanner
+rather than a broken one. What a scan finds still lands nowhere: there is no
+scratch list, and nothing writes a collection entry.
+
+The order, then: a scan landing somewhere it can be reviewed rather than in
+a collection. Color, a second hash, or anything read off the
 card itself, only where a measurement asks for it.

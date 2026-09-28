@@ -15,6 +15,7 @@ import { HOME, known, Link, replace, tab, usePath } from "./router";
 import { Search } from "./Search";
 import { SETS, SetView } from "./Sets";
 import { Soon } from "./Soon";
+import { SCAN, Scan } from "./scan/Scan";
 import { useCatalog } from "./useCatalog";
 
 export function App() {
@@ -93,7 +94,12 @@ export function App() {
               ))}
 
             {here === "/collection" &&
-              (path === IMPORT ? (
+              (path === SCAN ? (
+                <Scan
+                  catalog={load.status === "ready" ? load.catalog : null}
+                  manifest={load.status === "ready" ? load.manifest : null}
+                />
+              ) : path === IMPORT ? (
                 <Import
                   session={signedIn}
                   owning={collection}
