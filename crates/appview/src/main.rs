@@ -290,6 +290,10 @@ impl Settings {
     ///
     /// Read at each export rather than held: the builder can leave a newer
     /// one between a start and the weekly sync that follows it.
+    ///
+    /// todo(scanner): top this up after a sync instead of only reading it,
+    /// so a set released since does not want the builder run by hand — see
+    /// `docs/scanner.md`.
     fn store(&self) -> Result<Option<catalog::Store>, Box<dyn Error>> {
         let Some(at) = &self.hashes else {
             return Ok(None);

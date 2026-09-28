@@ -410,6 +410,17 @@ opens one, takes a frame at 1280 on its longer side, and shows what came back
 rather than a broken one. What a scan finds still lands nowhere: there is no
 scratch list, and nothing writes a collection entry.
 
+**Nothing on the server keeps the store current**, so the scanner goes stale
+by a set at a time until someone runs the builder again and copies one up.
+The shape it wants is the opposite of the flag: maintain the store always and
+treat a supplied one as a shortcut past the first build. What stops that
+being a one-line change is the empty case — ~100k images and 10GB is hours on
+1 vCPU and the sort of pull that gets API access restricted — so a top-up has
+to be capped per refresh, which converges a seeded store in one and an empty
+one over many. It also turns the store from something mounted into something
+the server writes, which is a volume rather than a file. Deferred until a
+scan lands somewhere, since a store copied up is current meanwhile.
+
 The order, then: a scan landing somewhere it can be reviewed rather than in
 a collection. Color, a second hash, or anything read off the
 card itself, only where a measurement asks for it.
