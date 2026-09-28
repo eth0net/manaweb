@@ -1,6 +1,8 @@
 // The engine as a page reaches it, imported for its URL rather than fetched
 // from a path this names — `docs/scanner.md`.
 
+import type { Manifest } from "../catalog";
+import { type Artworks, artworks } from "../catalog/artwork";
 import { Engine } from "./engine";
 import url from "./engine.wasm?url";
 
@@ -16,4 +18,25 @@ export function engine(): Promise<Engine> {
     throw failed;
   });
   return held;
+}
+
+// And the index it reads, which is megabytes only a scan wants — so it is
+// fetched here rather than with the catalog every page loads.
+let reading: { of: string; held: Promise<Artworks | null> } | null = null;
+
+// Null where the export published no index to read.
+export async function index(manifest: Manifest): Promise<Artworks | null> {
+  const of = manifest.artwork?.name ?? "";
+  if (reading?.of !== of) {
+    reading = {
+      of,
+      held: engine()
+        .then((held) => artworks(manifest, held.hasher))
+        .catch((failed: unknown) => {
+          if (reading?.of === of) reading = null;
+          throw failed;
+        }),
+    };
+  }
+  return reading.held;
 }
