@@ -37,7 +37,22 @@ function worker(): Plugin {
   };
 }
 
+// Where `just serve` answers. The catalog passes through this server rather
+// than being fetched from there directly, so the app has one origin in
+// development and an HTTPS tunnel to it carries the catalog as well.
+const BINARY = "http://127.0.0.1:8080";
+
+// A tunnel answers on a host this server has never heard of, which it refuses
+// by default. Comma-separated, or `any`.
+const HOSTS = process.env.MANAWEB_DEV_HOSTS;
+
 export default defineConfig(({ command }) => ({
   ...(command === "serve" ? { html: { cspNonce: NONCE } } : {}),
+  server: {
+    proxy: { "/catalog": BINARY },
+    ...(HOSTS
+      ? { allowedHosts: HOSTS === "any" ? true : HOSTS.split(",") }
+      : {}),
+  },
   plugins: [react(), worker(), headers(NONCE)],
 }));

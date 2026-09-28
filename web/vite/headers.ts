@@ -28,23 +28,6 @@ export function nonced(value: string, nonce: string): string {
   return value.replace(/script-src ([^;]*)/, `script-src $1 'nonce-${nonce}'`);
 }
 
-// What `just serve` binds by default, and what the client asks for the catalog
-// on while `import.meta.env.DEV`.
-const CATALOG = 8080;
-
-// The catalog is a second origin by design, and in development it is the
-// binary's own port over plain http — which `https:` does not reach. Taken
-// from the request so a phone on the LAN names the laptop, not itself.
-export function reachable(value: string, host: string): string {
-  const name = host.replace(/:\d+$/, "");
-  if (!name) return value;
-
-  return value.replace(
-    /connect-src ([^;]*)/,
-    `connect-src $1 http://${name}:${CATALOG}`,
-  );
-}
-
 export function headers(nonce: string, from = "public/_headers"): Plugin {
   const wanted = parse(readFileSync(from, "utf8"));
 
@@ -52,12 +35,12 @@ export function headers(nonce: string, from = "public/_headers"): Plugin {
     name: "manaweb-headers",
     apply: "serve",
     configureServer(server) {
-      server.middlewares.use((request, response, next) => {
+      server.middlewares.use((_request, response, next) => {
         for (const [name, value] of wanted) {
           response.setHeader(
             name,
             name.toLowerCase() === "content-security-policy"
-              ? reachable(nonced(value, nonce), request.headers.host ?? "")
+              ? nonced(value, nonce)
               : value,
           );
         }

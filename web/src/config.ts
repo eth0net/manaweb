@@ -1,7 +1,10 @@
-// Two origins because there are two cadences: `docs/architecture.md`.
-// Dev takes the page's own host, so a phone on the LAN reaches the laptop.
+// Two origins because there are two cadences: `docs/architecture.md`. In
+// development it is one, the dev server passing `/catalog` through to the
+// binary, so that reaching the app over HTTPS reaches the catalog too.
+// Absolute either way: what reads this resolves a file name against it, and
+// a base has to be a whole URL to resolve anything against.
 export const CATALOG = import.meta.env.DEV
-  ? `http://${location.hostname}:8080/catalog`
+  ? `${location.origin}/catalog`
   : "https://static.manaweb.app/catalog";
 
 // A browser has no DNS, so resolving a handle needs a service that has.

@@ -17,6 +17,14 @@ with none of them set and syncs into `manaweb.db` in the working directory.
 | `MANAWEB_SYNC` | `1` | `0` or `false` starts without the weekly Scryfall sync. |
 | `MANAWEB_HASHES` | unset | The store `manaweb-artwork` wrote. Unset publishes a catalog with no artwork index, and so no scanner. |
 
+The client's dev server takes `MANAWEB_DEV_HOSTS` — a hostname, several
+comma-separated, or `any` — for reaching it through a tunnel, which answers
+on a name it has never heard of and refuses by default. That is how a phone
+gets at it: a camera needs a secure context, and the LAN address the dev
+server answers on is not one, so plain HTTP reaches everything but the
+scanner. The catalog passes through the same server rather than being fetched
+from the binary directly, so one tunnel carries both.
+
 A `MANAWEB_HASHES` naming nothing readable stops the process rather than
 publishing a catalog without an index: the scanner would be missing and only a
 log line would say why. It is read at each export, so a newer store left in

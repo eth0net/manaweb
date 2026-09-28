@@ -120,10 +120,14 @@ ts: deps
 serve bind="127.0.0.1:8080" hashes="scryfall/hashes":
     MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} {{ if path_exists(hashes) == "true" { "MANAWEB_HASHES=" + hashes } else { "" } }} cargo run -p manaweb-appview
 
+# `hosts` is for reaching this through a tunnel, which answers on a name the
+# dev server has never heard of and refuses by default: the hostname, several
+# comma-separated, or `any`. A camera wants HTTPS and a LAN address is not,
+# so a tunnel is how a phone gets one — `docs/configuration.md`.
 [doc("the client's dev server, fetching the catalog from `just serve`")]
 [group('dev')]
-serve-client host="127.0.0.1": deps
-    cd web && bun run dev --host {{ host }}
+serve-client host="127.0.0.1" hosts="": deps
+    cd web && MANAWEB_DEV_HOSTS={{ hosts }} bun run dev --host {{ host }}
 
 # Pulls at Scryfall's own 100ms and keeps every image, so a rebuild costs the
 # hashing rather than the download. Hours the first time, minutes after.
