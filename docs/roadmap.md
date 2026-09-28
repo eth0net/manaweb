@@ -50,8 +50,10 @@ would take; still nobody's want.
 All of it is [`scanner.md`](scanner.md): what a photograph retrieves, what
 that was measured against, and what each thing nobody has built would cost.
 
-The engine is most of the way there and none of it reaches a browser, so
-the phase has not begun where anyone would see it.
+The engine reaches a browser: it ships with the app, reads a card out of a
+frame, and answers with the nearest artworks and how far off the runner-up
+was. What is missing is the part anyone would see — a camera, and somewhere a
+scan lands that is not straight into a collection.
 
 ## Phase 2 — Valuation
 

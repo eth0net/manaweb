@@ -37,7 +37,7 @@ manaweb/
     artwork/             pulls Scryfall's art and hashes it for the index
     core/                card cache, and the catalog it exports
     objects/             the bucket, and the `manaweb-upload` tool
-    scanner/             the hashing, shared with the browser
+    scanner/             reading a card out of a frame, shared with the browser
     scryfall/            bulk-data fetch/parse
   docs/                  roadmap, and the reasoning behind each decision
   fixtures/              records that seed a dev account
