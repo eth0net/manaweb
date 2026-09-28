@@ -36,7 +36,15 @@ export function sized(
 // A camera, or a reason there is none worth putting in front of someone.
 export async function open(): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error("This browser has no camera to open");
+    // A page has no camera at all unless it is a secure context, and the LAN
+    // address a phone reaches a dev server on is not one. That is the usual
+    // reason rather than a browser without the API, so it is said first.
+    throw new Error(
+      window.isSecureContext
+        ? "This browser has no camera to open"
+        : `A camera needs HTTPS, and this page is ${location.protocol}//. ` +
+            "localhost is the exception, so a forwarded port works where a LAN address does not",
+    );
   }
   try {
     return await navigator.mediaDevices.getUserMedia(WANTED);
