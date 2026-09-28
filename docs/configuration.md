@@ -15,6 +15,12 @@ with none of them set and syncs into `manaweb.db` in the working directory.
 | `MANAWEB_CATALOG` | `catalog` | Where the exported catalog is written, and what is served for local development. |
 | `MANAWEB_BIND` | `127.0.0.1:8080` | Address to listen on. `0.0.0.0:8080` to reach it from another device. |
 | `MANAWEB_SYNC` | `1` | `0` or `false` starts without the weekly Scryfall sync. |
+| `MANAWEB_HASHES` | unset | The store `manaweb-artwork` wrote. Unset publishes a catalog with no artwork index, and so no scanner. |
+
+A `MANAWEB_HASHES` naming nothing readable stops the process rather than
+publishing a catalog without an index: the scanner would be missing and only a
+log line would say why. It is read at each export, so a newer store left in
+place is picked up by the weekly sync.
 
 Both paths want a volume of their own in a container: the cache is 80MB and
 several minutes of Scryfall's bandwidth to rebuild, and the catalog is what

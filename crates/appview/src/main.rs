@@ -133,7 +133,10 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     // A restart shouldn't wait on a sync, so the catalog comes from whatever
     // the cache already holds.
-    match export(&pool, &settings.catalog).await {
+    // Before the export, and fatal: a store named but unreadable would
+    // otherwise publish a catalog with no index and say so only in a log.
+    let store = settings.store()?;
+    match export(&pool, &settings.catalog, store.as_ref()).await {
         Ok(version) => {
             tracing::info!(%version, "catalog written");
             if let Err(error) = settings.upload().await {
@@ -166,10 +169,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
 }
 
 /// Builds the catalog from the cache and writes it out for upload.
-async fn export(pool: &SqlitePool, dir: &Path) -> manaweb_core::Result<String> {
-    // todo(scanner): the store the artwork index is built from, which nothing
-    // fetches yet — see `docs/scanner.md`.
-    let built = catalog::build(pool, None).await?;
+async fn export(
+    pool: &SqlitePool,
+    dir: &Path,
+    store: Option<&catalog::Store>,
+) -> manaweb_core::Result<String> {
+    let built = catalog::build(pool, store).await?;
     let swept = built.write(dir).await?;
     tracing::info!(
         cards = built.cards.rows,
@@ -242,7 +247,10 @@ async fn refresh(
     // that failed after its sync committed would otherwise wait for Scryfall
     // to publish again before anything tried it a second time. Sending what
     // the bucket already holds costs a listing.
-    export(pool, &settings.catalog).await?;
+    // Bound rather than inlined: the `?` on a boxed error would otherwise be
+    // held across the await, and this future has to be `Send` to be spawned.
+    let store = settings.store()?;
+    export(pool, &settings.catalog, store.as_ref()).await?;
     settings.upload().await?;
 
     Ok(())
@@ -259,6 +267,10 @@ struct Settings {
     /// Where a written catalog goes. Unconfigured leaves it on disk, which
     /// is what local development wants.
     bucket: Option<Bucket>,
+    /// The hashes `manaweb-artwork` left behind, which the artwork index is
+    /// built from. Unconfigured publishes a catalog with no index and so no
+    /// scanner, which is every deployment that has not run the builder.
+    hashes: Option<PathBuf>,
 }
 
 impl Settings {
@@ -270,7 +282,21 @@ impl Settings {
             bind: bind.parse().map_err(|_| format!("MANAWEB_BIND: {bind}"))?,
             sync: !matches!(var("MANAWEB_SYNC", "1").as_str(), "0" | "false"),
             bucket: Bucket::from_env()?,
+            hashes: env::var_os("MANAWEB_HASHES").map(PathBuf::from),
         })
+    }
+
+    /// The hash store, where one is configured.
+    ///
+    /// Read at each export rather than held: the builder can leave a newer
+    /// one between a start and the weekly sync that follows it.
+    fn store(&self) -> Result<Option<catalog::Store>, Box<dyn Error>> {
+        let Some(at) = &self.hashes else {
+            return Ok(None);
+        };
+        let bytes = std::fs::read(at)
+            .map_err(|error| format!("MANAWEB_HASHES: {}: {error}", at.display()))?;
+        Ok(Some(catalog::Store::read(&bytes)?))
     }
 
     /// Takes away what the last upload replaced, then sends a written catalog

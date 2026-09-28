@@ -16,7 +16,11 @@ use sqlx::{SqliteConnection, SqlitePool};
 use tokio::fs;
 
 use crate::{Error, Result};
-use manaweb_scanner::{HASHES, Store, fingerprint, store};
+use manaweb_scanner::{HASHES, fingerprint, store};
+
+// `build` takes one, so a caller has to be able to name it without depending
+// on the engine itself.
+pub use manaweb_scanner::Store;
 
 /// Bit `i` of a printing's `finishes` is this list's `i`th entry.
 const FINISHES: [&str; 3] = ["nonfoil", "foil", "etched"];
