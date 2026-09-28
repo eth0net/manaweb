@@ -421,6 +421,13 @@ one over many. It also turns the store from something mounted into something
 the server writes, which is a volume rather than a file. Deferred until a
 scan lands somewhere, since a store copied up is current meanwhile.
 
+The version of that worth building is a background job rather than a step in
+the refresh: it starts on the first run that finds no store, reconciles what
+one holds against what the cache now names, and takes its cap from how busy
+the box is rather than from a number someone guessed. A setting is what a
+powerful server uses to say "go faster", not what an ordinary one needs to
+touch.
+
 The order, then: a scan landing somewhere it can be reviewed rather than in
 a collection. Color, a second hash, or anything read off the
 card itself, only where a measurement asks for it.
