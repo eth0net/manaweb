@@ -112,10 +112,13 @@ ts: deps
     bun run check
 
 # Both default to loopback; pass 0.0.0.0 to either to reach it from a phone.
+# The store is passed only where there is one: a checkout that has not run
+# `hash-art` has none, and a path named but missing stops the server rather
+# than publishing a catalog with no scanner in it.
 [doc('export the catalog and serve it for local development')]
 [group('dev')]
-serve bind="127.0.0.1:8080":
-    MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} cargo run -p manaweb-appview
+serve bind="127.0.0.1:8080" hashes="scryfall/hashes":
+    MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} {{ if path_exists(hashes) == "true" { "MANAWEB_HASHES=" + hashes } else { "" } }} cargo run -p manaweb-appview
 
 [doc("the client's dev server, fetching the catalog from `just serve`")]
 [group('dev')]

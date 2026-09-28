@@ -24,7 +24,11 @@ place is picked up by the weekly sync.
 
 Both paths want a volume of their own in a container: the cache is 80MB and
 several minutes of Scryfall's bandwidth to rebuild, and the catalog is what
-the upload reads back to decide what has moved.
+the upload reads back to decide what has moved. The store is a third, and
+read-only: nothing on the server writes it, and building one wants the
+artwork the builder pulls rather than anything a deployment holds. The image
+leaves `MANAWEB_HASHES` unset for that reason — a default pointing into the
+volume would stop every container that has no store yet.
 
 The catalog directory does not hold every export ever made. Each one keeps
 what the manifest before it named, and keeps anything written in the last six

@@ -65,7 +65,11 @@ a bad crop.
 
 Asking all four framings against every one of the index's 54,584 entries is
 1.3ms in plain JavaScript, and 0.4ms at one, so WASM is for the detection and
-rectification ahead of the hash rather than for the lookup.
+rectification ahead of the hash rather than for the lookup. A whole scan asks
+more than four: 13ms where a card was found and 27ms where the framings were
+guessed at, measured against the published index rather than a stand-in, and
+warmed first — a cold reading of that loop is several times its own cost and
+says more about the compiler than the index.
 
 **That number is not the one to judge the scanner by.** It asks which
 *artwork* came back, and the two sides of one card are two artworks that
