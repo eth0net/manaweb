@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CardRow } from "../CardRow";
 import type { Catalog, Manifest } from "../catalog";
-import { Link } from "../router";
 import { frame, open } from "./camera";
 import { engine, index } from "./load";
 import { type Read, read } from "./read";
 
-export const SCAN = "/collection/scan";
+export const SCAN = "/scan";
 
 type Answer =
   | { at: "none" }
@@ -97,12 +96,6 @@ export function Scan({
 
   return (
     <div className="column">
-      <p className="destination">
-        <Link className="link" to="/collection">
-          Back to the collection
-        </Link>
-      </p>
-
       {/* Hidden rather than unmounted: the ref has to outlive a read. */}
       <video ref={video} playsInline muted hidden={camera !== "on"} />
 

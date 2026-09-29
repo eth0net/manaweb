@@ -93,13 +93,15 @@ export function App() {
                 </p>
               ))}
 
+            {here === SCAN && (
+              <Scan
+                catalog={load.status === "ready" ? load.catalog : null}
+                manifest={load.status === "ready" ? load.manifest : null}
+              />
+            )}
+
             {here === "/collection" &&
-              (path === SCAN ? (
-                <Scan
-                  catalog={load.status === "ready" ? load.catalog : null}
-                  manifest={load.status === "ready" ? load.manifest : null}
-                />
-              ) : path === IMPORT ? (
+              (path === IMPORT ? (
                 <Import
                   session={signedIn}
                   owning={collection}

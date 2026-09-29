@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useSyncExternalStore } from "react";
 export const TABS = [
   { path: "/cards", label: "Cards" },
   { path: "/collection", label: "Collection" },
+  { path: "/scan", label: "Scan" },
   { path: "/decks", label: "Decks" },
   { path: "/lists", label: "Lists" },
 ];
