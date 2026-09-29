@@ -212,6 +212,10 @@ container. A scanning session is one device, so nothing is owed to a PDS
 until there is something to keep, and the path that drains a CSV at whatever
 the PDS will take already exists — see [`data-model.md`](data-model.md).
 
+The list is kept in a database of its own rather than under whoever is signed
+in. The pile in front of the camera belongs to the device holding it, and an
+account only comes into it once there is a reason for one.
+
 It asks nothing of the lexicons: `container` is already a field a card may
 carry, `source` already says what the cards were read out of, and the file a
 CSV names is already optional. What it does ask is that the review settle a
@@ -264,9 +268,10 @@ Behind a setting, since most people are being asked to recognize their own
 card rather than to read a Hamming distance.
 
 Preferences have had nowhere to live (`todo(settings)`), and the scanner is
-the first thing to need them locally rather than on a PDS: a scratch list, a
-foil or set prior held for a session, and a switch for showing the numbers
-are all the same one store in the browser, none of it worth a record.
+the first thing to need them locally rather than on a PDS: a foil or set
+prior held for a session, and a switch for showing the numbers, are the same
+one store in the browser and none of it is worth a record. The cards have
+their own already, being cards rather than a preference.
 
 **A prior never overrides what was read.** A finish the catalog rules out is
 not offered whatever the session says; a card found to be from another set
@@ -469,8 +474,7 @@ and bytes not opening like a PNG are refused.
 
 **The server publishes the index only when it is given a store.**
 `MANAWEB_HASHES` names one, and a catalog published without it has no scanner
-rather than a broken one. What a scan finds still lands nowhere: there is no
-scratch list, and nothing writes a collection entry.
+rather than a broken one.
 
 **Nothing on the server keeps the store current**, so the scanner goes stale
 by a set at a time until someone runs the builder again and copies one up.
@@ -480,8 +484,8 @@ being a one-line change is the empty case — ~100k images and 10GB is hours on
 1 vCPU and the sort of pull that gets API access restricted — so a top-up has
 to be capped per refresh, which converges a seeded store in one and an empty
 one over many. It also turns the store from something mounted into something
-the server writes, which is a volume rather than a file. Deferred until a
-scan lands somewhere, since a store copied up is current meanwhile.
+the server writes, which is a volume rather than a file. A store copied up is
+current until the next set, so what this waits on is the first one it misses.
 
 The version of that worth building is a background job rather than a step in
 the refresh: it starts on the first run that finds no store, reconciles what
