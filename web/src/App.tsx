@@ -99,7 +99,14 @@ export function App() {
             {here === SCAN &&
               (path === REVIEW ? (
                 load.status === "ready" ? (
-                  <Review catalog={load.catalog} scratch={scratch} />
+                  <Review
+                    catalog={load.catalog}
+                    scratch={scratch}
+                    session={signedIn}
+                    owning={collection}
+                    container={chosen}
+                    tools={destination}
+                  />
                 ) : (
                   <p className="quiet">The catalog is still loading.</p>
                 )

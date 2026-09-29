@@ -1,7 +1,8 @@
 // The list before it is kept: what each scan made of a card, and the presses
 // that put a wrong read right — `docs/scanner.md`.
 
-import { useCallback, useMemo } from "react";
+import type { OAuthSession } from "@atproto/oauth-client-browser";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
   appLanguage,
   type Card,
@@ -10,10 +11,16 @@ import {
   image,
   type Print,
 } from "../catalog";
+import type { Holdings, Owned } from "../collection/cards";
+import { IMPORT } from "../import/Import";
+import { plan, weigh } from "../import/plan";
+import { digest, sha } from "../import/receipt";
+import { begin, useImport } from "../import/runner";
 import { describe, hasArt } from "../Printing";
 import { Link } from "../router";
 import { SCAN } from "./Scan";
 import {
+  cards,
   choose,
   copies,
   drop,
@@ -30,15 +37,34 @@ import type { Scratch } from "./store";
 
 const APP = appLanguage();
 
+// What the cards were read out of, which is all the receipt records of where
+// an import came from.
+const SOURCE = "Scan";
+
+// A receipt is keyed by its digest, and two scans of one card are two real
+// piles rather than the same list twice — so the moment goes in, where a file
+// would want the opposite.
+async function stamped(owned: Owned[], at: string): Promise<string> {
+  return `sha256-${await sha(`${at}\n${await digest(owned)}`)}`;
+}
+
 type Found = { card: Card; print: Print };
 type Change = Scratch["change"];
 
 export function Review({
   catalog,
   scratch,
+  session,
+  owning,
+  container,
+  tools,
 }: {
   catalog: Catalog;
   scratch: Scratch;
+  session: OAuthSession | null;
+  owning: Holdings;
+  container: string | null;
+  tools: ReactNode;
 }) {
   const { list, change } = scratch;
 
@@ -62,6 +88,47 @@ export function Review({
     (id: string) => prints.get(id)?.print.finishes ?? [],
     [prints],
   );
+
+  const running = useImport();
+  const [keeping, setKeeping] = useState(false);
+  const [problem, setProblem] = useState("");
+
+  // What keeping the list does to the collection, which is the arithmetic a
+  // file is asked for before it lands.
+  const weight = useMemo(() => {
+    if (!owning.ready || list.length === 0) return null;
+    const owned = cards(list, container);
+    const at = new Date().toISOString();
+    return weigh(plan(owned, owning.stacks, at), owning.stacks);
+  }, [container, list, owning.ready, owning.stacks]);
+
+  async function keep() {
+    setKeeping(true);
+    setProblem("");
+    try {
+      const owned = cards(list, container);
+      const at = new Date().toISOString();
+      const weighed = weigh(plan(owned, owning.stacks, at), owning.stacks);
+      // The list is the only copy of these cards, so it goes only once the
+      // job that carries them is written down.
+      const why = await begin(owned, {
+        source: SOURCE,
+        digest: await stamped(owned, at),
+        cards: weighed.adding,
+        stacks: owned.length,
+        createdAt: at,
+      });
+      if (why) {
+        setProblem(`${why} The list is still here.`);
+        return;
+      }
+      await scratch.clear();
+    } catch (failed: unknown) {
+      setProblem(failed instanceof Error ? failed.message : String(failed));
+    } finally {
+      setKeeping(false);
+    }
+  }
 
   const back = (
     <p className="quiet">
@@ -96,11 +163,58 @@ export function Review({
 
       {joins > 0 && (
         <p>
-          <button type="button" onClick={() => change(merged)}>
+          <button
+            type="button"
+            onClick={() => change(merged)}
+            disabled={keeping}
+          >
             Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
           </button>
         </p>
       )}
+
+      {tools}
+
+      {session ? (
+        // An import in flight owns the same job record, so keeping now would
+        // take the place of one already half written.
+        running.at !== "none" && running.at !== "done" ? (
+          <p className="warn">
+            An import holds the place these would go.{" "}
+            <Link className="link" to={IMPORT}>
+              Finish or discard it
+            </Link>
+            . These cards wait here meanwhile.
+          </p>
+        ) : !owning.ready ? (
+          // Planned against an empty collection, every copy reads as new and
+          // the receipt records a count nothing supports.
+          <p className="quiet">Reading what you already own…</p>
+        ) : (
+          <p>
+            <button
+              type="button"
+              onClick={() => void keep()}
+              disabled={keeping}
+            >
+              Keep {held.toLocaleString()} card{held === 1 ? "" : "s"}
+            </button>
+          </p>
+        )
+      ) : (
+        <p className="quiet">Sign in to keep these.</p>
+      )}
+
+      {weight && weight.joined > 0 && (
+        <p className="quiet">
+          {weight.joined.toLocaleString()} of them join a stack you already
+          hold.
+        </p>
+      )}
+
+      {scratch.problem && <p className="warn">{scratch.problem}</p>}
+
+      {problem && <p className="warn">{problem}</p>}
 
       <ul className="scratch">
         {list.map((one) => (
@@ -110,6 +224,7 @@ export function Review({
             prints={prints}
             finishes={finishes}
             change={change}
+            frozen={keeping}
           />
         ))}
       </ul>
@@ -122,11 +237,13 @@ function Stack({
   prints,
   finishes,
   change,
+  frozen,
 }: {
   one: Entry;
   prints: Map<string, Found>;
   finishes: Finishes;
   change: Change;
+  frozen: boolean;
 }) {
   const held = prints.get(one.scryfallId) ?? null;
   const made = finishes(one.scryfallId);
@@ -160,6 +277,7 @@ function Stack({
             type="button"
             onClick={() => change((list) => minus(list, one.id))}
             aria-label="One fewer"
+            disabled={frozen}
           >
             &minus;
           </button>
@@ -168,6 +286,7 @@ function Stack({
             type="button"
             onClick={() => change((list) => plus(list, one.id))}
             aria-label="One more"
+            disabled={frozen}
           >
             +
           </button>
@@ -207,6 +326,7 @@ function Stack({
                   onClick={() =>
                     change((list) => choose(list, one.id, id, finishes))
                   }
+                  disabled={frozen}
                 >
                   <Title held={other} />
                 </button>
@@ -219,6 +339,7 @@ function Stack({
           <button
             type="button"
             onClick={() => change((list) => drop(list, one.id))}
+            disabled={frozen}
           >
             Nothing like it
           </button>

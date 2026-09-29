@@ -121,8 +121,8 @@ export function Import({
 
   // The file goes to the repo as the file, not as the plan: what each of its
   // stacks joins is decided when the card is written, however much later.
-  function start(taking: Taken, weight: Weight) {
-    void begin(taking.got.stacks, {
+  async function start(taking: Taken, weight: Weight) {
+    const why = await begin(taking.got.stacks, {
       source: taking.format.name,
       file: taking.file,
       digest: taking.digest,
@@ -130,6 +130,8 @@ export function Import({
       stacks: taking.got.stacks.length,
       createdAt: new Date().toISOString(),
     });
+    // A refusal leaves the state alone, so this is the only place it shows.
+    if (why) setProblem(why);
   }
 
   // The file goes with the job. Planned against a collection that now holds

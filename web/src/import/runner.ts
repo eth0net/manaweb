@@ -534,13 +534,30 @@ function resumed(job: Job): State {
   };
 }
 
+// Null once the job is written down, which is the only point from which it
+// can be picked back up; otherwise why not. A caller holding the only copy
+// of what it passed waits for that before letting go of it.
 export async function begin(
   stacks: Parameters<typeof pack>[0],
   receipt: Receipt,
-): Promise<void> {
-  if (!session || stacks.length === 0) return;
+): Promise<string | null> {
+  if (!session) return "Nobody is signed in.";
+  if (stacks.length === 0) return "There are no cards to write.";
+
+  // One job to a repository, and the one standing owns the drain as well as
+  // the upload: both finished paths clear it first, so anything here belongs
+  // to an import still going. Refused rather than announced — announcing
+  // would take the place of that import's own state and offer Discard as
+  // the way out of it.
+  if (await load(session.did)) {
+    return "An import is already under way, and there is one place for it.";
+  }
+
+  era += 1;
   stopping = false;
   holding([]);
+  // What the last job wrote says nothing about where this one's cards belong.
+  recent = new Map();
 
   const job: Job = {
     did: session.did,
@@ -563,12 +580,13 @@ export async function begin(
       total: job.total,
       why: reason(failure),
     });
-    return;
+    return reason(failure);
   }
 
   announce({ at: "uploading", done: 0, total: job.total });
   ticks(true);
   void tick();
+  return null;
 }
 
 export async function carryOn(): Promise<void> {
