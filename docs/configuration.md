@@ -26,11 +26,12 @@ then talking to the server as though it were the same origin, so `any` is
 worth spending only on a tunnel whose name is awkward to predict, and naming
 the host is better. What either can reach is held to the app and its
 dependencies rather than to the whole checkout, because the lockfile at the
-root would otherwise make the database and the notes beside it fair game. That is how a phone
-gets at it: a camera needs a secure context, and the LAN address the dev
-server answers on is not one, so plain HTTP reaches everything but the
-scanner. The catalog passes through the same server rather than being fetched
-from the binary directly, so one tunnel carries both.
+root would otherwise make the database and the notes beside it fair game.
+That is how a phone gets at it: a camera needs a secure context, and the LAN
+address the dev server answers on is not one, so plain HTTP reaches
+everything but the scanner. The catalog passes through the same server
+rather than being fetched from the binary directly, so one tunnel carries
+both.
 
 A `MANAWEB_HASHES` naming nothing readable stops the process rather than
 publishing a catalog without an index: the scanner would be missing and only a
@@ -70,6 +71,20 @@ right state for a checkout with no credentials.
 
 The endpoint is the one that decides: with it set, the other three are
 required and a missing one is an error rather than a silent skip.
+
+## The builder
+
+`manaweb-artwork` builds and measures the scanner index. What it works on is
+an argument rather than a variable — the cache, a directory, how many to stop
+at — and the one variable it reads only changes what it prints.
+
+| Variable | Default | What it is |
+|---|---|---|
+| `MANAWEB_SHOTS` | unset | Set to anything, and `photos` reports every photograph instead of only the ones it got wrong. |
+
+The full listing is what the bands in [`scanner.md`](scanner.md) were read
+off, so it is the one to run when that table is being extended rather than
+consulted.
 
 ## Secrets
 
