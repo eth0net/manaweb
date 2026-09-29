@@ -290,6 +290,16 @@ twelve score alike and fourteen begins losing cards — rather than a figure
 anything derives. What it still cannot do is a black border on a dark table,
 where there is no step to stop at.
 
+**A card tilted away from the camera is lost**, held in the hand off a phone
+rather than measured over a set: face on at about the distance the
+photographs were taken at it answers, and leaning the top away until the
+outline stops being a rectangle it stops answering. Which stage drops it is
+not known. The ratio filter should not be the one — the slack admits far
+more tilt than that — which leaves the outline itself, the hull test, or the
+corner ordering putting a rectified card on its side. Photographs at known
+angles are what would say, and there are none: every shot in the set is
+face on or turned in the plane of the table.
+
 **A quarter of the frame has to have been flooded** before what is left
 over can be the card, an ordinary card's art box being a card's own
 proportions to within a hundredth and passing every other check here. That
