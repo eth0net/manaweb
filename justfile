@@ -126,22 +126,21 @@ ts: deps
     bun run check
 
 # Both default to loopback; pass 0.0.0.0 to either to reach it from a phone.
-# The store is passed only where there is one: a checkout that has not run
-# `hash-art` has none, and a path named but missing stops the server rather
-# than publishing a catalog with no scanner in it.
+# Only the default is dropped when it is not there, a checkout that has not
+# run `hash-art` having no store. A path someone typed is passed whether it
+# exists or not, so that a typo stops the server rather than quietly serving
+# a catalog with no scanner in it.
 [doc('export the catalog and serve it for local development')]
 [group('dev')]
 serve bind="127.0.0.1:8080" hashes="scryfall/hashes":
-    MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} {{ if path_exists(hashes) == "true" { "MANAWEB_HASHES=" + hashes } else { "" } }} cargo run -p manaweb-appview
+    MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} {{ if hashes == "scryfall/hashes" { if path_exists(hashes) == "true" { "MANAWEB_HASHES=" + quote(hashes) } else { "" } } else { "MANAWEB_HASHES=" + quote(hashes) } }} cargo run -p manaweb-appview
 
-# `hosts` is for reaching this through a tunnel, which answers on a name the
-# dev server has never heard of and refuses by default: the hostname, several
-# comma-separated, or `any`. A camera wants HTTPS and a LAN address is not,
-# so a tunnel is how a phone gets one — `docs/configuration.md`.
+# `hosts` names what a tunnel answers on, and what `any` costs, is in
+# `docs/configuration.md`.
 [doc("the client's dev server, fetching the catalog from `just serve`")]
 [group('dev')]
 serve-client host="127.0.0.1" hosts="": deps
-    cd web && MANAWEB_DEV_HOSTS={{ hosts }} bun run dev --host {{ host }}
+    cd web && MANAWEB_DEV_HOSTS={{ quote(hosts) }} bun run dev --host {{ quote(host) }}
 
 # Pulls at Scryfall's own 100ms and keeps every image, so a rebuild costs the
 # hashing rather than the download. Hours the first time, minutes after.
