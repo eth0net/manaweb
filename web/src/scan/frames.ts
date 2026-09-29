@@ -5,6 +5,7 @@
 // is what keeps it, and the route it posts to, out of anything that deploys.
 
 import { CAPTURE } from "./capture";
+import type { Entry } from "./scratch";
 
 const DATABASE = "manaweb-frames";
 const STORE = "frames";
@@ -96,16 +97,40 @@ async function evict(store: IDBObjectStore): Promise<void> {
   }
 }
 
-// The frame, the note, and what a person said it actually was. Posted only
-// when asked for: nothing here goes up because a scan happened.
-export async function report(
-  png: Blob,
-  note: Record<string, unknown>,
-): Promise<void> {
+// What a person said the card was. Absent where nobody said, for the reason
+// in `docs/scanner.md`.
+export type Said = {
+  print: string;
+  label: string;
+  finish: string;
+  // Whether the index returned it at all.
+  matched: boolean;
+};
+
+// One frame, what the reader made of it, and what it actually was. Sent only
+// when asked for: nothing goes up because a scan happened.
+export async function send(one: Entry, answer: Said | null): Promise<void> {
+  const png = await frame(one.id);
+  if (!png) throw new Error("That frame is no longer held");
+
   const answered = await fetch(CAPTURE, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ note, png: await encoded(png) }),
+    body: JSON.stringify({
+      png: await encoded(png),
+      note: {
+        at: new Date().toISOString(),
+        agent: navigator.userAgent,
+        answer,
+        read: {
+          at: one.at,
+          margin: one.margin,
+          detected: one.detected,
+          matched: one.matched,
+          said: one.scryfallId,
+        },
+      },
+    }),
   });
   if (!answered.ok) {
     throw new Error(`The report was refused: ${answered.status}`);

@@ -477,12 +477,22 @@ photographed again, which is what PNG buys.
 only afterwards.** Arming a capture first meant deciding before the answer
 was in: three shots of one card upload three frames when the two that matter
 are the two nobody could have predicted, and each is megabytes over a tunnel.
-Reporting afterwards also knows something arming never did — by then a
-printing has been picked, so the note carries what the reader said and what
-the person said, and the file is named the way the scoring harness reads a
-name. A miss files itself, labeled, instead of waiting for somebody to
-identify it later. Saying nothing here matched reports the same way and
-carries no answer, which is its own fact.
+Reporting afterwards can also know something arming never did — by then a
+printing may have been picked, so the note carries what the reader said and
+what the person said, and the file is named the way the scoring harness
+reads a name. A miss files itself, labeled, instead of waiting for somebody
+to identify it later.
+
+**An answer is only ever what somebody said.** A report sent without one
+carries none, because a frame filed under the wrong name is worse than one
+filed under no name: the harness would score it against a card that was
+never in the picture, and go on doing so. The first report this design ever
+sent did exactly that — it took the printing the entry was carrying, which
+was the reader's own guess, and wrote a photograph of `tmt` 122 down as `ecl`
+89. Naming the card is therefore its own step, and it is the whole catalog
+rather than the five artworks that came back: the reading worth correcting
+most is the one where the index never had the card at all, and the note says
+whether it did.
 
 **A report from a deployed build is worth having and is not the same
 feature.** Everything here posts to a dev server on the same machine, which

@@ -13,6 +13,7 @@ import {
   joinable,
   merged,
   minus,
+  offered,
   plus,
   refinish,
   scanned,
@@ -129,15 +130,27 @@ test("drop takes one stack without touching another of the same card", () => {
   expect(drop(list, "a").map((held) => held.id)).toEqual(["b"]);
 });
 
-test("a printing is chosen out of what the scan matched, and no further", () => {
+test("a printing is chosen, and a person saying so is recorded", () => {
   const made = (id: string) => (id === "p2" ? ["foil"] : ["nonfoil", "foil"]);
   const list = [one()];
 
   expect(choose(list, "a", "p2", made)[0]).toMatchObject({
     scryfallId: "p2",
     finish: "foil",
+    picked: true,
   });
-  expect(choose(list, "a", "p9", made)[0]?.scryfallId).toBe("p1");
+  expect(list[0]?.picked).toBeUndefined();
+});
+
+// The index having missed the card altogether is the reading most worth
+// correcting, so a printing it never returned is still a valid answer.
+test("a printing the scan never matched can still be named", () => {
+  const made = () => ["nonfoil"];
+  const [held] = choose([one()], "a", "elsewhere", made);
+
+  expect(held?.scryfallId).toBe("elsewhere");
+  expect(held?.picked).toBe(true);
+  expect(offered(held as Entry, "elsewhere")).toBe(false);
 });
 
 test("pressing the printing already chosen leaves its finish alone", () => {

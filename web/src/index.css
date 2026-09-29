@@ -342,6 +342,11 @@ nav a.here {
   padding: 0;
 }
 
+.scratch-find input {
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
 .scratch-report {
   display: flex;
   flex-wrap: wrap;

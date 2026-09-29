@@ -11,6 +11,7 @@ import {
   image,
   type Print,
 } from "../catalog";
+import { parse } from "../catalog/query";
 import type { Holdings, Owned } from "../collection/cards";
 import { IMPORT } from "../import/Import";
 import { plan, weigh } from "../import/plan";
@@ -29,6 +30,7 @@ import {
   joinable,
   merged,
   minus,
+  offered,
   plus,
   refinish,
   sure,
@@ -220,6 +222,7 @@ export function Review({
         {list.map((one) => (
           <Stack
             key={one.id}
+            catalog={catalog}
             one={one}
             prints={prints}
             finishes={finishes}
@@ -247,40 +250,83 @@ async function told(
   prints: Map<string, Found>,
   answer: string | null,
 ): Promise<void> {
-  const { frame, report } = await import("./frames");
-  const png = await frame(one.id);
-  if (!png) throw new Error("That frame is no longer held");
-
+  const { send } = await import("./frames");
   const held = answer ? prints.get(answer) : null;
-  await report(png, {
-    at: new Date().toISOString(),
-    agent: navigator.userAgent,
-    // What the person said, which is the whole value of a report.
-    answer: held
+  await send(
+    one,
+    held
       ? {
           print: held.print.id,
           label: labeled(held.print),
           finish: one.finish,
+          matched: offered(one, held.print.id),
         }
       : null,
-    // And what the reader made of it.
-    read: {
-      at: one.at,
-      margin: one.margin,
-      detected: one.detected,
-      matched: one.matched,
-      said: one.scryfallId,
-    },
-  });
+  );
+}
+
+// Naming the card when what came back does not hold it — `docs/scanner.md`.
+function Finding({
+  catalog,
+  onPick,
+}: {
+  catalog: Catalog;
+  onPick: (print: Print) => void;
+}) {
+  const [text, setText] = useState("");
+  const [card, setCard] = useState<Card | null>(null);
+
+  const found = useMemo(() => {
+    const asked = text.trim();
+    return asked.length < 2 ? [] : catalog.find(parse(asked), { limit: 6 });
+  }, [catalog, text]);
+
+  const printings = useMemo(
+    () => (card ? catalog.prints(card.index) : []),
+    [catalog, card],
+  );
+
+  return (
+    <div className="scratch-find">
+      <input
+        type="search"
+        value={text}
+        placeholder="Name the card instead"
+        onChange={(event) => {
+          setText(event.target.value);
+          setCard(null);
+        }}
+      />
+      <ul className="scratch-prints">
+        {!card &&
+          found.map((one) => (
+            <li key={one.index}>
+              <button type="button" onClick={() => setCard(one)}>
+                {one.name}
+              </button>
+            </li>
+          ))}
+        {printings.map((print) => (
+          <li key={print.id}>
+            <button type="button" onClick={() => onPick(print)}>
+              {describe(print)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function Stack({
+  catalog,
   one,
   prints,
   finishes,
   change,
   frozen,
 }: {
+  catalog: Catalog;
   one: Entry;
   prints: Map<string, Found>;
   finishes: Finishes;
@@ -398,6 +444,15 @@ function Stack({
           })}
         </ul>
 
+        <Finding
+          catalog={catalog}
+          onPick={(print) =>
+            change((list) =>
+              choose(list, one.id, print.id, () => print.finishes),
+            )
+          }
+        />
+
         <p className="scratch-report">
           <button
             type="button"
@@ -409,13 +464,20 @@ function Stack({
           {import.meta.env.DEV && (
             <button
               type="button"
-              onClick={() => void send(one.scryfallId)}
+              onClick={() => void send(one.picked ? one.scryfallId : null)}
               disabled={frozen || sending}
             >
-              {sending ? "Reporting…" : "Report this read"}
+              {sending ? "Reporting…" : "Report"}
             </button>
           )}
         </p>
+        {import.meta.env.DEV && (
+          <small className="quiet">
+            {one.picked
+              ? `Reports as ${held ? describe(held.print) : one.scryfallId}.`
+              : "Reports the frame and no answer — name the card first to say what it was."}
+          </small>
+        )}
         {sent && <small className="quiet">{sent}</small>}
       </details>
     </li>

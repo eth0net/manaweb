@@ -48,6 +48,8 @@ export function Scan({
   // todo(settings): held for the page rather than the person, there being
   // nowhere yet for a preference to live — `docs/scanner.md`.
   const [solid, setSolid] = useState(false);
+  // Development only: whether a report is in flight.
+  const [telling, setTelling] = useState(false);
 
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
@@ -186,6 +188,22 @@ export function Scan({
   // What the panel describes, whether or not the list holds it yet.
   const offer = answer.at === "found" ? answer.offer : null;
 
+  // A read about to be thrown away is the one most worth keeping, so it goes
+  // up from here rather than through the list and out again.
+  async function reject(one: Entry) {
+    setTelling(true);
+    setProblem(null);
+    try {
+      const { send } = await import("./frames");
+      await send(one, null);
+      setAnswer({ at: "none" });
+    } catch (failed: unknown) {
+      setProblem(said(failed));
+    } finally {
+      setTelling(false);
+    }
+  }
+
   function agree(one: Entry) {
     change((list) => [...list, one]);
     setAnswer((was) =>
@@ -251,6 +269,15 @@ export function Scan({
                   <button type="button" onClick={() => agree(offer)}>
                     Keep it
                   </button>
+                  {import.meta.env.DEV && (
+                    <button
+                      type="button"
+                      onClick={() => void reject(offer)}
+                      disabled={telling}
+                    >
+                      {telling ? "Reporting…" : "Report"}
+                    </button>
+                  )}
                   <span className="quiet">or scan again</span>
                 </p>
               )}

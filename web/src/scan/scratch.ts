@@ -19,6 +19,10 @@ export type Entry = {
   // no second photograph.
   matched: Matched[];
   scryfallId: string;
+  // Whether a person said so. An index proposing a printing and somebody
+  // agreeing it is the card in their hand are different claims, and only the
+  // second one may be reported as an answer.
+  picked?: boolean;
   finish: string;
   quantity: number;
 };
@@ -103,8 +107,9 @@ export function drop(list: Entry[], id: string): Entry[] {
   return list.filter((one) => one.id !== id);
 }
 
-// A printing the scan never matched is refused: the list holds what a camera
-// saw, and anything else belongs to a search.
+// Any printing, not only one the scan matched. Holding it to the matches
+// left nothing to say when the index had missed the card altogether, which
+// is the reading most worth being able to correct.
 export function choose(
   list: Entry[],
   id: string,
@@ -113,11 +118,17 @@ export function choose(
 ): Entry[] {
   return list.map((one) => {
     if (one.id !== id || one.scryfallId === scryfallId) return one;
-    if (!offered(one, scryfallId)) return one;
-    return { ...one, scryfallId, finish: settled(finishes(scryfallId)) };
+    return {
+      ...one,
+      scryfallId,
+      picked: true,
+      finish: settled(finishes(scryfallId)),
+    };
   });
 }
 
+// Whether the index had this printing anywhere in what it returned. False
+// against a person's own answer is the strongest thing a report can say.
 export function offered(one: Entry, scryfallId: string): boolean {
   return one.matched.some(({ prints }) => prints.includes(scryfallId));
 }
