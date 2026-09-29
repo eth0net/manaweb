@@ -1,0 +1,3 @@
+# Same reason as `.gitignore`: a worktree here is another checkout, and
+# the hooks that run on this one must not walk into it.
+.claude/worktrees/
