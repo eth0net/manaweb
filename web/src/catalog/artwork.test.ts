@@ -334,6 +334,21 @@ describe("a hash against the catalog", () => {
     ]);
   });
 
+  // The case the runners-up exist for, and the one that used to come back
+  // empty: two faces of one card look alike, so the sibling lands second at
+  // a distance too near to take the first on. A back is named by no printing
+  // column, so a runner-up that skipped `faces` resolved to nothing.
+  test("resolves a runner-up that is a back, not only the answer", () => {
+    const index = read(file([[ONE], [TWO]], { fronts: 1, backs: [[1, 0]] }));
+    const found = retrieve(catalog, index, [ONE]);
+
+    expect(found?.found[0]?.artwork).toBe(0);
+    expect(found?.found[1]?.artwork).toBe(1);
+    expect(found?.found[1]?.prints.map((one) => one.print.id)).toEqual([
+      ID("0101"),
+    ]);
+  });
+
   test("gives nothing for an artwork no printing carries", () => {
     expect(catalog.artwork(9)).toEqual([]);
   });
