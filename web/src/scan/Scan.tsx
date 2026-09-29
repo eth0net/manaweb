@@ -204,10 +204,12 @@ export function Scan({
     }
   }
 
-  // Keeping a read the margin did not carry is somebody saying it is the
-  // card, which is the only thing that makes a report of it worth a label.
+  // Kept, not affirmed. Keeping is also how a wrong read gets into the list
+  // to be put right, so it cannot stand as somebody naming the card — that
+  // is the review's job, and a label nobody gave is the one thing a report
+  // must never carry.
   function agree(one: Entry) {
-    change((list) => [...list, { ...one, picked: true }]);
+    change((list) => [...list, one]);
     setAnswer((was) =>
       was.at === "found" ? { ...was, stack: one.id, offer: null } : was,
     );
