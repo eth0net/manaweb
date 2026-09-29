@@ -12,7 +12,6 @@ import { describe } from "../Printing";
 import { Link } from "../router";
 import { frame, open } from "./camera";
 import { engine, index } from "./load";
-import type { Picture } from "./read";
 import { type Read, read } from "./read";
 import { copies, type Entry, minus, plus, scanned, sure } from "./scratch";
 import type { Scratch } from "./store";
@@ -48,9 +47,6 @@ export function Scan({
   // todo(settings): held for the page rather than the person, there being
   // nowhere yet for a preference to live — `docs/scanner.md`.
   const [solid, setSolid] = useState(false);
-  // Development only, and off until it is asked for: a frame goes nowhere
-  // without a tap.
-  const [keeping, setKeeping] = useState(false);
 
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
@@ -138,18 +134,18 @@ export function Scan({
           ? { at: "found", held: found, stack: made?.id ?? null }
           : { at: "nothing" },
       );
-      if (import.meta.env.DEV && keeping && paper.current) {
-        // Reported rather than thrown: a capture that did not land is worth
-        // knowing about and is not a reason to lose the read.
-        await capture(paper.current, held.hasher, picture, found).catch(
-          (failed: unknown) => setProblem(said(failed)),
+      if (import.meta.env.DEV && made && paper.current) {
+        // Kept, not sent. Which read was worth reporting is only known once
+        // somebody has looked at it.
+        await remember(made.id, paper.current).catch((failed: unknown) =>
+          setProblem(said(failed)),
         );
       }
     } catch (failed: unknown) {
       setAnswer({ at: "none" });
       setProblem(said(failed));
     }
-  }, [catalog, change, keeping, manifest]);
+  }, [catalog, change, manifest]);
 
   if (!catalog || !manifest) {
     return <p className="quiet">The catalog is still loading.</p>;
@@ -256,15 +252,6 @@ export function Scan({
                   ? "Scan"
                   : "Scan again"}
             </button>
-            {import.meta.env.DEV && (
-              <button
-                type="button"
-                onClick={() => setKeeping(!keeping)}
-                aria-pressed={keeping}
-              >
-                {keeping ? "Capturing" : "Capture"}
-              </button>
-            )}
             <button type="button" onClick={stop}>
               Close
             </button>
@@ -380,35 +367,12 @@ function Named({
   );
 }
 
-// The frame and what it was read as, so one can be scored against the other
-// later without being scanned again. Imported here rather than at the top:
-// the branch goes with the build, and the module goes with the branch.
-async function capture(
-  frame: HTMLCanvasElement,
-  hasher: string,
-  picture: Picture,
-  found: Read | null,
-): Promise<void> {
-  const { send } = await import("./capture");
-  await send(frame, {
-    at: new Date().toISOString(),
-    agent: navigator.userAgent,
-    hasher,
-    frame: { width: picture.width, height: picture.height },
-    read: found && {
-      detected: found.detected,
-      sure: found.sure,
-      margin: found.margin,
-      found: found.found.map((one) => ({
-        artwork: one.artwork,
-        distance: one.distance,
-        print: one.prints[0]?.print.id ?? null,
-        named: one.prints[0]
-          ? cardName(one.prints[0].card.name, one.prints[0].print, APP).text
-          : null,
-      })),
-    },
-  });
+// The frame a scan read, put by in case the read turns out to be wrong.
+// Imported here rather than at the top: the branch goes with the build, and
+// the module goes with the branch.
+async function remember(id: string, canvas: HTMLCanvasElement): Promise<void> {
+  const { hold, snapshot } = await import("./frames");
+  await hold(id, await snapshot(canvas));
 }
 
 function said(failed: unknown): string {
