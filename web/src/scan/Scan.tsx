@@ -204,8 +204,10 @@ export function Scan({
     }
   }
 
+  // Keeping a read the margin did not carry is somebody saying it is the
+  // card, which is the only thing that makes a report of it worth a label.
   function agree(one: Entry) {
-    change((list) => [...list, one]);
+    change((list) => [...list, { ...one, picked: true }]);
     setAnswer((was) =>
       was.at === "found" ? { ...was, stack: one.id, offer: null } : was,
     );
