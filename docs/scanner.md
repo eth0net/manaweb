@@ -413,7 +413,7 @@ rustc --crate-type cdylib` rather than a second crate, which keeps every
 native build free of exported symbols. 74KB unoptimized.
 
 **The index is a build-time artifact, not a runtime service.** Building it
-means pulling ~100k images (~10GB) and hashing them, which is hours on 1 vCPU.
+means pulling ~55k images (~4GB) and hashing them, which is hours on 1 vCPU.
 Build locally, publish the artifact, serve it statically, same as `web/dist`.
 Incremental per-set rebuilds (~300 cards) are fine on the box. Throttle the
 initial pull: hammering Scryfall's CDN is the "repeated mishandling" that gets
@@ -480,7 +480,7 @@ rather than a broken one.
 by a set at a time until someone runs the builder again and copies one up.
 The shape it wants is the opposite of the flag: maintain the store always and
 treat a supplied one as a shortcut past the first build. What stops that
-being a one-line change is the empty case — ~100k images and 10GB is hours on
+being a one-line change is the empty case — ~55k images and 4GB is hours on
 1 vCPU and the sort of pull that gets API access restricted — so a top-up has
 to be capped per refresh, which converges a seeded store in one and an empty
 one over many. It also turns the store from something mounted into something

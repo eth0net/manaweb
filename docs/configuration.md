@@ -38,7 +38,7 @@ publishing a catalog without an index: the scanner would be missing and only a
 log line would say why. It is read at each export, so a newer store left in
 place is picked up by the weekly sync.
 
-Both paths want a volume of their own in a container: the cache is 80MB and
+Both paths want a volume of their own in a container: the cache is 96MB and
 several minutes of Scryfall's bandwidth to rebuild, and the catalog is what
 the upload reads back to decide what has moved. The store is a third, and
 read-only: nothing on the server writes it, and building one wants the
@@ -50,7 +50,7 @@ The catalog directory does not hold every export ever made. Each one keeps
 what the manifest before it named, and keeps anything written in the last six
 hours whatever the manifests say, so nothing is taken from a client part way
 through fetching it — then removes the rest. A weekly refresh settles at
-roughly 26MB rather than adding 13MB a week forever, and a run of exports in
+roughly 27MB rather than adding 14MB a week forever, and a run of exports in
 one afternoon settles a few hours after the last of them. Only
 content-addressed names are touched, so anything else parked there
 survives.

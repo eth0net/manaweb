@@ -223,14 +223,13 @@ header, written uncompressed for a CDN to compress.
 
 | | rows | uncompressed |
 |---|---|---|
-| cards | 37,836 | 4.76MB |
-| prints | 109,254 | 8.16MB |
+| cards | 37,836 | 4.99MB |
+| prints | 109,271 | 8.55MB |
 
-Rows and bytes off the manifest of the 2026-09-22 sync. Compressed it is the
-4.19MB measured two days earlier and unchanged since, near the top of the
-4-5MB target in [`architecture.md`](architecture.md). It grows with the game,
-so treat the target as the thing to hold and this as the last time anyone
-looked.
+Rows and bytes off the manifest of the 2026-09-29 sync, which compresses to
+4.21MB — near the top of the 4-5MB target in
+[`architecture.md`](architecture.md). It grows with the game, so treat the
+target as the thing to hold and this as the last time anyone looked.
 
 **Printings are grouped by card, in the cards file's order**, so a card's
 printings are the run of `printings` rows where the preceding counts end, and
@@ -283,10 +282,10 @@ to hold it.
 
 | part | raw | brotli | when |
 |---|---|---|---|
-| cards, prints | 12.92MB | 4.19MB | always |
+| cards, prints | 13.54MB | 4.21MB | always |
 | text — oracle text | 5.70MB | 0.57MB | opt-in: offline viewing, text search |
 | names, per language | | ~300KB each | opt-in: chosen at onboarding |
-| artwork hashes | 1.70MB | 1.40MB | opt-in: the scanner |
+| artwork hashes | 1.78MB | 1.47MB | opt-in: the scanner |
 | card images | unbounded | unbounded | opt-in, per card, the service worker's |
 
 Raw matters as much as brotli: one is the download and the other is what the
@@ -329,8 +328,8 @@ alone. None of them is a feature someone might not want: without faces a
 two-sided card answers no question about its colors or its types, and without
 a group number an artwork match names a card where a scanner needs a
 printing.
-Only 3,295 cards have faces at all, which is why the dominant class of
-divergence costs a tenth of a megabyte to close.
+Few cards carry faces the rules ever read, which is why the dominant class
+of divergence costs almost nothing to close — what it came to is below.
 
 **Two of the three are built, and the estimates were out in both
 directions.** The illustration group came in at the 0.63MB raw it predicted

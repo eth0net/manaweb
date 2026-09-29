@@ -193,7 +193,7 @@ deploy takes the whole of the last one rather than expiring entries.
 ### What stays in memory, and what is fetched when asked
 
 Bytes on the device are not the constraint; what the rows cost once parsed is.
-The pair is 12.9MB stored, and measured at 88MB resident on 2026-09-21 when it
+The pair is 13.5MB stored, and measured at 88MB resident on 2026-09-21 when it
 was 12.5MB, because every row becomes a JavaScript array of JavaScript
 strings. Roughly five times
 its own size for the cards, six for the printings, and a further 19MB for the
@@ -290,11 +290,11 @@ Keeping whole card objects would put the bulk file's uncompressed bulk on a
 small VPS disk — and several gigabytes of it if All Cards ever lands. Shred
 what's queried, keep `card_faces` as JSON, discard the rest.
 
-Measured on 2026-09-18: the cache shreds to an 88MB file including the FTS5
+Measured on 2026-09-29: the cache shreds to a 96MB file including the FTS5
 index, written in seconds — [`scryfall.md`](scryfall.md) holds the row
-counts. Two columns earn normalizing. Legalities repeat ~480 bytes on every
-printing for only 613 distinct combinations, which inline was 47% of the
-database; the rest of what
+counts. Two columns earn normalizing. Measured a sync earlier, on 2026-09-18,
+legalities repeat ~480 bytes on every printing for only 613 distinct
+combinations, which inline was 47% of the database; the rest of what
 a card's rules say is its own table, for the reasons in
 [`scryfall.md`](scryfall.md). The sync truncates the WAL when it commits,
 which otherwise sits at roughly the size of the database again.
@@ -353,8 +353,8 @@ for static artifacts, which a CDN fixes cheaply.
 - Client artifact: a few megabytes over the wire, sized in
   [`scryfall.md`](scryfall.md). Served by a CDN rather than
   by us; the shape is in [`scryfall.md`](scryfall.md).
-- Scanner index: 1.70MB over 54,585 artworks, both sides of a card, 1.40MB on
-  the wire, measured 2026-09-23. Embeddings would be ~25MB, still an estimate.
+- Scanner index: 1.78MB over 54,584 artworks, both sides of a card, 1.47MB on
+  the wire, measured 2026-09-29. Embeddings would be ~25MB, still an estimate.
 - Weekly deltas have no mechanism yet — computing them means keeping a previous
   catalog snapshot server-side, which sits awkwardly with a disposable DB.
 - Bucket operations, not bandwidth, are what a growing user base spends: the
@@ -474,7 +474,7 @@ this size and is not bounded by anything either. Deciding what bounds it wants
 a rule about how long a client may be mid-load, which nothing has needed yet.
 
 **The export is built whole before any of it is written.** Both files sit in
-memory as bytes, 12.9MB together, then go to disk and are read back by the
+memory as bytes, 13.5MB together, then go to disk and are read back by the
 upload. That grew with faces and grows with whatever comes next, and a writer
 streaming to the file would make it flat. Worth doing when a part is added,
 not before.
