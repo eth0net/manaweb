@@ -180,6 +180,25 @@ caught. A summary of the last card lies over the viewfinder rather than
 replacing it, see-through or solid, so a run of scanning is not a run of
 dialogs.
 
+**A scan makes a stack, and scanning the same card again makes another.**
+Three copies then two other cards then two more of the first is four stacks,
+in that order, because that is the order someone saw them in — a single five
+they never counted is a thing they cannot check. Stacks of the same printing
+merge on request rather than on arrival, and that is worth offering wherever
+a collection is looked at rather than only here.
+
+The count on a stack moves with a plus and a minus, because the thing a scan
+gets wrong is rarely the card: it is a pile knocked out of order, the same
+card read twice, or a card read that was never there. Taking a stack to zero
+takes it away, which makes the minus an undo that does not want a trip into
+the list — ManaBox makes you open one to delete a stack, which is the wrong
+cost for the most common mistake. Everything that does this sits at the
+bottom of the frame, a phone being held by the thumb.
+
+The overlay wants to go away on its own after a while, and wants to be
+skippable for someone who trusts it, and neither is a number anyone here can
+pick — see the note on settings below.
+
 ManaBox puts the same panel in the way of every scan because theirs is where
 a printing and a finish get chosen; here the scan already proposes both, so
 the panel is somewhere to look rather than somewhere to answer. A scratch
