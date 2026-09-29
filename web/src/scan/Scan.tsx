@@ -174,9 +174,7 @@ export function Scan({
               {answer.at === "nothing" && (
                 <p>Nothing in that frame looked like a card.</p>
               )}
-              {answer.at === "found" && (
-                <Answered found={answer.held} catalog={catalog} />
-              )}
+              {answer.at === "found" && <Answered found={answer.held} />}
             </div>
           )}
 
@@ -205,8 +203,8 @@ export function Scan({
 // What came back, and how much to believe it. The runners-up show only where
 // the margin is too thin to take, which is the whole of what keeping them is
 // for.
-function Answered({ found, catalog }: { found: Read; catalog: Catalog }) {
-  const first = found.prints[0];
+function Answered({ found }: { found: Read }) {
+  const [first, ...rest] = found.found;
 
   return (
     <>
@@ -219,24 +217,23 @@ function Answered({ found, catalog }: { found: Read; catalog: Catalog }) {
           " Its outline was not found, so the whole frame was read as the card."}
       </p>
 
-      {first ? (
-        <Named card={first.card} print={first.print} />
+      {first?.prints[0] ? (
+        <Named card={first.prints[0].card} print={first.prints[0].print} />
       ) : (
         <p className="quiet">No printing in this catalog carries that art.</p>
       )}
 
       {!found.sure &&
-        found.matches.slice(1).map((held) => {
-          const other = catalog.artwork(held.artwork)[0];
-          return other ? (
+        rest.map((held) =>
+          held.prints[0] ? (
             <Named
               key={held.artwork}
-              card={other.card}
-              print={other.print}
+              card={held.prints[0].card}
+              print={held.prints[0].print}
               quiet
             />
-          ) : null;
-        })}
+          ) : null,
+        )}
     </>
   );
 }

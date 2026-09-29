@@ -141,9 +141,11 @@ describe("a picture against the index", () => {
     const index = indexed(shot, [[0n], [~0n & ((1n << 64n) - 1n)]]);
     const found = read(engine, catalog, index, shot);
 
-    expect(found?.matches[0]?.artwork).toBe(0);
-    expect(found?.matches[0]?.distance).toBe(0);
-    expect(found?.prints.map((one) => one.print.id)).toEqual([ID("0101")]);
+    expect(found?.found[0]?.artwork).toBe(0);
+    expect(found?.found[0]?.distance).toBe(0);
+    expect(found?.found[0]?.prints.map((one) => one.print.id)).toEqual([
+      ID("0101"),
+    ]);
   });
 
   // The whole point of the margin: the answer is the same either way, and

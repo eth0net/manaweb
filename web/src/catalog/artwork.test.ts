@@ -314,9 +314,12 @@ describe("a hash against the catalog", () => {
     const index = read(file([[ONE]]));
     const found = retrieve(catalog, index, [ONE]);
 
-    expect(found?.matches[0]).toEqual({ artwork: 0, distance: 0 });
-    expect(found?.prints.map((one) => one.print.id)).toEqual([ID("0101")]);
-    expect(found?.prints[0]?.card.name).toBe("Delver of Secrets");
+    expect(found?.found[0]?.artwork).toBe(0);
+    expect(found?.found[0]?.distance).toBe(0);
+    expect(found?.found[0]?.prints.map((one) => one.print.id)).toEqual([
+      ID("0101"),
+    ]);
+    expect(found?.found[0]?.prints[0]?.card.name).toBe("Delver of Secrets");
   });
 
   // A photograph of the back has to resolve to the same printing as one of
@@ -325,8 +328,10 @@ describe("a hash against the catalog", () => {
     const index = read(file([[ONE], [TWO]], { fronts: 1, backs: [[1, 0]] }));
     const found = retrieve(catalog, index, [TWO]);
 
-    expect(found?.matches[0]?.artwork).toBe(1);
-    expect(found?.prints.map((one) => one.print.id)).toEqual([ID("0101")]);
+    expect(found?.found[0]?.artwork).toBe(1);
+    expect(found?.found[0]?.prints.map((one) => one.print.id)).toEqual([
+      ID("0101"),
+    ]);
   });
 
   test("gives nothing for an artwork no printing carries", () => {

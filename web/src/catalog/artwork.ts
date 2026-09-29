@@ -259,23 +259,33 @@ export async function artworks(
   return Artworks.read(new Uint8Array(await part(manifest.artwork)), hasher);
 }
 
-export interface Retrieved extends Nearest {
-  // The printings of the nearest, which is the one being answered with.
+// A match and the printings it resolves to. Every one goes through `faces`,
+// because an artwork may be a back and no printing names a back.
+export interface Found extends Match {
   prints: { card: Card; print: Print }[];
 }
 
-// What a query retrieves: the artworks nearest it, then every printing the
-// first appears on, whichever side of the card it sits on.
+export interface Retrieved {
+  // Nearest first. The first is the answer; the rest are what someone can be
+  // offered instead when the margin is too thin to take it on.
+  found: Found[];
+  margin: number;
+}
+
+// What a query retrieves: the artworks nearest it, each with every printing
+// it appears on, whichever side of the card it sits on.
 export function retrieve(
   catalog: Catalog,
   index: Artworks,
   hashes: readonly bigint[],
 ): Retrieved | null {
-  const found = index.nearest(hashes);
-  if (!found) return null;
-  const first = found.matches[0] as Match;
+  const nearest = index.nearest(hashes);
+  if (!nearest) return null;
   return {
-    ...found,
-    prints: index.faces(first.artwork).flatMap((at) => catalog.artwork(at)),
+    margin: nearest.margin,
+    found: nearest.matches.map((match) => ({
+      ...match,
+      prints: index.faces(match.artwork).flatMap((at) => catalog.artwork(at)),
+    })),
   };
 }
