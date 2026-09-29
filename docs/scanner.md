@@ -109,8 +109,8 @@ median scores 90.0% where either real box scores 98.3%. So `artbox` reports
 a spread beside each edge and cuts by frame as well as shape; the same
 reading says full-art and tokens are each several boxes, which is why they
 are the shapes still owed something. A `full_art` flag misleads in its own
-way — 1,174 full-art printings, behind 1,050 artworks, carry the plain
-modern crop, because the flag describes the printing and not the cut.
+way — 1,174 full-art printings carry the plain modern crop, because the
+flag describes the printing and not the cut.
 
 Scored against 420 of Scryfall's card images, sixty of each shape, which is
 the capture nothing is wrong with:
@@ -153,10 +153,9 @@ is the one treatment costing anything:
 | bare nonfoil | 32 | 93.8% |
 | bare foil | 26 | 76.9% |
 
-Twenty-six shots against thirty-two, so it is a gap to shoot more at rather
-than a figure to build on — it has already read as nothing over a smaller
-set of the same cards, and a sleeve is on ten shots and cannot be told from
-it yet.
+So few either way that it is a gap to shoot more at rather than a figure to
+build on — it has already read as nothing over a smaller set of the same
+cards, and a sleeve is on ten shots and cannot be told from it yet.
 
 **The margin says when to believe it.** Over those 92, every wrong answer
 came back within two bits of its runner-up, and no right one was beaten:
@@ -410,7 +409,7 @@ lets it say to try again instead.
 is pointers and lengths, so the same signatures serve a browser's
 `WebAssembly.Instance` and later Swift and Kotlin. It builds with `cargo
 rustc --crate-type cdylib` rather than a second crate, which keeps every
-native build free of exported symbols. 74KB unoptimized.
+native build free of exported symbols.
 
 **The index is a build-time artifact, not a runtime service.** Building it
 means pulling ~55k images (~4GB) and hashing them, which is hours on 1 vCPU.

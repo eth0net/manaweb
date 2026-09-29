@@ -61,8 +61,8 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
 ## Serialized cards are a printing, not a copy
 
 Scryfall models the printing and stops there. A serialized card carries
-`serialized` in `promo_types` — 299 printings across 20 sets, collector numbers
-ending `z`, and `is:serialized` filters them. The Lord of the Rings 1-of-1 One
+`serialized` in `promo_types`, collector numbers ending `z`, and
+`is:serialized` filters them. The Lord of the Rings 1-of-1 One
 Ring is collector number `0`.
 
 **Neither the print-run size nor the individual number exists anywhere in

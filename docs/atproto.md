@@ -105,8 +105,8 @@ because the PDS holds the signing key.
 4,333 stacks into a fresh account. The upload was three `applyWrites` calls and
 a few seconds; the drain then ran eight times back to back and stopped itself.
 A drain charged 598 points — 199 creates and the part's delete — and the
-remaining budget stepped down by that each time, 2674 to 2076 to 1478 to 880
-to 282, so the arithmetic above is the server's arithmetic.
+remaining budget stepped down by that each time, to 282 at the last of them,
+so the arithmetic above is the server's arithmetic.
 
 **The header names whichever bucket has least left, which hides the one you
 care about.** The first calls reported `3000;w=300`, the per-IP bucket, falling
