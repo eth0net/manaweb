@@ -80,7 +80,7 @@ that is read, and not the same file as the server's.
 
 | Variable | Default | What it is |
 |---|---|---|
-| `VITE_RESOLVER` | `https://bsky.social` | Where a handle is turned into a DID. |
+| `MANAWEB_WEB_RESOLVER` | `https://bsky.social` | Where a handle is turned into a DID. |
 
 A browser has no DNS, so somebody with one has to answer. The default is
 public and is not ours: it stays up when our box does not, and nobody signing
@@ -90,8 +90,10 @@ does, an AppView answering out of its own index does not, and a self-hosted
 handle that has never posted anywhere is exactly the case that tells them
 apart.
 
-The prefix is Vite's own rather than `MANAWEB_`, because that one names the
-server's variables and the bucket's secret is among them.
+The prefix says which half of Manaweb a variable configures, and it is
+longer than `MANAWEB_` on purpose: that one names the server's variables, the
+bucket's secret is among them, and only what matches the prefix can be read
+here at all.
 
 ## The builder
 

@@ -46,7 +46,12 @@ const BINARY = "http://127.0.0.1:8080";
 // that costs is `docs/configuration.md`.
 const HOSTS = process.env.MANAWEB_DEV_HOSTS;
 
+// What the client may read from the environment. Its own prefix rather than
+// `MANAWEB_`, which names the server's variables: the bucket's secret is one
+// of those, and a longer prefix leaves it out by construction rather than by
+// anyone remembering.
 export default defineConfig(({ command }) => ({
+  envPrefix: "MANAWEB_WEB_",
   ...(command === "serve" ? { html: { cspNonce: NONCE } } : {}),
   server: {
     proxy: { "/catalog": BINARY },

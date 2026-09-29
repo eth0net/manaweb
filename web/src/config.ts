@@ -9,8 +9,9 @@ export const CATALOG = import.meta.env.DEV
 
 // A browser has no DNS, so resolving a handle needs a service that has. Why
 // a public one, and which ones will not do, is `docs/configuration.md`.
-// `VITE_RESOLVER` overrides it at build time.
-export const RESOLVER = import.meta.env.VITE_RESOLVER || "https://bsky.social";
+// `MANAWEB_WEB_RESOLVER` overrides it at build time.
+export const RESOLVER =
+  import.meta.env.MANAWEB_WEB_RESOLVER || "https://bsky.social";
 
 // A `repo:` scope names one exact collection, so this list is the enumeration.
 // Only what the client writes today, for the reason in `docs/atproto.md`.
