@@ -13,6 +13,8 @@ import { frame, open } from "./camera";
 import { engine, index } from "./load";
 import type { Picture } from "./read";
 import { type Read, read } from "./read";
+import { type Entry, minus, plus, scanned, sure } from "./scratch";
+import type { Scratch } from "./store";
 
 export const SCAN = "/scan";
 
@@ -22,17 +24,22 @@ type Answer =
   | { at: "none" }
   | { at: "reading" }
   | { at: "nothing" }
-  | { at: "found"; held: Read };
+  // `stack` is null where nothing the frame matched is a printing this
+  // catalog holds, which is a read with no card to count.
+  | { at: "found"; held: Read; stack: string | null };
 
 // The tab is the viewfinder, and what came back is laid over it rather than
 // put above it: a run of scanning should not be a run of pages.
 export function Scan({
   catalog,
   manifest,
+  scratch,
 }: {
   catalog: Catalog | null;
   manifest: Manifest | null;
+  scratch: Scratch;
 }) {
+  const { change } = scratch;
   const [camera, setCamera] = useState<"off" | "opening" | "on">("off");
   const [answer, setAnswer] = useState<Answer>({ at: "none" });
   const [problem, setProblem] = useState<string | null>(null);
@@ -121,7 +128,14 @@ export function Scan({
         return;
       }
       const found = read(held, catalog, artworks, picture);
-      setAnswer(found ? { at: "found", held: found } : { at: "nothing" });
+      const made =
+        found && scanned(found, crypto.randomUUID(), new Date().toISOString());
+      if (made) change((list) => [...list, made]);
+      setAnswer(
+        found
+          ? { at: "found", held: found, stack: made?.id ?? null }
+          : { at: "nothing" },
+      );
       if (import.meta.env.DEV && keeping && paper.current) {
         // Reported rather than thrown: a capture that did not land is worth
         // knowing about and is not a reason to lose the read.
@@ -133,7 +147,7 @@ export function Scan({
       setAnswer({ at: "none" });
       setProblem(said(failed));
     }
-  }, [catalog, keeping, manifest]);
+  }, [catalog, change, keeping, manifest]);
 
   if (!catalog || !manifest) {
     return <p className="quiet">The catalog is still loading.</p>;
@@ -148,7 +162,23 @@ export function Scan({
   }
 
   const answered =
-    answer.at === "found" || answer.at === "nothing" || Boolean(problem);
+    answer.at === "found" ||
+    answer.at === "nothing" ||
+    Boolean(problem) ||
+    Boolean(scratch.problem);
+
+  // Null once a minus has taken it away, which is what leaves nothing to
+  // press.
+  const stack =
+    answer.at === "found" && answer.stack
+      ? (scratch.list.find((one) => one.id === answer.stack) ?? null)
+      : null;
+
+  // The stack goes with its last copy, and so does the panel describing it.
+  function fewer(one: Entry) {
+    change((list) => minus(list, one.id));
+    if (one.quantity <= 1) setAnswer({ at: "none" });
+  }
 
   return (
     <div className="scan">
@@ -175,10 +205,10 @@ export function Scan({
       )}
 
       {camera === "on" && (
-        <>
-          <div className="scan-foot">
-            {answered && (
-              <div className={solid ? "scan-said solid" : "scan-said"}>
+        <div className="scan-foot">
+          {answered && (
+            <div className={solid ? "scan-said solid" : "scan-said"}>
+              <div className="scan-panel">
                 <button
                   type="button"
                   className="scan-veil"
@@ -188,55 +218,100 @@ export function Scan({
                   {solid ? "See through" : "Solid"}
                 </button>
                 {problem && <p className="warn">{problem}</p>}
+                {scratch.problem && <p className="warn">{scratch.problem}</p>}
                 {answer.at === "nothing" && (
                   <p>Nothing in that frame looked like a card.</p>
                 )}
-                {answer.at === "found" && <Answered found={answer.held} />}
+                {answer.at === "found" && (
+                  <Answered found={answer.held} stack={stack} />
+                )}
               </div>
-            )}
+              {stack && (
+                <p className="scan-count">
+                  <Counted
+                    stack={stack}
+                    onFewer={() => fewer(stack)}
+                    onMore={() => change((list) => plus(list, stack.id))}
+                  />
+                </p>
+              )}
+            </div>
+          )}
 
-            <div className="scan-controls">
+          <div className="scan-controls">
+            <button
+              type="button"
+              onClick={() => void take()}
+              disabled={answer.at === "reading"}
+            >
+              {answer.at === "reading"
+                ? "Reading…"
+                : answer.at === "none"
+                  ? "Scan"
+                  : "Scan again"}
+            </button>
+            {import.meta.env.DEV && (
               <button
                 type="button"
-                onClick={() => void take()}
-                disabled={answer.at === "reading"}
+                onClick={() => setKeeping(!keeping)}
+                aria-pressed={keeping}
               >
-                {answer.at === "reading"
-                  ? "Reading…"
-                  : answer.at === "none"
-                    ? "Scan"
-                    : "Scan again"}
+                {keeping ? "Capturing" : "Capture"}
               </button>
-              {import.meta.env.DEV && (
-                <button
-                  type="button"
-                  onClick={() => setKeeping(!keeping)}
-                  aria-pressed={keeping}
-                >
-                  {keeping ? "Capturing" : "Capture"}
-                </button>
-              )}
-              <button type="button" onClick={stop}>
-                Close
-              </button>
-            </div>
+            )}
+            <button type="button" onClick={stop}>
+              Close
+            </button>
           </div>
-        </>
+        </div>
       )}
     </div>
+  );
+}
+
+// How many of it were seen, kept out of the scroll above so the press that
+// undoes a scan is always in the same place.
+function Counted({
+  stack,
+  onFewer,
+  onMore,
+}: {
+  stack: Entry;
+  onFewer: () => void;
+  onMore: () => void;
+}) {
+  return (
+    <>
+      <button type="button" onClick={onFewer} aria-label="One fewer">
+        &minus;
+      </button>
+      <span className="tally">{stack.quantity}</span>
+      <button type="button" onClick={onMore} aria-label="One more">
+        +
+      </button>
+    </>
   );
 }
 
 // What came back, and how much to believe it. The runners-up show only where
 // the margin is too thin to take, which is the whole of what keeping them is
 // for.
-function Answered({ found }: { found: Read }) {
-  const [first, ...rest] = found.found;
+function Answered({ found, stack }: { found: Read; stack: Entry | null }) {
+  // The matches the list could do nothing with are left out here too, or the
+  // panel names one card while the stack below it holds another.
+  const [first, ...rest] = found.found.filter((one) => one.prints.length > 0);
+  const certain = stack ? sure(stack) : found.sure;
+
+  if (!first) {
+    return (
+      <p className="quiet">No printing in this catalog carries that art.</p>
+    );
+  }
 
   return (
     <>
-      <p className={found.sure ? "tally" : "warn"}>
-        {found.sure ? "This is the card." : "Nearest, but not by much."}
+      <p className={certain ? "tally" : "warn"}>
+        {certain ? "This is the card." : "Nearest, but not by much."}
         {/* Both can be true at once: the framings guessed at when no outline
             was found still answered, and still answered clear of the floor.
             Said as a caveat rather than as a second verdict. */}
@@ -244,13 +319,11 @@ function Answered({ found }: { found: Read }) {
           " Its outline was not found, so the whole frame was read as the card."}
       </p>
 
-      {first?.prints[0] ? (
+      {first.prints[0] && (
         <Named card={first.prints[0].card} print={first.prints[0].print} />
-      ) : (
-        <p className="quiet">No printing in this catalog carries that art.</p>
       )}
 
-      {!found.sure &&
+      {!certain &&
         rest.map((held) =>
           held.prints[0] ? (
             <Named

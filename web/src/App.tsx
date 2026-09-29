@@ -16,6 +16,7 @@ import { Search } from "./Search";
 import { SETS, SetView } from "./Sets";
 import { Soon } from "./Soon";
 import { SCAN, Scan } from "./scan/Scan";
+import { useScratch } from "./scan/store";
 import { useCatalog } from "./useCatalog";
 
 export function App() {
@@ -27,6 +28,7 @@ export function App() {
   const containers = useContainers(signedIn);
   const [chosen, choose] = useState<string | null>(null);
   const waiting = useWaiting();
+  const scratch = useScratch();
   const collection = useCollection(signedIn, chosen, waiting);
   const path = usePath();
   const here = tab(path);
@@ -97,6 +99,7 @@ export function App() {
               <Scan
                 catalog={load.status === "ready" ? load.catalog : null}
                 manifest={load.status === "ready" ? load.manifest : null}
+                scratch={scratch}
               />
             )}
 
