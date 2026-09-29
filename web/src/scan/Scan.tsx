@@ -101,7 +101,12 @@ export function Scan({
       paper.current ??= document.createElement("canvas");
       const picture = frame(video.current, paper.current);
       const [held, artworks] = await Promise.all([engine(), index(manifest)]);
-      if (!picture || !artworks) {
+      if (!picture) {
+        setAnswer({ at: "none" });
+        setProblem("The camera has not given a frame yet");
+        return;
+      }
+      if (!artworks) {
         setAnswer({ at: "none" });
         setProblem("No artwork index to scan against");
         return;
