@@ -42,15 +42,16 @@ export function Scan({
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
   const stream = useRef<MediaStream | null>(null);
-  // Cleared by anything that gives up on a camera being opened, so that one
-  // arriving afterwards is stopped rather than held by a component nobody is
-  // looking at any more.
-  const wanted = useRef(false);
+  // Which attempt is the live one. A flag could not tell them apart, so
+  // cancelling and opening again left the first camera arriving to a `true`
+  // it did not set, taking the ref, and then being overwritten by the second
+  // with nothing left holding it.
+  const run = useRef(0);
 
   // A camera left running is a light left on, so it goes out with the page as
   // well as with the button.
   const stop = useCallback(() => {
-    wanted.current = false;
+    run.current += 1;
     for (const track of stream.current?.getTracks() ?? []) track.stop();
     stream.current = null;
     if (video.current) video.current.srcObject = null;
@@ -62,7 +63,8 @@ export function Scan({
   useEffect(() => stop, [stop]);
 
   const start = useCallback(async () => {
-    wanted.current = true;
+    run.current += 1;
+    const mine = run.current;
     setCamera("opening");
     setProblem(null);
     try {
@@ -70,9 +72,9 @@ export function Scan({
       // the first scan is not the one that pays for the index.
       if (manifest) await Promise.all([engine(), index(manifest)]);
       const held = await open();
-      // Opening a camera takes long enough to leave the page in, and the
-      // cleanup that ran meanwhile had nothing to stop.
-      if (!wanted.current) {
+      // Opening a camera takes long enough to leave the page in, or to
+      // cancel and ask again, and whatever ran meanwhile had nothing to stop.
+      if (run.current !== mine) {
         for (const track of held.getTracks()) track.stop();
         return;
       }
@@ -81,12 +83,15 @@ export function Scan({
         video.current.srcObject = held;
         await video.current.play();
       }
-      if (!wanted.current) {
+      if (run.current !== mine) {
         stop();
         return;
       }
       setCamera("on");
     } catch (failed: unknown) {
+      // Cancelling clears `srcObject`, which rejects a pending `play`. That
+      // is the cancel working, not something to report.
+      if (run.current !== mine) return;
       const why = said(failed);
       stop();
       setProblem(why);
