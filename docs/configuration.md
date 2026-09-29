@@ -72,6 +72,27 @@ right state for a checkout with no credentials.
 The endpoint is the one that decides: with it set, the other three are
 required and a missing one is an error rather than a silent skip.
 
+## The client
+
+Built into the bundle rather than read at run time, so changing one means
+building again. Vite reads `web/.env` for these itself — the one file here
+that is read, and not the same file as the server's.
+
+| Variable | Default | What it is |
+|---|---|---|
+| `VITE_RESOLVER` | `https://bsky.social` | Where a handle is turned into a DID. |
+
+A browser has no DNS, so somebody with one has to answer. The default is
+public and is not ours: it stays up when our box does not, and nobody signing
+in learns where we keep anything. What it has to be is a server that resolves
+a handle it has never hosted — a PDS running the reference implementation
+does, an AppView answering out of its own index does not, and a self-hosted
+handle that has never posted anywhere is exactly the case that tells them
+apart.
+
+The prefix is Vite's own rather than `MANAWEB_`, because that one names the
+server's variables and the bucket's secret is among them.
+
 ## The builder
 
 `manaweb-artwork` builds and measures the scanner index. What it works on is
