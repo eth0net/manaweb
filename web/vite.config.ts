@@ -37,21 +37,32 @@ function worker(): Plugin {
   };
 }
 
-// Where `just serve` answers. The catalog passes through this server rather
-// than being fetched from there directly, so the app has one origin in
-// development and an HTTPS tunnel to it carries the catalog as well.
+// Where `just serve` answers, and what `/catalog` is passed through to.
 const BINARY = "http://127.0.0.1:8080";
 
 // A tunnel answers on a host this server has never heard of, which it refuses
-// by default. Comma-separated, or `any`.
+// by default. Comma-separated, or `any` — which turns the check off, and what
+// that costs is `docs/configuration.md`.
 const HOSTS = process.env.MANAWEB_DEV_HOSTS;
 
 export default defineConfig(({ command }) => ({
   ...(command === "serve" ? { html: { cspNonce: NONCE } } : {}),
   server: {
     proxy: { "/catalog": BINARY },
+    // A lockfile at the repo root makes that the root of what this would
+    // otherwise serve over `/@fs/`, which is the database, the notes and
+    // everything else beside the app. It reads the app and what the app
+    // imports, so that is what it is allowed.
+    fs: { allow: [".", "../node_modules"] },
     ...(HOSTS
-      ? { allowedHosts: HOSTS === "any" ? true : HOSTS.split(",") }
+      ? {
+          allowedHosts:
+            HOSTS === "any"
+              ? true
+              : HOSTS.split(",")
+                  .map((one) => one.trim())
+                  .filter(Boolean),
+        }
       : {}),
   },
   plugins: [react(), worker(), headers(NONCE)],

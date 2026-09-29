@@ -19,7 +19,13 @@ with none of them set and syncs into `manaweb.db` in the working directory.
 
 The client's dev server takes `MANAWEB_DEV_HOSTS` — a hostname, several
 comma-separated, or `any` — for reaching it through a tunnel, which answers
-on a name it has never heard of and refuses by default. That is how a phone
+on a name it has never heard of and refuses by default. That refusal is what
+stops a page on another site pointing a name it owns at this machine and
+then talking to the server as though it were the same origin, so `any` is
+worth spending only on a tunnel whose name is awkward to predict, and naming
+the host is better. What either can reach is held to the app and its
+dependencies rather than to the whole checkout, because the lockfile at the
+root would otherwise make the database and the notes beside it fair game. That is how a phone
 gets at it: a camera needs a secure context, and the LAN address the dev
 server answers on is not one, so plain HTTP reaches everything but the
 scanner. The catalog passes through the same server rather than being fetched
