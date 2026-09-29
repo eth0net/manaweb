@@ -281,8 +281,6 @@ impl Settings {
             bind: bind.parse().map_err(|_| format!("MANAWEB_BIND: {bind}"))?,
             sync: !matches!(var("MANAWEB_SYNC", "1").as_str(), "0" | "false"),
             bucket: Bucket::from_env()?,
-            // An empty value is how a compose file spells "unset", and
-            // every other reader here already takes it that way.
             hashes: env::var_os("MANAWEB_HASHES")
                 .filter(|named| !named.is_empty())
                 .map(PathBuf::from),
@@ -333,5 +331,8 @@ impl Settings {
 }
 
 fn var(name: &str, default: &str) -> String {
-    env::var(name).unwrap_or_else(|_| default.to_owned())
+    env::var(name)
+        .ok()
+        .filter(|held| !held.is_empty())
+        .unwrap_or_else(|| default.to_owned())
 }

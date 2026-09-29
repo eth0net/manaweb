@@ -6,8 +6,9 @@ process — systemd, a container's environment, a shell — is yours to decide.
 
 ## The server
 
-`manaweb-appview`, the `manaweb` binary. All four have defaults, so it starts
-with none of them set and syncs into `manaweb.db` in the working directory.
+`manaweb-appview`, the `manaweb` binary. The first four have defaults, so it
+starts with none of them set and syncs into `manaweb.db` in the working
+directory.
 
 | Variable | Default | What it is |
 |---|---|---|
