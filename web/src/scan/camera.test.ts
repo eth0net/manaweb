@@ -10,8 +10,7 @@ describe("what size a frame is read at", () => {
     expect(sized(3840, 2160)).toEqual({ width: LONGEST, height: 720 });
   });
 
-  // A phone held upright hands over the taller side first, and scaling only
-  // the width would hand the art boxes a stretched card.
+  // A phone held upright hands over the taller side first.
   test("scales a portrait frame by its own longer side", () => {
     expect(sized(2160, 3840)).toEqual({ width: 720, height: LONGEST });
   });

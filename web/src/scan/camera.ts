@@ -18,8 +18,6 @@ const WANTED: MediaStreamConstraints = {
   },
 };
 
-// What a frame of this video is read at: its own size, or the same shape
-// scaled to [`LONGEST`].
 export function sized(
   width: number,
   height: number,
@@ -62,8 +60,8 @@ function why(failed: unknown): string {
   if (name === "NotReadableError") {
     return "Something else is using the camera";
   }
-  // A page served over anything but HTTPS or localhost has no camera at all,
-  // and the browser says so as a plain security error.
+  // An insecure context reaches here as a plain security error rather than
+  // as one of the names above.
   return failed instanceof Error
     ? failed.message
     : "The camera would not open";

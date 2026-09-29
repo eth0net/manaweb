@@ -42,19 +42,27 @@ export function Scan({
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
   const stream = useRef<MediaStream | null>(null);
+  // Cleared by anything that gives up on a camera being opened, so that one
+  // arriving afterwards is stopped rather than held by a component nobody is
+  // looking at any more.
+  const wanted = useRef(false);
 
   // A camera left running is a light left on, so it goes out with the page as
   // well as with the button.
   const stop = useCallback(() => {
+    wanted.current = false;
     for (const track of stream.current?.getTracks() ?? []) track.stop();
     stream.current = null;
     if (video.current) video.current.srcObject = null;
     setCamera("off");
+    setAnswer({ at: "none" });
+    setProblem(null);
   }, []);
 
   useEffect(() => stop, [stop]);
 
   const start = useCallback(async () => {
+    wanted.current = true;
     setCamera("opening");
     setProblem(null);
     try {
@@ -62,15 +70,26 @@ export function Scan({
       // the first scan is not the one that pays for the index.
       if (manifest) await Promise.all([engine(), index(manifest)]);
       const held = await open();
+      // Opening a camera takes long enough to leave the page in, and the
+      // cleanup that ran meanwhile had nothing to stop.
+      if (!wanted.current) {
+        for (const track of held.getTracks()) track.stop();
+        return;
+      }
       stream.current = held;
       if (video.current) {
         video.current.srcObject = held;
         await video.current.play();
       }
+      if (!wanted.current) {
+        stop();
+        return;
+      }
       setCamera("on");
     } catch (failed: unknown) {
+      const why = said(failed);
       stop();
-      setProblem(said(failed));
+      setProblem(why);
     }
   }, [manifest, stop]);
 
@@ -119,7 +138,12 @@ export function Scan({
       {camera !== "on" && (
         <div className="scan-idle">
           {camera === "opening" ? (
-            <p>Opening the camera…</p>
+            <>
+              <p>Opening the camera…</p>
+              <button type="button" onClick={stop}>
+                Cancel
+              </button>
+            </>
           ) : (
             <button type="button" onClick={() => void start()}>
               Open the camera
