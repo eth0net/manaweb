@@ -165,39 +165,41 @@ export function Scan({
 
       {camera === "on" && (
         <>
-          {answered && (
-            <div className={solid ? "scan-said solid" : "scan-said"}>
+          <div className="scan-foot">
+            {answered && (
+              <div className={solid ? "scan-said solid" : "scan-said"}>
+                <button
+                  type="button"
+                  className="scan-veil"
+                  onClick={() => setSolid(!solid)}
+                  aria-pressed={solid}
+                >
+                  {solid ? "See through" : "Solid"}
+                </button>
+                {problem && <p className="warn">{problem}</p>}
+                {answer.at === "nothing" && (
+                  <p>Nothing in that frame looked like a card.</p>
+                )}
+                {answer.at === "found" && <Answered found={answer.held} />}
+              </div>
+            )}
+
+            <div className="scan-controls">
               <button
                 type="button"
-                className="scan-veil"
-                onClick={() => setSolid(!solid)}
-                aria-pressed={solid}
+                onClick={() => void take()}
+                disabled={answer.at === "reading"}
               >
-                {solid ? "See through" : "Solid"}
+                {answer.at === "reading"
+                  ? "Reading…"
+                  : answer.at === "none"
+                    ? "Scan"
+                    : "Scan again"}
               </button>
-              {problem && <p className="warn">{problem}</p>}
-              {answer.at === "nothing" && (
-                <p>Nothing in that frame looked like a card.</p>
-              )}
-              {answer.at === "found" && <Answered found={answer.held} />}
+              <button type="button" onClick={stop}>
+                Close
+              </button>
             </div>
-          )}
-
-          <div className="scan-controls">
-            <button
-              type="button"
-              onClick={() => void take()}
-              disabled={answer.at === "reading"}
-            >
-              {answer.at === "reading"
-                ? "Reading…"
-                : answer.at === "none"
-                  ? "Scan"
-                  : "Scan again"}
-            </button>
-            <button type="button" onClick={stop}>
-              Close
-            </button>
           </div>
         </>
       )}

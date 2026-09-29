@@ -180,14 +180,22 @@ nav a.here {
   padding: 1rem;
 }
 
-.scan-controls {
+/* Everything you touch is at the bottom, where a thumb already is: the
+   buttons are pressed once a card and the panel is what a mistake is undone
+   from. */
+.scan-foot {
   bottom: 0;
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
   left: 0;
-  padding: 0.75rem;
   position: absolute;
   right: 0;
+}
+
+.scan-controls {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
 }
 
 .scan-controls button {
@@ -201,13 +209,9 @@ nav a.here {
   backdrop-filter: blur(6px);
   background: rgb(0 0 0 / 55%);
   color: #f4f4f2;
-  left: 0;
-  max-height: 65%;
+  max-height: 55vh;
   overflow-y: auto;
   padding: 0.75rem;
-  position: absolute;
-  right: 0;
-  top: 0;
 }
 
 .scan-said.solid {
