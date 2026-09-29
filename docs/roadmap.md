@@ -52,8 +52,8 @@ that was measured against, and what each thing nobody has built would cost.
 
 The engine reaches a browser: it ships with the app, reads a card out of a
 frame, and answers with the nearest artworks and how far off the runner-up
-was. What is missing is the part anyone would see — a camera, and somewhere a
-scan lands that is not straight into a collection.
+was. A tab holds a camera over it. What is missing is somewhere a scan lands
+that is not straight into a collection.
 
 ## Phase 2 — Valuation
 

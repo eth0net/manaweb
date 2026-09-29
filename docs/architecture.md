@@ -455,6 +455,14 @@ collection synced when it stopped at a third.
 
 ## Open questions
 
+**Nothing on the box can be asked to do anything.** Every job it runs is on
+a timer, so a rebuild that wants triggering wants an operator with a shell.
+The sketch is an admin route and a page for it, and the part that needs
+deciding is who may call it: a list of DIDs from the environment read once
+on first start, a subcommand for adding one on the box afterwards, and an
+admin able to add the next from the page. None of it is built, and the first
+thing it would be for is the artwork store — see `scanner.md`.
+
 **Jetstream is unauthenticated.** It doesn't verify signatures. Fine for our
 own DIDs; a real trust assumption once Explore indexes arbitrary users.
 

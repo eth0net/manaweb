@@ -415,6 +415,28 @@ carries how much further the runner-up was. So does a camera: the scan page
 opens one, takes a frame at 1280 on its longer side, and shows what came back
 — with the runners-up where the margin was too thin to take it on.
 
+**What the camera is missing is a camera's own controls.** A device has
+several lenses and hands over whichever it likes; picking one is
+`enumerateDevices`, which names them. A torch is `applyConstraints` and does
+not exist on iOS at all, so that one waits for a native app rather than for
+anyone's time. Neither is measured against anything — a lens that focuses
+closer and a light that kills a foil's glare are both guesses until a shot
+taken with them is scored.
+
+**Scanning is still a button.** A camera gives thirty frames a second and
+the margin already says which to believe, so reading frames until one clears
+the floor is the shape this wants — the button being the fallback for a card
+it never gets sure about. What that costs is a scan's 13ms against a frame
+budget of 33, which is close enough that it wants measuring on a phone
+rather than on a laptop.
+
+**Nothing sends a failure back.** Every photograph in the corpus was taken
+deliberately and copied over by hand, so the cards that fail in real use are
+exactly the ones nothing keeps. A debug mode posting the frame and what it
+answered to the dev server would close that, and it is a development route
+or nothing: a build that can upload what a camera sees is not one to serve
+anybody.
+
 **The server publishes the index only when it is given a store.**
 `MANAWEB_HASHES` names one, and a catalog published without it has no scanner
 rather than a broken one. What a scan finds still lands nowhere: there is no
