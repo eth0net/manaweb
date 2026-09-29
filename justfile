@@ -76,13 +76,27 @@ lexicons: deps
 
 # RUSTFLAGS is passed rather than left to the environment: what ships has to
 # be the plain build, since nothing feature-detects `simd128` in a browser.
-# The remap is because panic locations in `core` are absolute and this is a
-# file we serve — without it the build machine's username ships with it.
+# The remap takes the sysroot out of the panic locations `core` carries, which
+# are absolute — it is what makes the output the same on two machines rather
+# than one, and keeps the build machine's username out of a file we serve.
+[private]
+engine-build:
+    RUSTFLAGS="--remap-path-prefix=$(rustc --print sysroot)=/rust" cargo rustc -q -p manaweb-scanner --target wasm32-unknown-unknown --profile wasm --crate-type cdylib
+
 [doc('rebuild the engine the client ships (needs the wasm32 target)')]
 [group('dev')]
-engine:
-    RUSTFLAGS="--remap-path-prefix=$(rustc --print sysroot)=/rust" cargo rustc -q -p manaweb-scanner --target wasm32-unknown-unknown --profile wasm --crate-type cdylib
+engine: engine-build
     cp target/wasm32-unknown-unknown/wasm/manaweb_scanner.wasm web/src/scan/engine.wasm
+
+# Nobody can read the committed engine, so what stands in for reading it is
+# rebuilding it: the same source and the same compiler give the same bytes.
+# A compiler that has moved fails this, which is not a false alarm — the
+# committed bytes are then what an older one produced. `just engine` settles
+# either.
+[doc('hold the committed engine to what this source builds (needs the wasm32 target)')]
+[group('checks')]
+engine-check: engine-build
+    cmp target/wasm32-unknown-unknown/wasm/manaweb_scanner.wasm web/src/scan/engine.wasm
 
 # prek's own installer, which reads the hook types out of `prek.toml`. Here
 # because `just --list` is the index, and a contributor who has to be told the
