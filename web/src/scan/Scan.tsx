@@ -183,7 +183,11 @@ function Answered({ found, catalog }: { found: Read; catalog: Catalog }) {
     <>
       <p className={found.sure ? "tally" : "warn"}>
         {found.sure ? "This is the card." : "Nearest, but not by much."}
-        {!found.detected && " No card was found in the frame."}
+        {/* Both can be true at once: the framings guessed at when no outline
+            was found still answered, and still answered clear of the floor.
+            Said as a caveat rather than as a second verdict. */}
+        {!found.detected &&
+          " Its outline was not found, so the whole frame was read as the card."}
       </p>
 
       {first ? (
