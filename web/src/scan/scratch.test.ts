@@ -144,6 +144,16 @@ test("a printing is chosen, and a person saying so is recorded", () => {
 
 // The index having missed the card altogether is the reading most worth
 // correcting, so a printing it never returned is still a valid answer.
+// Confirming the reader's own guess is the commonest answer of all, and
+// treating it as a no-op sent reports up carrying nothing.
+test("agreeing with the printing already there is still an answer", () => {
+  const made = () => ["nonfoil", "foil"];
+  const [held] = choose([one({ finish: "foil" })], "a", "p1", made);
+
+  expect(held?.picked).toBe(true);
+  expect(held?.finish).toBe("foil");
+});
+
 test("a printing the scan never matched can still be named", () => {
   const made = () => ["nonfoil"];
   const [held] = choose([one()], "a", "elsewhere", made);

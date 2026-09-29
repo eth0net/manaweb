@@ -117,7 +117,10 @@ export function choose(
   finishes: Finishes,
 ): Entry[] {
   return list.map((one) => {
-    if (one.id !== id || one.scryfallId === scryfallId) return one;
+    if (one.id !== id) return one;
+    // Agreeing with what the reader already said is an answer too, and the
+    // finish is left alone because nothing about the printing changed.
+    if (one.scryfallId === scryfallId) return { ...one, picked: true };
     return {
       ...one,
       scryfallId,
