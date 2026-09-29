@@ -342,6 +342,12 @@ nav a.here {
   padding: 0;
 }
 
+.scratch-report {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .scratch-prints button {
   text-align: left;
   width: 100%;

@@ -232,6 +232,48 @@ export function Review({
   );
 }
 
+// What a reported frame is filed under. The scoring harness reads a name of
+// this shape, so a miss reported here needs nothing named by hand later —
+// `docs/scanner.md`.
+function labeled(print: Print): string {
+  const lang = print.lang === "en" ? "" : `-${print.lang}`;
+  return `${print.set}-${print.collectorNumber}${lang}`;
+}
+
+// Dev only, and reached by dynamic import so the module and the route it
+// posts to go with the branch.
+async function told(
+  one: Entry,
+  prints: Map<string, Found>,
+  answer: string | null,
+): Promise<void> {
+  const { frame, report } = await import("./frames");
+  const png = await frame(one.id);
+  if (!png) throw new Error("That frame is no longer held");
+
+  const held = answer ? prints.get(answer) : null;
+  await report(png, {
+    at: new Date().toISOString(),
+    agent: navigator.userAgent,
+    // What the person said, which is the whole value of a report.
+    answer: held
+      ? {
+          print: held.print.id,
+          label: labeled(held.print),
+          finish: one.finish,
+        }
+      : null,
+    // And what the reader made of it.
+    read: {
+      at: one.at,
+      margin: one.margin,
+      detected: one.detected,
+      matched: one.matched,
+      said: one.scryfallId,
+    },
+  });
+}
+
 function Stack({
   one,
   prints,
@@ -248,6 +290,27 @@ function Stack({
   const held = prints.get(one.scryfallId) ?? null;
   const made = finishes(one.scryfallId);
   const others = one.matched.flatMap(({ prints: ids }) => ids);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState("");
+
+  // Reported before it goes, since the frame goes with the stack.
+  async function send(answer: string | null): Promise<void> {
+    setSending(true);
+    setSent("");
+    try {
+      await told(one, prints, answer);
+      setSent("Reported.");
+    } catch (failed: unknown) {
+      setSent(failed instanceof Error ? failed.message : String(failed));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function nothing(): Promise<void> {
+    if (import.meta.env.DEV) await send(null);
+    change((list) => drop(list, one.id));
+  }
 
   return (
     <li>
@@ -335,15 +398,25 @@ function Stack({
           })}
         </ul>
 
-        <p>
+        <p className="scratch-report">
           <button
             type="button"
-            onClick={() => change((list) => drop(list, one.id))}
-            disabled={frozen}
+            onClick={() => void nothing()}
+            disabled={frozen || sending}
           >
             Nothing like it
           </button>
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              onClick={() => void send(one.scryfallId)}
+              disabled={frozen || sending}
+            >
+              {sending ? "Reporting…" : "Report this read"}
+            </button>
+          )}
         </p>
+        {sent && <small className="quiet">{sent}</small>}
       </details>
     </li>
   );
