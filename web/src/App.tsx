@@ -15,7 +15,8 @@ import { HOME, known, Link, replace, tab, usePath } from "./router";
 import { Search } from "./Search";
 import { SETS, SetView } from "./Sets";
 import { Soon } from "./Soon";
-import { SCAN, Scan } from "./scan/Scan";
+import { Review } from "./scan/Review";
+import { REVIEW, SCAN, Scan } from "./scan/Scan";
 import { useScratch } from "./scan/store";
 import { useCatalog } from "./useCatalog";
 
@@ -95,13 +96,20 @@ export function App() {
                 </p>
               ))}
 
-            {here === SCAN && (
-              <Scan
-                catalog={load.status === "ready" ? load.catalog : null}
-                manifest={load.status === "ready" ? load.manifest : null}
-                scratch={scratch}
-              />
-            )}
+            {here === SCAN &&
+              (path === REVIEW ? (
+                load.status === "ready" ? (
+                  <Review catalog={load.catalog} scratch={scratch} />
+                ) : (
+                  <p className="quiet">The catalog is still loading.</p>
+                )
+              ) : (
+                <Scan
+                  catalog={load.status === "ready" ? load.catalog : null}
+                  manifest={load.status === "ready" ? load.manifest : null}
+                  scratch={scratch}
+                />
+              ))}
 
             {here === "/collection" &&
               (path === IMPORT ? (

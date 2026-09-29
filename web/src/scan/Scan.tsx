@@ -9,14 +9,16 @@ import {
   type Print,
 } from "../catalog";
 import { describe } from "../Printing";
+import { Link } from "../router";
 import { frame, open } from "./camera";
 import { engine, index } from "./load";
 import type { Picture } from "./read";
 import { type Read, read } from "./read";
-import { type Entry, minus, plus, scanned, sure } from "./scratch";
+import { copies, type Entry, minus, plus, scanned, sure } from "./scratch";
 import type { Scratch } from "./store";
 
 export const SCAN = "/scan";
+export const REVIEW = `${SCAN}/review`;
 
 const APP = appLanguage();
 
@@ -200,6 +202,7 @@ export function Scan({
               Open the camera
             </button>
           )}
+          {scratch.list.length > 0 && <Waiting list={scratch.list} />}
           {problem && <p className="warn">{problem}</p>}
         </div>
       )}
@@ -226,13 +229,16 @@ export function Scan({
                   <Answered found={answer.held} stack={stack} />
                 )}
               </div>
-              {stack && (
+              {scratch.list.length > 0 && (
                 <p className="scan-count">
-                  <Counted
-                    stack={stack}
-                    onFewer={() => fewer(stack)}
-                    onMore={() => change((list) => plus(list, stack.id))}
-                  />
+                  {stack && (
+                    <Counted
+                      stack={stack}
+                      onFewer={() => fewer(stack)}
+                      onMore={() => change((list) => plus(list, stack.id))}
+                    />
+                  )}
+                  <Waiting list={scratch.list} />
                 </p>
               )}
             </div>
@@ -290,6 +296,17 @@ function Counted({
         +
       </button>
     </>
+  );
+}
+
+// How much is in the list, and the way into it.
+function Waiting({ list }: { list: Entry[] }) {
+  const held = copies(list);
+
+  return (
+    <Link className="link" to={REVIEW}>
+      {held.toLocaleString()} card{held === 1 ? "" : "s"} scanned
+    </Link>
   );
 }
 
