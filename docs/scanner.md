@@ -179,10 +179,19 @@ caught. A summary of the last card lies over the viewfinder rather than
 replacing it, see-through or solid, so a run of scanning is not a run of
 dialogs.
 
-**A scan makes a stack, and scanning the same card again makes another.**
-Three copies then two other cards then two more of the first is four stacks,
-in that order, because that is the order someone saw them in — a single five
-they never counted is a thing they cannot check. Stacks of the same printing
+**A confident scan makes a stack, and scanning the same card again makes
+another.** Three copies then two other cards then two more of the first is
+four stacks, in that order, because that is the order someone saw them in —
+a single five they never counted is a thing they cannot check.
+
+**One the margin does not carry waits to be agreed with**, because a card
+read twice after a poor look is one card and not two. Below the floor the
+answer lies over the viewfinder with its runners-up and joins nothing;
+pressing the shutter again drops it, and it costs a press only when it was
+right. Adding it anyway made the count say ten while a hand held one, and
+left nine dismissals the person had not caused — the margin was already
+being read, and was spending itself on the wording rather than on the
+decision. Stacks of the same printing
 merge on request rather than on arrival, and that is worth offering wherever
 a collection is looked at rather than only here.
 

@@ -25,9 +25,10 @@ type Answer =
   | { at: "none" }
   | { at: "reading" }
   | { at: "nothing" }
-  // `stack` is null where nothing the frame matched is a printing this
-  // catalog holds, which is a read with no card to count.
-  | { at: "found"; held: Read; stack: string | null };
+  // `stack` names the entry once it is in the list. `offer` is one made and
+  // not put there: a read the margin does not carry joins the list when it
+  // is agreed with, not because the shutter was pressed.
+  | { at: "found"; held: Read; stack: string | null; offer: Entry | null };
 
 // The tab is the viewfinder, and what came back is laid over it rather than
 // put above it: a run of scanning should not be a run of pages.
@@ -126,12 +127,22 @@ export function Scan({
         return;
       }
       const found = read(held, catalog, artworks, picture);
-      const made =
-        found && scanned(found, crypto.randomUUID(), new Date().toISOString());
-      if (made) change((list) => [...list, made]);
+      const made = found
+        ? scanned(found, crypto.randomUUID(), new Date().toISOString())
+        : null;
+      // Below the floor it waits: a card read twice because the first look
+      // was poor is one card, and the count has to say so while scanning
+      // rather than after.
+      const agreed = made !== null && sure(made);
+      if (agreed) change((list) => [...list, made]);
       setAnswer(
         found
-          ? { at: "found", held: found, stack: made?.id ?? null }
+          ? {
+              at: "found",
+              held: found,
+              stack: agreed ? made.id : null,
+              offer: agreed ? null : made,
+            }
           : { at: "nothing" },
       );
       if (import.meta.env.DEV && made && paper.current) {
@@ -171,6 +182,16 @@ export function Scan({
     answer.at === "found" && answer.stack
       ? (scratch.list.find((one) => one.id === answer.stack) ?? null)
       : null;
+
+  // What the panel describes, whether or not the list holds it yet.
+  const offer = answer.at === "found" ? answer.offer : null;
+
+  function agree(one: Entry) {
+    change((list) => [...list, one]);
+    setAnswer((was) =>
+      was.at === "found" ? { ...was, stack: one.id, offer: null } : was,
+    );
+  }
 
   // The stack goes with its last copy, and so does the panel describing it.
   function fewer(one: Entry) {
@@ -222,9 +243,17 @@ export function Scan({
                   <p>Nothing in that frame looked like a card.</p>
                 )}
                 {answer.at === "found" && (
-                  <Answered found={answer.held} stack={stack} />
+                  <Answered found={answer.held} stack={stack ?? offer} />
                 )}
               </div>
+              {offer && (
+                <p className="scan-count">
+                  <button type="button" onClick={() => agree(offer)}>
+                    Keep it
+                  </button>
+                  <span className="quiet">or scan again</span>
+                </p>
+              )}
               {scratch.list.length > 0 && (
                 <p className="scan-count">
                   {stack && (
