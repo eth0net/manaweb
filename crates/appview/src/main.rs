@@ -15,6 +15,7 @@
 //! | `MANAWEB_CATALOG` | `catalog` |
 //! | `MANAWEB_BIND` | `127.0.0.1:8080` |
 //! | `MANAWEB_SYNC` | `1` |
+//! | `MANAWEB_HASHES` | unset |
 //!
 //! The bucket it uploads to is configured too, in `manaweb-objects`.
 
@@ -133,8 +134,8 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     // A restart shouldn't wait on a sync, so the catalog comes from whatever
     // the cache already holds.
-    // Before the export, and fatal: a store named but unreadable would
-    // otherwise publish a catalog with no index and say so only in a log.
+    // Before the export rather than inside it: a store that will not read
+    // has to stop the process, not the publish.
     let store = settings.store()?;
     match export(&pool, &settings.catalog, store.as_ref()).await {
         Ok(version) => {
@@ -267,9 +268,7 @@ struct Settings {
     /// Where a written catalog goes. Unconfigured leaves it on disk, which
     /// is what local development wants.
     bucket: Option<Bucket>,
-    /// The hashes `manaweb-artwork` left behind, which the artwork index is
-    /// built from. Unconfigured publishes a catalog with no index and so no
-    /// scanner, which is every deployment that has not run the builder.
+    /// The hashes `manaweb-artwork` left behind — `docs/configuration.md`.
     hashes: Option<PathBuf>,
 }
 
@@ -282,14 +281,17 @@ impl Settings {
             bind: bind.parse().map_err(|_| format!("MANAWEB_BIND: {bind}"))?,
             sync: !matches!(var("MANAWEB_SYNC", "1").as_str(), "0" | "false"),
             bucket: Bucket::from_env()?,
-            hashes: env::var_os("MANAWEB_HASHES").map(PathBuf::from),
+            // An empty value is how a compose file spells "unset", and
+            // every other reader here already takes it that way.
+            hashes: env::var_os("MANAWEB_HASHES")
+                .filter(|named| !named.is_empty())
+                .map(PathBuf::from),
         })
     }
 
     /// The hash store, where one is configured.
     ///
-    /// Read at each export rather than held: the builder can leave a newer
-    /// one between a start and the weekly sync that follows it.
+    /// Read at each export rather than held once.
     ///
     /// todo(scanner): top this up after a sync instead of only reading it,
     /// so a set released since does not want the builder run by hand — see
