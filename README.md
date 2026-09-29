@@ -14,10 +14,12 @@ data, `crates/core` shreds every paper printing into SQLite, and the `manaweb`
 binary exports the catalog a browser needs and uploads it. The client signs in
 over OAuth, reads and writes records in your own PDS, imports a ManaBox CSV,
 and searches the catalog offline with most of [Scryfall's query
-syntax](docs/search.md). The lexicons are validated against atproto's own
+syntax](docs/search.md). A tab holds a camera over a card and reads which
+printing it is against an index built from Scryfall's own artwork, though a
+scan lands nowhere yet. The lexicons are validated against atproto's own
 implementation in CI, along with the OAuth client metadata document.
 
-Not there yet: the scanner, pricing, decks and Explore. See
+Not there yet: pricing, decks and Explore. See
 [the roadmap](docs/roadmap.md).
 
 ## Stack

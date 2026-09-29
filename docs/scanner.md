@@ -176,8 +176,9 @@ reprinted. No hash settles that, and it is why a scanner asks at all.
 to.** Wrong is then cheap and interrupting is expensive, which is the whole
 of how the two figures above are spent: accept the confident half without
 saying anything, ask about the rest, and let the review catch what neither
-caught. A summary of the last card sits beside the scanner rather than over
-it, so a run of scanning is not a run of dialogs.
+caught. A summary of the last card lies over the viewfinder rather than
+replacing it, see-through or solid, so a run of scanning is not a run of
+dialogs.
 
 ManaBox puts the same panel in the way of every scan because theirs is where
 a printing and a finish get chosen; here the scan already proposes both, so
@@ -426,9 +427,10 @@ taken with them is scored.
 **Scanning is still a button.** A camera gives thirty frames a second and
 the margin already says which to believe, so reading frames until one clears
 the floor is the shape this wants — the button being the fallback for a card
-it never gets sure about. What that costs is a scan's 13ms against a frame
-budget of 33, which is close enough that it wants measuring on a phone
-rather than on a laptop.
+it never gets sure about. What that costs is 27ms a frame rather than 13:
+most frames of a search are ones no card is found in, which is the slower of
+the two. Against a budget of 33 that is close enough to want measuring on a
+phone rather than on a laptop.
 
 **Nothing sends a failure back.** Every photograph in the corpus was taken
 deliberately and copied over by hand, so the cards that fail in real use are

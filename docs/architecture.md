@@ -170,15 +170,16 @@ with nothing in the log to say why.
 Two origins also means every catalog fetch is cross-origin, so the bucket
 needs a CORS policy. `Access-Control-Allow-Origin: *` is right: the catalog is
 public data derived from Scryfall, whose own API sends the same. `just serve`
-sends it too, or the dev loop fails at the first fetch and only in a browser.
+sends it too, though the dev server passes `/catalog` through itself, so
+nothing in development reaches across an origin to begin with.
 
 ## What the browser holds, and what it is allowed to reach
 
 Three caches, and they are not the same thing. IndexedDB holds the catalog,
 which is megabytes on the other origin and the reason manual search costs no
 round trip. The HTTP cache holds the hashed assets for a year, which
-`_headers` says. The service worker holds the shell — the document, the two
-hashed files, the icon and the web app manifest — so a reload deep in the app
+`_headers` says. The service worker holds the shell — the document, the hashed
+files, the icon and the web app manifest — so a reload deep in the app
 works with no network at all.
 
 It deliberately holds nothing else. Caching the catalog there would be a
