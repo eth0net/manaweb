@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
+import { captures } from "./vite/capture.ts";
 import { headers } from "./vite/headers.ts";
 
 // Only the dev server sends one; the build has no inline script to allow.
@@ -65,5 +66,5 @@ export default defineConfig(({ command }) => ({
         }
       : {}),
   },
-  plugins: [react(), worker(), headers(NONCE)],
+  plugins: [react(), worker(), headers(NONCE), captures()],
 }));

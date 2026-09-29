@@ -451,12 +451,21 @@ most frames of a search are ones no card is found in, which is the slower of
 the two. Against a budget of 33 that is close enough to want measuring on a
 phone rather than on a laptop.
 
-**Nothing sends a failure back.** Every photograph in the corpus was taken
-deliberately and copied over by hand, so the cards that fail in real use are
-exactly the ones nothing keeps. A debug mode posting the frame and what it
-answered to the dev server would close that, and it is a development route
-or nothing: a build that can upload what a camera sees is not one to serve
-anybody.
+**A failed read can be sent back.** Every photograph in the corpus was taken
+deliberately and copied over by hand, so the reads that go wrong in a hand
+were exactly the ones nothing kept. The scan tab now offers a Capture button
+in development, and each scan while it is on writes the frame and the answer
+to `local/captures`, a PNG with a JSON beside it. The pixels are the ones the
+engine read rather than the ones the sensor gave, so a capture can be scored
+without being photographed again — which is what PNG buys, at a few megabytes
+a scan over a tunnel. The note carries the margin, the nearest five and which
+phone took it.
+
+The route is dev-server middleware with no build half, and the branch that
+posts to it goes with `import.meta.env.DEV`; `bun run sealed` reads
+`web/dist` back rather than trusting either. A tunnel hands the address to
+whoever finds the name, so a post stops at 12MB, a run of the server at 500,
+and bytes not opening like a PNG are refused.
 
 **The server publishes the index only when it is given a store.**
 `MANAWEB_HASHES` names one, and a catalog published without it has no scanner
