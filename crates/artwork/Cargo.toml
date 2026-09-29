@@ -20,7 +20,12 @@ workspace = true
 manaweb-scanner.workspace = true
 manaweb-scryfall.workspace = true
 
-image = { version = "0.25.9", default-features = false, features = ["jpeg"] }
+# PNG as well as JPEG: a reported frame is written as the bytes the engine
+# read, which is what lets it be scored without the card being shot again.
+image = { version = "0.25.9", default-features = false, features = [
+    "jpeg",
+    "png",
+] }
 reqwest.workspace = true
 sqlx.workspace = true
 thiserror.workspace = true

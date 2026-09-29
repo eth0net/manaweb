@@ -457,13 +457,33 @@ phone rather than on a laptop.
 
 **A failed read can be sent back.** Every photograph in the corpus was taken
 deliberately and copied over by hand, so the reads that go wrong in a hand
-were exactly the ones nothing kept. The scan tab now offers a Capture button
-in development, and each scan while it is on writes the frame and the answer
-to `local/captures`, a PNG with a JSON beside it. The pixels are the ones the
-engine read rather than the ones the sensor gave, so a capture can be scored
-without being photographed again — which is what PNG buys, at a few megabytes
-a scan over a tunnel. The note carries the margin, the nearest five and which
-phone took it.
+were exactly the ones nothing kept. A development build now puts every frame
+it reads by, a few of them, for an hour; the review offers Report beside each
+stack, and that is what writes the frame and the answer to `local/captures`
+as a PNG with a JSON beside it. The pixels are the ones the engine read
+rather than the ones the sensor gave, so one can be scored without being
+photographed again, which is what PNG buys.
+
+**Held back rather than sent, because which read was worth keeping is known
+only afterwards.** Arming a capture first meant deciding before the answer
+was in: three shots of one card upload three frames when the two that matter
+are the two nobody could have predicted, and each is megabytes over a tunnel.
+Reporting afterwards also knows something arming never did — by then a
+printing has been picked, so the note carries what the reader said and what
+the person said, and the file is named the way the scoring harness reads a
+name. A miss files itself, labeled, instead of waiting for somebody to
+identify it later. Saying nothing here matched reports the same way and
+carries no answer, which is its own fact.
+
+**A report from a deployed build is worth having and is not the same
+feature.** Everything here posts to a dev server on the same machine, which
+is why it needs no consent and no bucket. Sending a photograph from a
+stranger's phone is the first thing in the whole design that would take user
+data off a device, against an architecture whose point is that nothing does;
+it would also be the first write handler the AppView has for anything a user
+owns. So it wants asking for, a bucket to land in and a line in
+[`ip.md`](ip.md) about whose card is in the picture — not a switch on this.
+`todo(reports)`.
 
 The route is dev-server middleware with no build half, and the branch that
 posts to it goes with `import.meta.env.DEV`; `bun run sealed` reads
