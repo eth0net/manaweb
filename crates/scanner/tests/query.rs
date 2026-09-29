@@ -69,8 +69,8 @@ fn neither_path_asks_more_than_most() {
     }
 }
 
-/// A phone shoots four by three and a card is 63 by 88, so a guess that inset
-/// both axes alike would hand the art boxes a stretched card.
+/// The shape `query::filling` keeps, and its doc says why that is not the
+/// frame's.
 #[test]
 fn a_guessed_framing_is_a_cards_shape_and_not_the_frames() {
     let levels = surface(0, 0, 0, 0);
