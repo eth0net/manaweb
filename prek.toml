@@ -56,6 +56,17 @@ hooks = [
   { id = "bun-test", name = "bun test", entry = "bun test", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
 ]
 
+# The engine a browser is served is committed, and what deploys it is the push
+# rather than a build anyone here runs — so a drifted one is live before CI
+# says a word. On push, therefore, which is the last point anything can stop
+# it. Scoped so that only work on the engine pays for it, and wants the
+# wasm32 target.
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "scanner", name = "engine matches its source (just scanner)", entry = "just scanner", language = "system", files = '^crates/scanner/|^tools/scanner-check/|^web/src/scan/engine\.(wasm|ts)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
+]
+
 # Spans both sides, so it isn't scoped to either toolchain's files. 40ms, which
 # is why it runs on commit rather than on push.
 [[repos]]
