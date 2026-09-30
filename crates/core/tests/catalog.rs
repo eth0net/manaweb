@@ -439,6 +439,40 @@ async fn a_two_faced_card_carries_a_row_for_each_side() {
     );
 }
 
+/// Scryfall adds a finish without warning, and a sync nobody watches must
+/// not drop every printing exclusive to it into no finish at all.
+#[tokio::test]
+async fn a_finish_nobody_wrote_down_still_reaches_the_client() {
+    let paper = CARDS.lines().next().unwrap();
+    let mut novel: Value = serde_json::from_str(paper).unwrap();
+    novel["id"] = serde_json::json!("00000000-0000-4000-8000-0000000000f5");
+    novel["collector_number"] = serde_json::json!("n1");
+    novel["finishes"] = serde_json::json!(["glitter"]);
+
+    let pool = seeded_with(&format!("{paper}\n{novel}\n")).await;
+    let built = catalog::build(&pool, None).await.unwrap();
+    let file = read(&built.prints.bytes);
+
+    let table: Vec<String> = file["finishes"]
+        .as_array()
+        .expect("the header names the finishes")
+        .iter()
+        .map(|one| one.as_str().unwrap().to_owned())
+        .collect();
+    assert!(table.contains(&"glitter".to_owned()), "{table:?}");
+
+    let bit = table.iter().position(|one| one == "glitter").unwrap();
+    let novel = rows(&file, "prints")
+        .into_iter()
+        .find(|row| row[2] == serde_json::json!("n1"))
+        .expect("the printing is in the artifact");
+    assert_eq!(
+        novel[3].as_u64().unwrap() & (1 << bit),
+        1 << bit,
+        "and the printing is available in it"
+    );
+}
+
 /// The flipped half carries no colors and no cost of its own, and must not
 /// come out colorless for it — see `docs/scryfall.md`.
 #[tokio::test]

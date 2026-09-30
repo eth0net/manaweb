@@ -109,7 +109,10 @@ backend:
   top-level `oracle_id`, `cmc`, `mana_cost`, `type_line`, `oracle_text`,
   `colors` or `image_uris` — those live on `card_faces`. So `oracle_id` can't
   be `NOT NULL`, and the cache needs `layout` and `card_faces`.
-- **Scryfall taxonomies stay strings** in `crates/scryfall` — `layout`,
+- **Scryfall taxonomies stay strings** everywhere, not only in
+  `crates/scryfall`: the catalog's header carries a table per taxonomy built
+  from the rows themselves, so a value nobody wrote down reaches a client
+  rather than being dropped on the way. In `crates/scryfall` — `layout`,
   `rarity`, `set_type`, `finishes`, `games`, `legalities`. New values appear
   unannounced and must not fail an unattended sync. Colors are typed; the
   rules close that set.

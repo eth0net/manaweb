@@ -23,7 +23,12 @@ use manaweb_scanner::{HASHES, fingerprint, store};
 pub use manaweb_scanner::Store;
 
 /// Bit `i` of a printing's `finishes` is this list's `i`th entry.
-const FINISHES: [&str; 3] = ["nonfoil", "foil", "etched"];
+/// Every finish the cache holds, commonest first, so a printing's mask can
+/// name one nobody wrote down here. The tie is broken by name because the
+/// artifact is addressed by its own content and two identical syncs must
+/// come to the same bytes.
+const FINISHES: &str = "SELECT j.value FROM cards c, json_each(c.finishes) j
+     WHERE NOT c.digital GROUP BY j.value ORDER BY count(*) DESC, j.value";
 
 /// What each entry of a card's `faces` column holds, in order. A face answers
 /// for itself where the card's own columns are the two sides combined or
@@ -100,7 +105,7 @@ struct CardHeader<'a> {
 struct PrintHeader<'a> {
     version: &'a str,
     fields: [&'static str; 12],
-    finishes: [&'static str; 3],
+    finishes: &'a [String],
     flags: [&'static str; 5],
     rarities: &'a [String],
     layouts: &'a [String],
@@ -493,6 +498,8 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<(Artifact, Vec
     let artists = common_first(pool, ARTISTS).await?;
     let artist_index = index(artists.iter().cloned());
 
+    let finishes = common_first(pool, FINISHES).await?;
+    let finish_index = index(finishes.iter().cloned());
     let rarities = common_first(pool, RARITIES).await?;
     let layouts = common_first(pool, LAYOUTS).await?;
     let statuses = common_first(pool, IMAGE_STATUSES).await?;
@@ -508,7 +515,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<(Artifact, Vec
         &PrintHeader {
             version,
             fields: PRINT_FIELDS,
-            finishes: FINISHES,
+            finishes: &finishes,
             rarities: &rarities,
             layouts: &layouts,
             flags: PRINT_FLAGS,
@@ -550,7 +557,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<(Artifact, Vec
             id,
             set,
             number,
-            finishes,
+            row_finishes,
             rarity,
             layout,
             status,
@@ -570,7 +577,7 @@ async fn build_prints(pool: &SqlitePool, version: &str) -> Result<(Artifact, Vec
             id,
             set_index[&set],
             number,
-            finish_mask(&finishes),
+            finish_mask(&row_finishes, &finish_index),
             rarity_index[&rarity],
             layout_index[&layout],
             status_index[&status],
@@ -873,13 +880,14 @@ fn index(values: impl Iterator<Item = String>) -> HashMap<String, usize> {
     values.enumerate().map(|(n, value)| (value, n)).collect()
 }
 
-/// Scryfall's `finishes` array as a bitmask over [`FINISHES`]. An unknown
-/// finish is dropped rather than shifting the ones we know.
-fn finish_mask(json: &str) -> u8 {
+/// Scryfall's `finishes` array as a bitmask over the header's own table,
+/// which the same sync built from the same rows, so nothing can be missing
+/// from it.
+fn finish_mask(json: &str, known: &HashMap<String, usize>) -> u8 {
     let finishes: Vec<String> = serde_json::from_str(json).unwrap_or_default();
     finishes
         .iter()
-        .filter_map(|finish| FINISHES.iter().position(|known| known == finish))
+        .filter_map(|finish| known.get(finish))
         .fold(0, |mask, bit| mask | 1 << bit)
 }
 
