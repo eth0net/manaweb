@@ -342,6 +342,17 @@ nav a.here {
   padding: 0;
 }
 
+.report textarea {
+  font: inherit;
+  margin: 0.25rem 0 0.5rem;
+  width: 100%;
+}
+
+.report-does {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .scratch-find input {
   margin: 0.5rem 0;
   width: 100%;

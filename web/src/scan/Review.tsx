@@ -19,6 +19,7 @@ import { digest, sha } from "../import/receipt";
 import { begin, useImport } from "../import/runner";
 import { describe, hasArt } from "../Printing";
 import { Link } from "../router";
+import type { Said } from "./frames";
 import { SCAN } from "./Scan";
 import {
   cards,
@@ -238,35 +239,20 @@ export function Review({
 // What a reported frame is filed under. The scoring harness reads a name of
 // this shape, so a miss reported here needs nothing named by hand later —
 // `docs/scanner.md`.
-function labeled(print: Print): string {
+export function labeled(print: Print): string {
   const lang = print.lang === "en" ? "" : `-${print.lang}`;
   return `${print.set}-${print.collectorNumber}${lang}`;
 }
 
 // Dev only, and reached by dynamic import so the module and the route it
 // posts to go with the branch.
-async function told(
-  one: Entry,
-  prints: Map<string, Found>,
-  answer: string | null,
-): Promise<void> {
-  const { send } = await import("./frames");
-  const held = answer ? prints.get(answer) : null;
-  await send(
-    one,
-    held
-      ? {
-          print: held.print.id,
-          label: labeled(held.print),
-          finish: one.finish,
-          matched: offered(one, held.print.id),
-        }
-      : null,
-  );
+async function told(one: Entry, answer: Said | null): Promise<void> {
+  const { reading, send } = await import("./frames");
+  await send(one.id, { read: reading(one), answer, wrong: "" });
 }
 
 // Naming the card when what came back does not hold it — `docs/scanner.md`.
-function Finding({
+export function Finding({
   catalog,
   onPick,
 }: {
@@ -344,7 +330,17 @@ function Stack({
     setSending(true);
     setSent("");
     try {
-      await told(one, prints, answer);
+      await told(
+        one,
+        answer && held
+          ? {
+              print: held.print.id,
+              label: labeled(held.print),
+              finish: one.finish,
+              matched: offered(one, held.print.id),
+            }
+          : null,
+      );
       setSent("Reported.");
     } catch (failed: unknown) {
       setSent(failed instanceof Error ? failed.message : String(failed));

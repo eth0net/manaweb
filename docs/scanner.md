@@ -473,6 +473,20 @@ as a PNG with a JSON beside it. The pixels are the ones the engine read
 rather than the ones the sensor gave, so one can be scored without being
 photographed again, which is what PNG buys.
 
+**A report is about a read, not about a stack.** The reads most worth
+sending never become one: a frame nothing was found in, and a phantom card
+on an empty surface. Tying the button to a list entry meant the only way to
+report those was to put a bad read into a collection first, and a read the
+margin carried had no button at all. So every read holds its frame, the
+button sits on the viewfinder whatever the read was, and pressing it adds
+nothing to anything.
+
+**What is wrong with it is free text.** The ways a read goes wrong are not a
+list anybody has — a back face, a phantom, glare over the set symbol, a card
+the index has never held — and a sentence beats an enum nobody can finish.
+It costs nothing: none of this reaches a repository, so there is no record
+for it to grow.
+
 **Held back rather than sent, because which read was worth keeping is known
 only afterwards.** Arming a capture first meant deciding before the answer
 was in: three shots of one card upload three frames when the two that matter

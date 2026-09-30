@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   appLanguage,
   type Card,
@@ -16,6 +23,12 @@ import { type Read, read } from "./read";
 import { copies, type Entry, minus, plus, scanned, sure } from "./scratch";
 import type { Scratch } from "./store";
 
+// Development only. The import sits inside the branch, so the module and
+// the route it posts to are dropped with it.
+const Told = import.meta.env.DEV
+  ? lazy(() => import("./Report").then((held) => ({ default: held.Report })))
+  : null;
+
 export const SCAN = "/scan";
 export const REVIEW = `${SCAN}/review`;
 
@@ -24,11 +37,19 @@ const APP = appLanguage();
 type Answer =
   | { at: "none" }
   | { at: "reading" }
-  | { at: "nothing" }
+  // `frame` names the frame held for this read, whether or not it made a
+  // stack. A read that named nothing is the one most worth sending back.
+  | { at: "nothing"; frame: string }
   // `stack` names the entry once it is in the list. `offer` is one made and
   // not put there: a read the margin does not carry joins the list when it
   // is agreed with, not because the shutter was pressed.
-  | { at: "found"; held: Read; stack: string | null; offer: Entry | null };
+  | {
+      at: "found";
+      held: Read;
+      frame: string;
+      stack: string | null;
+      offer: Entry | null;
+    };
 
 // The tab is the viewfinder, and what came back is laid over it rather than
 // put above it: a run of scanning should not be a run of pages.
@@ -48,8 +69,8 @@ export function Scan({
   // todo(settings): held for the page rather than the person, there being
   // nowhere yet for a preference to live — `docs/scanner.md`.
   const [solid, setSolid] = useState(false);
-  // Development only: whether a report is in flight.
-  const [telling, setTelling] = useState(false);
+  // Development only: which held frame a report is being written about.
+  const [telling, setTelling] = useState<string | null>(null);
 
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
@@ -129,9 +150,9 @@ export function Scan({
         return;
       }
       const found = read(held, catalog, artworks, picture);
-      const made = found
-        ? scanned(found, crypto.randomUUID(), new Date().toISOString())
-        : null;
+      const at = new Date().toISOString();
+      const id = crypto.randomUUID();
+      const made = found ? scanned(found, id, at) : null;
       // Below the floor it waits: a card read twice because the first look
       // was poor is one card, and the count has to say so while scanning
       // rather than after.
@@ -142,15 +163,16 @@ export function Scan({
           ? {
               at: "found",
               held: found,
+              frame: id,
               stack: agreed ? made.id : null,
               offer: agreed ? null : made,
             }
-          : { at: "nothing" },
+          : { at: "nothing", frame: id },
       );
-      if (import.meta.env.DEV && made && paper.current) {
-        // Kept, not sent. Which read was worth reporting is only known once
-        // somebody has looked at it.
-        await remember(made.id, paper.current).catch((failed: unknown) =>
+      if (import.meta.env.DEV && paper.current) {
+        // Every read, not only the ones that made a stack: a phantom card and
+        // a frame nothing was found in are both worth sending.
+        await remember(id, paper.current).catch((failed: unknown) =>
           setProblem(said(failed)),
         );
       }
@@ -188,21 +210,9 @@ export function Scan({
   // What the panel describes, whether or not the list holds it yet.
   const offer = answer.at === "found" ? answer.offer : null;
 
-  // A read about to be thrown away is the one most worth keeping, so it goes
-  // up from here rather than through the list and out again.
-  async function reject(one: Entry) {
-    setTelling(true);
-    setProblem(null);
-    try {
-      const { send } = await import("./frames");
-      await send(one, null);
-      setAnswer({ at: "none" });
-    } catch (failed: unknown) {
-      setProblem(said(failed));
-    } finally {
-      setTelling(false);
-    }
-  }
+  // Every read holds one, including the read that named nothing.
+  const shot =
+    answer.at === "found" || answer.at === "nothing" ? answer.frame : null;
 
   // Kept, not affirmed. Keeping is also how a wrong read gets into the list
   // to be put right, so it cannot stand as somebody naming the card — that
@@ -248,7 +258,23 @@ export function Scan({
 
       {camera === "on" && (
         <div className="scan-foot">
-          {answered && (
+          {Told && telling && (
+            <div className={solid ? "scan-said solid" : "scan-said"}>
+              <div className="scan-panel">
+                <Suspense fallback={<p className="quiet">Opening…</p>}>
+                  <Told
+                    catalog={catalog}
+                    frame={telling}
+                    found={answer.at === "found" ? answer.held : null}
+                    entry={stack ?? offer}
+                    onDone={() => setTelling(null)}
+                  />
+                </Suspense>
+              </div>
+            </div>
+          )}
+
+          {answered && !telling && (
             <div className={solid ? "scan-said solid" : "scan-said"}>
               <div className="scan-panel">
                 <button
@@ -273,16 +299,15 @@ export function Scan({
                   <button type="button" onClick={() => agree(offer)}>
                     Keep it
                   </button>
-                  {import.meta.env.DEV && (
-                    <button
-                      type="button"
-                      onClick={() => void reject(offer)}
-                      disabled={telling}
-                    >
-                      {telling ? "Reporting…" : "Report"}
-                    </button>
-                  )}
                   <span className="quiet">or scan again</span>
+                </p>
+              )}
+              {import.meta.env.DEV && shot && (
+                <p className="scan-count">
+                  <button type="button" onClick={() => setTelling(shot)}>
+                    Report
+                  </button>
+                  <span className="quiet">something is wrong with it</span>
                 </p>
               )}
               {scratch.list.length > 0 && (

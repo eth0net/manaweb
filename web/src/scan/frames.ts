@@ -107,10 +107,28 @@ export type Said = {
   matched: boolean;
 };
 
-// One frame, what the reader made of it, and what it actually was. Sent only
-// when asked for: nothing goes up because a scan happened.
-export async function send(one: Entry, answer: Said | null): Promise<void> {
-  const png = await frame(one.id);
+// What the reader made of a frame. Null where nothing in it looked like a
+// card, which is its own kind of wrong and worth sending.
+export type Read = {
+  at: string;
+  margin: number;
+  detected: boolean;
+  matched: Entry["matched"];
+  said: string;
+};
+
+export type Told = {
+  read: Read | null;
+  answer: Said | null;
+  // The person's own words, landing as `wrong` beside the reader's own
+  // `read.said` — `docs/scanner.md`.
+  wrong: string;
+};
+
+// One frame and everything said about it, keyed by the read rather than by
+// any stack it made — `docs/scanner.md`.
+export async function send(id: string, told: Told): Promise<void> {
+  const png = await frame(id);
   if (!png) throw new Error("That frame is no longer held");
 
   const answered = await fetch(CAPTURE, {
@@ -121,20 +139,26 @@ export async function send(one: Entry, answer: Said | null): Promise<void> {
       note: {
         at: new Date().toISOString(),
         agent: navigator.userAgent,
-        answer,
-        read: {
-          at: one.at,
-          margin: one.margin,
-          detected: one.detected,
-          matched: one.matched,
-          said: one.scryfallId,
-        },
+        wrong: told.wrong,
+        answer: told.answer,
+        read: told.read,
       },
     }),
   });
   if (!answered.ok) {
     throw new Error(`The report was refused: ${answered.status}`);
   }
+}
+
+// What a stack's own read was, for reporting one from the review.
+export function reading(one: Entry): Read {
+  return {
+    at: one.at,
+    margin: one.margin,
+    detected: one.detected,
+    matched: one.matched,
+    said: one.matched[0]?.prints[0] ?? one.scryfallId,
+  };
 }
 
 // Base64, so one request carries the frame and the note together. A reader
