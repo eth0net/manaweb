@@ -157,6 +157,22 @@ So few either way that it is a gap to shoot more at rather than a figure to
 build on — it has already read as nothing over a smaller set of the same
 cards, and a sleeve is on ten shots and cannot be told from it yet.
 
+**A settled artwork is not a settled printing, and one photograph shows the
+whole of why.** A surge foil of `hob` 269, sleeved, under glare: the index
+answered at a distance of 8 with the next artwork 4 further off, clear of
+the floor and so accepted without asking. The artwork it won on carries two
+printings — `hob` 233, made nonfoil and foil, and `hob` 269, made foil only
+— and being one picture, no distance tells them apart. The client showed the
+first of the two and called it certain. It was the other.
+
+Nothing about the reading was wrong. The art match did what it is for and
+narrowed a hundred thousand printings to two; what picks between two is the
+number printed on the card, and nothing reads that yet. So the margin now
+settles a printing only where the artwork it won on carries one, and where
+it carries several they all go in front of whoever is holding the camera.
+That is the handful-way decision above, made by a person until it can be
+made by a reader. A foil prior does not help here: both were made in foil.
+
 **The margin says when to believe it.** Over those 92, every wrong answer
 came back within two bits of its runner-up, and no right one was beaten:
 

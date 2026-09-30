@@ -27,6 +27,7 @@ import {
   plus,
   reported,
   scanned,
+  settled,
   sure,
 } from "./scratch";
 import type { Scratch } from "./store";
@@ -228,6 +229,24 @@ export function Scan({
   // to be put right, so it cannot stand as somebody naming the card — that
   // is the review's job, and a label nobody gave is the one thing a report
   // must never carry.
+  // Picking among the printings one artwork carries, before the stack is
+  // kept. Several of them is why it was not kept in the first place.
+  function pick(print: Print, finishes: string[]) {
+    setAnswer((was) =>
+      was.at === "found" && was.offer
+        ? {
+            ...was,
+            offer: {
+              ...was.offer,
+              scryfallId: print.id,
+              picked: true,
+              finish: settled(finishes),
+            },
+          }
+        : was,
+    );
+  }
+
   function agree(one: Entry) {
     change((list) => [...list, one]);
     setAnswer((was) =>
@@ -310,7 +329,11 @@ export function Scan({
                   <p>Nothing in that frame looked like a card.</p>
                 )}
                 {answer.at === "found" && (
-                  <Answered found={answer.held} stack={stack ?? offer} />
+                  <Answered
+                    found={answer.held}
+                    stack={stack ?? offer}
+                    onPick={offer ? pick : null}
+                  />
                 )}
               </div>
               {offer && (
@@ -412,7 +435,15 @@ function Waiting({ list }: { list: Entry[] }) {
 // What came back, and how much to believe it. The runners-up show only where
 // the margin is too thin to take, which is the whole of what keeping them is
 // for.
-function Answered({ found, stack }: { found: Read; stack: Entry | null }) {
+function Answered({
+  found,
+  stack,
+  onPick,
+}: {
+  found: Read;
+  stack: Entry | null;
+  onPick: ((print: Print, finishes: string[]) => void) | null;
+}) {
   // The matches the list could do nothing with are left out here too, or the
   // panel names one card while the stack below it holds another.
   const [first, ...rest] = found.found.filter((one) => one.prints.length > 0);
@@ -424,10 +455,19 @@ function Answered({ found, stack }: { found: Read; stack: Entry | null }) {
     );
   }
 
+  // The art match narrowed to these. What picks among them is the collector
+  // number on the card, which nothing reads yet — `docs/scanner.md`.
+  const several = first.prints.length > 1;
+  const chosen = stack?.scryfallId;
+
   return (
     <>
       <p className={certain ? "tally" : "warn"}>
-        {certain ? "This is the card." : "Nearest, but not by much."}
+        {certain
+          ? "This is the card."
+          : several
+            ? "This art, on more than one printing."
+            : "Nearest, but not by much."}
         {/* Both can be true at once: the framings guessed at when no outline
             was found still answered, and still answered clear of the floor.
             Said as a caveat rather than as a second verdict. */}
@@ -435,11 +475,22 @@ function Answered({ found, stack }: { found: Read; stack: Entry | null }) {
           " Its outline was not found, so the whole frame was read as the card."}
       </p>
 
-      {first.prints[0] && (
-        <Named card={first.prints[0].card} print={first.prints[0].print} />
+      {first.prints.map(({ card, print }) =>
+        onPick && several ? (
+          <button
+            key={print.id}
+            type="button"
+            className={print.id === chosen ? "scan-pick chosen" : "scan-pick"}
+            onClick={() => onPick(print, print.finishes)}
+          >
+            <Named card={card} print={print} />
+          </button>
+        ) : (
+          <Named key={print.id} card={card} print={print} />
+        ),
       )}
 
-      {!certain &&
+      {!found.sure &&
         rest.map((held) =>
           held.prints[0] ? (
             <Named

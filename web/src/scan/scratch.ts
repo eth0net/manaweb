@@ -36,8 +36,18 @@ export type Finishes = (scryfallId: string) => string[];
 
 const NONFOIL = "nonfoil";
 
+// Whether the reader settled it on its own. Two conditions, because the
+// margin measures the artwork and an artwork is not a printing — a picture
+// reprinted under two collector numbers is the same picture, so no distance
+// separates them. See `docs/scanner.md`.
 export function sure(one: Entry): boolean {
-  return one.margin >= FLOOR;
+  return one.margin >= FLOOR && (one.matched[0]?.prints.length ?? 0) === 1;
+}
+
+// The printings the winning artwork carries. One is an answer; several is a
+// question the bottom line of the card would settle and nothing reads yet.
+export function among(one: Entry): string[] {
+  return one.matched[0]?.prints ?? [];
 }
 
 // One scan, one stack. Null where nothing it matched is a printing the

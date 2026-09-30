@@ -11,6 +11,7 @@ import {
   image,
   type Print,
 } from "../catalog";
+import { FLOOR } from "../catalog/artwork";
 import { parse } from "../catalog/query";
 import type { Holdings, Owned } from "../collection/cards";
 import { IMPORT } from "../import/Import";
@@ -374,8 +375,12 @@ function Stack({
             {one.finish}
             {one.reported && " · reported"}
           </small>
-          {!sure(one) && (
-            <small className="warn">Nearest, but not by much.</small>
+          {!sure(one) && !one.picked && (
+            <small className="warn">
+              {one.margin >= FLOOR
+                ? "This art is on more than one printing."
+                : "Nearest, but not by much."}
+            </small>
           )}
           {!one.detected && (
             <small className="quiet">

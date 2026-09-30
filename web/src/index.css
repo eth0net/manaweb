@@ -342,6 +342,20 @@ nav a.here {
   padding: 0;
 }
 
+/* A printing to press, when the art match narrowed to several. */
+.scan-pick {
+  background: none;
+  border: 1px solid transparent;
+  display: block;
+  padding: 0.125rem 0.25rem;
+  text-align: left;
+  width: 100%;
+}
+
+.scan-pick.chosen {
+  border-color: currentcolor;
+}
+
 .report textarea {
   font: inherit;
   margin: 0.25rem 0 0.5rem;

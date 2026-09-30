@@ -6,6 +6,7 @@ const APART = 65;
 
 import type { Read } from "./read";
 import {
+  among,
   cards,
   choose,
   drop,
@@ -104,8 +105,17 @@ test("a scan matching no printing at all makes no stack", () => {
 });
 
 test("the margin is what says whether to believe it", () => {
-  expect(sure(one({ margin: 4 }))).toBe(true);
-  expect(sure(one({ margin: 2 }))).toBe(false);
+  const alone = { distance: 0, prints: ["p1"] };
+  expect(sure(one({ margin: 4, matched: [alone] }))).toBe(true);
+  expect(sure(one({ margin: 2, matched: [alone] }))).toBe(false);
+});
+
+// The case a real photograph turned up: the artwork was right and the
+// margin wide, and the printing was still a coin flip between two.
+test("an artwork carrying two printings is not a settled printing", () => {
+  const two = { distance: 0, prints: ["p1", "p2"] };
+  expect(sure(one({ margin: 8, matched: [two] }))).toBe(false);
+  expect(among(one({ margin: 8, matched: [two] }))).toEqual(["p1", "p2"]);
 });
 
 test("one finish settles itself and two start nonfoil", () => {
