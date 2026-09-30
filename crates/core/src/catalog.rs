@@ -774,7 +774,7 @@ const KEYWORDS: &str = "SELECT value FROM oracle, json_each(oracle.keywords)
 
 /// A card's faces, from whatever printing carries them, preferring one whose
 /// front names its colors. Art series are left out — see `docs/scryfall.md`.
-const FACES: &str = "SELECT c.oracle_id, c.card_faces
+const FACES: &str = "SELECT c.oracle_id, c.card_faces, o.colors
      FROM cards c JOIN oracle o ON o.id = c.oracle_id
      WHERE c.card_faces IS NOT NULL AND NOT c.digital AND o.paper AND o.kind < 2
      ORDER BY c.oracle_id,
@@ -808,13 +808,18 @@ struct RawFace {
 type Face = (String, Option<String>, Option<String>, u8, Option<String>);
 
 impl RawFace {
-    fn into_face(self) -> Face {
-        // Absent colors means take them from the cost, which is the rule for
-        // any card without a color indicator; a back face carries them.
-        let colors = self.colors.map_or_else(
-            || color_mask(self.mana_cost.as_deref().unwrap_or_default()),
-            |held| color_mask(&held.concat()),
-        );
+    /// `card` is what the whole card is, for a face that is not colored
+    /// separately from it.
+    fn into_face(self, card: u8) -> Face {
+        // Its own colors where the game gives a face any. Otherwise its cost,
+        // which is the rule for a card with no color indicator. A face with
+        // neither falls through to the card, for the reason in
+        // `docs/scryfall.md`.
+        let colors = match (&self.colors, self.mana_cost.as_deref()) {
+            (Some(held), _) => color_mask(&held.concat()),
+            (None, Some(cost)) if !cost.is_empty() => color_mask(cost),
+            (None, _) => card,
+        };
 
         // Power and toughness, loyalty and defense share a column here for the
         // reason they share one on the card.
@@ -843,15 +848,16 @@ fn color_mask(text: &str) -> u8 {
 /// Every card's faces, keyed by oracle id. The first printing met wins, the
 /// query having put the most complete one first.
 async fn faces(pool: &SqlitePool) -> Result<HashMap<String, Vec<Face>>> {
-    let rows: Vec<(String, String)> = sqlx::query_as(FACES).fetch_all(pool).await?;
+    let rows: Vec<(String, String, Option<String>)> = sqlx::query_as(FACES).fetch_all(pool).await?;
 
     let mut held: HashMap<String, Vec<Face>> = HashMap::new();
-    for (card, json) in rows {
+    for (card, json, colors) in rows {
         let Ok(parsed) = serde_json::from_str::<Vec<RawFace>>(&json) else {
             continue;
         };
+        let own = color_mask(colors.as_deref().unwrap_or_default());
         held.entry(card)
-            .or_insert_with(|| parsed.into_iter().map(RawFace::into_face).collect());
+            .or_insert_with(|| parsed.into_iter().map(|face| face.into_face(own)).collect());
     }
 
     Ok(held)
@@ -917,9 +923,15 @@ mod tests {
     use super::{Face, RawFace};
 
     fn face(json: &str) -> Face {
+        faced(json, 0)
+    }
+
+    /// `card` is what the whole card is, which only a face carrying nothing
+    /// of its own falls back to.
+    fn faced(json: &str, card: u8) -> Face {
         serde_json::from_str::<RawFace>(json)
             .expect("a face")
-            .into_face()
+            .into_face(card)
     }
 
     /// A face without its own colors takes them from its cost, which is the
@@ -944,6 +956,23 @@ mod tests {
     fn a_face_that_names_its_colors_is_taken_at_its_word() {
         let (.., colors, _) = face(r#"{"name":"Insectile Aberration","colors":["U"]}"#);
         assert_eq!(colors, 0b00010);
+    }
+
+    /// The flipped half of a flip card has no colors and no cost, and is not
+    /// colorless for it — `docs/scryfall.md`.
+    #[test]
+    fn a_face_with_neither_colors_nor_cost_takes_the_card_s() {
+        let (.., colors, _) = faced(r#"{"name":"Erayo's Essence","mana_cost":""}"#, 0b00010);
+        assert_eq!(colors, 0b00010);
+
+        // A missing cost is the same case as an empty one.
+        let (.., colors, _) = faced(r#"{"name":"Erayo's Essence"}"#, 0b00010);
+        assert_eq!(colors, 0b00010);
+
+        // But a cost of its own still settles it: a split half is not the
+        // card, and neither is an adventure.
+        let (.., colors, _) = faced(r#"{"name":"Fire","mana_cost":"{1}{R}"}"#, 0b01010);
+        assert_eq!(colors, 0b01000);
     }
 
     /// The same column the card's own row spends on whichever of the three it

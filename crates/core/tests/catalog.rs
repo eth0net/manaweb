@@ -439,6 +439,53 @@ async fn a_two_faced_card_carries_a_row_for_each_side() {
     );
 }
 
+/// The flipped half carries no colors and no cost of its own, and must not
+/// come out colorless for it — see `docs/scryfall.md`.
+#[tokio::test]
+async fn a_flipped_face_is_the_color_the_card_is() {
+    let paper = CARDS.lines().next().unwrap();
+    let mut flip: Value = serde_json::from_str(paper).unwrap();
+    flip["id"] = serde_json::json!("00000000-0000-4000-8000-00000000f11b");
+    flip["oracle_id"] = serde_json::json!("00000000-0000-4000-8000-00000000f11c");
+    flip["collector_number"] = serde_json::json!("f1");
+    flip["name"] = serde_json::json!("Erayo, Soratami Ascendant // Erayo's Essence");
+    flip["layout"] = serde_json::json!("flip");
+    flip["mana_cost"] = serde_json::json!("{1}{U}");
+    flip["colors"] = serde_json::json!(["U"]);
+    flip["card_faces"] = serde_json::json!([
+        {
+            "object": "card_face",
+            "name": "Erayo, Soratami Ascendant",
+            "mana_cost": "{1}{U}",
+            "type_line": "Legendary Creature — Moonfolk Monk",
+            "power": "1",
+            "toughness": "1",
+        },
+        // Scryfall writes no `colors` here and an empty cost, because the
+        // game gives this face neither of its own.
+        {
+            "object": "card_face",
+            "name": "Erayo's Essence",
+            "mana_cost": "",
+            "type_line": "Legendary Enchantment",
+        },
+    ]);
+
+    let built = catalog::build(&seeded_with(&format!("{flip}\n")).await, None)
+        .await
+        .unwrap();
+    let file = read(&built.cards.bytes);
+    let cards = rows(&file, "cards");
+
+    let faces = cards[0][13].as_array().expect("the flip card has faces");
+    assert_eq!(faces.len(), 2, "both halves are rows");
+    assert_eq!(
+        faces[0][3], faces[1][3],
+        "a flip card's halves are the same color"
+    );
+    assert_ne!(faces[1][3], serde_json::json!(0), "and it is not colorless");
+}
+
 /// The artwork on the front of each printing in `cards.jsonl`, by printing.
 const ARTWORKS: [(&str, &str); 4] = [
     (
