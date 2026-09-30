@@ -310,8 +310,9 @@ languages before display ever does.
 What it takes, in order:
 
 1. **All Cards** — 392MB compressed, an estimated 590,000 printings from
-   Default Cards' 78MB. Streamed and filtered to `lang <> 'en'`, so
-   nothing English is stored twice.
+   Default Cards' 78MB. Streamed and filtered to what the cache does not
+   already hold, which is not the same as filtering by language — the trap
+   in that is [`scryfall.md`](scryfall.md).
 2. **A translations table, not a second shredding.** Only what varies by
    language: the printing's own id, its oracle id, lang, set, collector number,
    printed name, printed type line, printed text. Rules, colors and mana value
@@ -322,10 +323,20 @@ What it takes, in order:
    brotli, because searching in a language needs every name at once. A specific
    printing's printed name resolves on demand from the API instead, being
    needed only for copies someone owns.
-4. **English stays a fallback.** ManaBox's detail and the right one: search
-   matches both, so choosing French doesn't stop someone typing an English
-   name.
-5. **`lang:` and `in:` then answer**, which is the operator table above.
+4. **Two artifacts at two grains, which is the thing to keep straight.** The
+   translations table is per printing and sizes with how much a language was
+   printed; a `names` part is per card and its ceiling is the 37,836 cards
+   themselves. A pack reaches only as far as its language was printed, so
+   for most languages most of the catalog falls through to the default —
+   the fallback is the common case, not an edge.
+5. **A pack covers what its language has, and the default covers the rest.**
+   A card printed in French reads in French to whoever installed that pack;
+   one never printed in French reads as the cache holds it, which is usually
+   but not always English. The fallback is the default row rather than the
+   English row, there being printings that have no English version at all.
+6. **Both still match.** ManaBox's detail and the right one: choosing French
+   doesn't stop someone typing an English name.
+7. **`lang:` and `in:` then answer**, which is the operator table above.
 
 ### Which language a name is read in
 

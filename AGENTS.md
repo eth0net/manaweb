@@ -93,11 +93,15 @@ backend:
 - Card print cache from Scryfall's **Default Cards** bulk file (~78MB
   compressed, gzipped JSONL — stream it, never parse whole). Refresh weekly,
   per Scryfall's own guidance.
-- Default Cards omits most non-English printings — 652 Japanese, 9 German — so
+- Default Cards is one row per printing, English only where that printing has
+  an English version, so it omits most non-English printings — 2,635 of its
+  paper rows are another language, and no printing appears twice — so
   **a CSV import of a non-English collection can't resolve its print ids** and
-  All Cards (392MB) is a v0 need, not a Phase 3 one. Display can wait on the
-  client resolving a printing from Scryfall's API (CORS is `*`, 48h
-  cache-control) into IndexedDB, which is planned and unbuilt. See
+  All Cards (392MB) is a v0 need — as a build input, filtered to what the
+  cache lacks rather than to non-English, never as the cache itself. Default
+  Cards is what the server holds and what every client gets; the rest is
+  language packs, chosen at onboarding or from settings. A pack covers what
+  its language was printed in, and the default row covers the rest. See
   `docs/search.md`.
 - Don't store images or image URIs — hotlink Scryfall's CDN, deriving URLs from
   the card id. Keep `image_status`.

@@ -12,11 +12,13 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
   `cache-control`, so an exotic card would cost one fetch per device, ever.
   **Not built** — nothing in `web/` calls their API, and everything below
   about non-English printings rests on it.
-- That means **All Cards (~392MB) isn't needed server-side for v0**. Default
-  Cards omits most non-English printings, which was the argument for the big
-  file; on-demand client resolution covers them instead, and the server DB
-  stays small. All Cards may return at Phase 3, when the AppView indexes other
-  people's records and has to resolve arbitrary printings itself.
+- That means **All Cards (~392MB) is a build input rather than the cache**.
+  Default Cards is what the server holds and what every client gets; All
+  Cards is streamed and filtered to what Default Cards does not already
+  carry, to build the translations table and the language packs. The order
+  of it is [`search.md`](search.md). Phase 3 does not bring it back either:
+  Explore resolves a printing nobody here owns over the network, cached
+  lightly, rather than by carrying every printing offline.
 - **Don't push catalog load onto Scryfall wholesale.** Per-keystroke search
   against their API would be externalizing our load onto a free service that
   publishes bulk files specifically so apps don't do that — and it's our API
@@ -418,12 +420,20 @@ cannot read. Per language, opt-in, both of them.
 Either pack has to be built from All Cards, which is unrelated to this
 decision and wanted anyway — see below.
 
-**Settled: names for every language ride in the base, text and scanning do
-not.** A name is 26 bytes and eight languages of them come to 6.3MB, less than
-English text alone, and they are what a scanner has to read on a card printed
-before collector numbers existed. Text and the scan index are packs, one per
-language, chosen at onboarding from the app's own language and added to by
-anyone who wants another.
+**Settled: everything past the default printing is a pack.** Names, text and
+the scan index are one per language, chosen at onboarding or added later
+from settings, because a name is worth 26 bytes a card to somebody who reads
+that language and nothing at all to anybody else. Names ride at roughly
+300KB a language — the base stays the base, and a reader who wants Japanese
+asks for Japanese.
+
+**Default Cards is not the English file**, which is the trap in filtering
+All Cards against it. It carries one row per printing in English *where that
+printing has an English version*, so 2,635 paper rows are not English at
+all — `fbb`, `4bb`, the Japanese-exclusive printings — and no set and
+collector number appears twice under two languages. Filtering All Cards on
+`lang <> 'en'` would therefore import those 2,635 a second time. What the
+filter has to exclude is what the cache already holds, not what is English.
 
 ### Colors are stored as the wrong thing
 

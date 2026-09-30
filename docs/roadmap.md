@@ -88,6 +88,12 @@ valuation exists to make either question worth asking.
   the first thing a local-first client genuinely can't do for itself.
   Subscribe with `wantedCollections` scoped to our own NSIDs, network-wide —
   cheap, since only Manaweb users emit matching events.
+- **A card nobody here owns is fetched, not carried.** Explore shows decks
+  built by people whose printings may be in no language pack anyone
+  installed, and the answer is the network with a light cache rather than a
+  bigger artifact: the base is Default Cards and the packs are opt-in, so
+  broadening either to cover a deck somebody else built would charge every
+  user for it. See [`scryfall.md`](scryfall.md).
 - **The index stops being disposable here.** Activity seen only over the
   firehose can't be re-derived from Scryfall or from anyone's PDS, so it wants
   a SQLite file of its own and a backup story — R2 snapshots, or something
