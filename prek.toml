@@ -18,7 +18,10 @@ hooks = [
   { id = "check-merge-conflict" },
   { id = "check-case-conflict" },
   # Windows is a CI platform, so a path that can't exist there fails there.
-  { id = "check-illegal-windows-names" },
+  # Pinned to pre-commit: with no stages it also runs at commit-msg, where the
+  # only path it is handed is the message, and from a worktree that path
+  # climbs out of the checkout and it refuses its own repository.
+  { id = "check-illegal-windows-names", stages = ["pre-commit"] },
   { id = "check-added-large-files" },
   { id = "check-toml" },
   { id = "check-yaml" },
