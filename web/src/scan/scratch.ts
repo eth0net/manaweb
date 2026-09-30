@@ -23,6 +23,9 @@ export type Entry = {
   // agreeing it is the card in their hand are different claims, and only the
   // second one may be reported as an answer.
   picked?: boolean;
+  // When a frame of this stack was last sent back. Kept on the entry rather
+  // than in a component, so it survives the fold closing and the tab dying.
+  reported?: string;
   finish: string;
   quantity: number;
 };
@@ -101,6 +104,10 @@ export function minus(list: Entry[], id: string): Entry[] {
     if (one.id !== id) return [one];
     return one.quantity > 1 ? [{ ...one, quantity: one.quantity - 1 }] : [];
   });
+}
+
+export function reported(list: Entry[], id: string, at: string): Entry[] {
+  return list.map((one) => (one.id === id ? { ...one, reported: at } : one));
 }
 
 export function drop(list: Entry[], id: string): Entry[] {

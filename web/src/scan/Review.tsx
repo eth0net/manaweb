@@ -34,6 +34,7 @@ import {
   offered,
   plus,
   refinish,
+  reported,
   sure,
 } from "./scratch";
 import type { Scratch } from "./store";
@@ -323,13 +324,14 @@ function Stack({
   const made = finishes(one.scryfallId);
   const others = one.matched.flatMap(({ prints: ids }) => ids);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState("");
+  const [trouble, setTrouble] = useState("");
 
   // Reported before it goes, since the frame goes with the stack.
   async function send(answer: string | null): Promise<void> {
     setSending(true);
-    setSent("");
+    setTrouble("");
     try {
+      const at = new Date().toISOString();
       await told(
         one,
         answer && held
@@ -341,9 +343,10 @@ function Stack({
             }
           : null,
       );
-      setSent("Reported.");
+      change((list) => reported(list, one.id, at));
+      setTrouble("");
     } catch (failed: unknown) {
-      setSent(failed instanceof Error ? failed.message : String(failed));
+      setTrouble(failed instanceof Error ? failed.message : String(failed));
     } finally {
       setSending(false);
     }
@@ -367,7 +370,10 @@ function Stack({
         )}
         <div className="scratch-what">
           <Title held={held} />
-          <small className="quiet">{one.finish}</small>
+          <small className="quiet">
+            {one.finish}
+            {one.reported && " · reported"}
+          </small>
           {!sure(one) && (
             <small className="warn">Nearest, but not by much.</small>
           )}
@@ -463,7 +469,11 @@ function Stack({
               onClick={() => void send(one.picked ? one.scryfallId : null)}
               disabled={frozen || sending}
             >
-              {sending ? "Reporting…" : "Report"}
+              {sending
+                ? "Reporting…"
+                : one.reported
+                  ? "Report again"
+                  : "Report"}
             </button>
           )}
         </p>
@@ -474,7 +484,7 @@ function Stack({
               : "Reports the frame and no answer — name the card first to say what it was."}
           </small>
         )}
-        {sent && <small className="quiet">{sent}</small>}
+        {trouble && <small className="warn">{trouble}</small>}
       </details>
     </li>
   );

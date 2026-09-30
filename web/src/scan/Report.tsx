@@ -23,7 +23,8 @@ export function Report({
   found: Read | null;
   // The stack the read made, where it made one.
   entry: Entry | null;
-  onDone: () => void;
+  // True where a report actually went.
+  onDone: (sent: boolean) => void;
 }) {
   // An entry carries the whole reading; without one the frame was read and
   // named nothing, which the margin still describes.
@@ -62,7 +63,7 @@ export function Report({
           : null,
         wrong: wrong.trim(),
       });
-      onDone();
+      onDone(true);
     } catch (failed: unknown) {
       setProblem(failed instanceof Error ? failed.message : String(failed));
     } finally {
@@ -111,7 +112,7 @@ export function Report({
         <button type="button" onClick={() => void post()} disabled={sending}>
           {sending ? "Sending…" : "Send the report"}
         </button>
-        <button type="button" onClick={onDone} disabled={sending}>
+        <button type="button" onClick={() => onDone(false)} disabled={sending}>
           Cancel
         </button>
       </p>

@@ -20,7 +20,15 @@ import { Link } from "../router";
 import { frame, open } from "./camera";
 import { engine, index } from "./load";
 import { type Read, read } from "./read";
-import { copies, type Entry, minus, plus, scanned, sure } from "./scratch";
+import {
+  copies,
+  type Entry,
+  minus,
+  plus,
+  reported,
+  scanned,
+  sure,
+} from "./scratch";
 import type { Scratch } from "./store";
 
 // Development only. The import sits inside the branch, so the module and
@@ -69,8 +77,10 @@ export function Scan({
   // todo(settings): held for the page rather than the person, there being
   // nowhere yet for a preference to live — `docs/scanner.md`.
   const [solid, setSolid] = useState(false);
-  // Development only: which held frame a report is being written about.
+  // Development only: which held frame a report is being written about, and
+  // what to say once one has gone.
   const [telling, setTelling] = useState<string | null>(null);
+  const [told, setTold] = useState(false);
 
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
@@ -267,7 +277,16 @@ export function Scan({
                     frame={telling}
                     found={answer.at === "found" ? answer.held : null}
                     entry={stack ?? offer}
-                    onDone={() => setTelling(null)}
+                    onDone={(sent) => {
+                      setTelling(null);
+                      setTold(sent);
+                      // The stack keeps it, where the read made one.
+                      if (sent && stack) {
+                        change((list) =>
+                          reported(list, stack.id, new Date().toISOString()),
+                        );
+                      }
+                    }}
                   />
                 </Suspense>
               </div>
@@ -304,10 +323,18 @@ export function Scan({
               )}
               {import.meta.env.DEV && shot && (
                 <p className="scan-count">
-                  <button type="button" onClick={() => setTelling(shot)}>
-                    Report
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTold(false);
+                      setTelling(shot);
+                    }}
+                  >
+                    {told ? "Report again" : "Report"}
                   </button>
-                  <span className="quiet">something is wrong with it</span>
+                  <span className="quiet">
+                    {told ? "sent, thank you" : "something is wrong with it"}
+                  </span>
                 </p>
               )}
               {scratch.list.length > 0 && (

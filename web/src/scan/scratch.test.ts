@@ -16,6 +16,7 @@ import {
   offered,
   plus,
   refinish,
+  reported,
   scanned,
   settled,
   sure,
@@ -123,6 +124,14 @@ test("a minus to zero takes the stack away", () => {
 test("a plus counts up and leaves the rest alone", () => {
   const list = [one({ id: "a" }), one({ id: "b" })];
   expect(plus(list, "b").map((held) => held.quantity)).toEqual([1, 2]);
+});
+
+test("a report is remembered on the stack, not in a view", () => {
+  const list = [one({ id: "a" }), one({ id: "b" })];
+  const [first, second] = reported(list, "a", "2026-09-30T12:00:00.000Z");
+
+  expect(first?.reported).toBe("2026-09-30T12:00:00.000Z");
+  expect(second?.reported).toBeUndefined();
 });
 
 test("drop takes one stack without touching another of the same card", () => {
