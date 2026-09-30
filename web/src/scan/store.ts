@@ -93,6 +93,16 @@ export function useScratch(): Scratch {
   // A read that never answered is one nothing may be written over.
   const sealed = useRef(false);
 
+  // Optimistic: the list is what the page shows, and a store that refused it
+  // is something to say rather than something to undo.
+  const write = useCallback((next: Entry[]) => {
+    if (sealed.current) return;
+    setProblem(null);
+    keep(next).catch((failed: unknown) =>
+      setProblem(failed instanceof Error ? failed.message : String(failed)),
+    );
+  }, []);
+
   useEffect(() => {
     let live = true;
     recall()
@@ -100,8 +110,12 @@ export function useScratch(): Scratch {
         if (!live || !found?.length) return;
         // Behind whatever was scanned while the read was still going: those
         // cards were seen first, and neither list may take the other's place.
-        held.current = [...found, ...held.current];
+        const scanned = held.current;
+        held.current = [...found, ...scanned];
         setList(held.current);
+        // Such a scan has already stored itself over what was saved, so the
+        // join has to go back down before the next reload reads it.
+        if (scanned.length > 0) write(held.current);
       })
       .catch(() => {
         if (!live) return;
@@ -112,18 +126,17 @@ export function useScratch(): Scratch {
     return () => {
       live = false;
     };
-  }, []);
+  }, [write]);
 
-  const change = useCallback((move: (list: Entry[]) => Entry[]) => {
-    const next = move(held.current);
-    held.current = next;
-    setList(next);
-    if (sealed.current) return;
-    setProblem(null);
-    keep(next).catch((failed: unknown) =>
-      setProblem(failed instanceof Error ? failed.message : String(failed)),
-    );
-  }, []);
+  const change = useCallback(
+    (move: (list: Entry[]) => Entry[]) => {
+      const next = move(held.current);
+      held.current = next;
+      setList(next);
+      write(next);
+    },
+    [write],
+  );
 
   const clear = useCallback(async () => {
     held.current = [];
