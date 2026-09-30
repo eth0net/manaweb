@@ -173,6 +173,9 @@ export function Scan({
       // rather than after.
       const agreed = made !== null && sure(made);
       if (agreed) change((list) => [...list, made]);
+      // A new read has had nothing said about it, whatever was said about
+      // the last one.
+      setTold(false);
       setAnswer(
         found
           ? {
@@ -303,11 +306,23 @@ export function Scan({
                     onDone={(sent) => {
                       setTelling(null);
                       setTold(sent);
-                      // The stack keeps it, where the read made one.
-                      if (sent && stack) {
-                        change((list) =>
-                          reported(list, stack.id, new Date().toISOString()),
-                        );
+                      // The stack keeps it, where the read made one. An
+                      // offer keeps it too, so keeping it afterwards does
+                      // not lose that it went.
+                      if (sent) {
+                        const at = new Date().toISOString();
+                        if (stack) {
+                          change((list) => reported(list, stack.id, at));
+                        } else if (offer) {
+                          setAnswer((was) =>
+                            was.at === "found" && was.offer
+                              ? {
+                                  ...was,
+                                  offer: { ...was.offer, reported: at },
+                                }
+                              : was,
+                          );
+                        }
                       }
                     }}
                   />
@@ -466,10 +481,16 @@ function Answered({
   const chosen = stack?.scryfallId;
   const picks = more ? first.prints : first.prints.slice(0, MOST);
   // A thin margin is the whole reason for keeping the runners-up, so they
-  // stand there on their own. Where the margin is wide the question is which
-  // printing, and another artwork is only noise until it is asked for.
-  const others = !found.sure || more ? rest : [];
-  const held = first.prints.length - picks.length;
+  // stand there on their own. Judged by the same reading the verdict is,
+  // not by the read's own margin, which counts artworks this cannot name.
+  const thin = !certain && first.prints.length === 1;
+  const others = thin || more ? rest : [];
+  // What pressing it would still add, so it never offers nothing and never
+  // strands itself open.
+  const hidden =
+    first.prints.length -
+    picks.length +
+    (others.length === 0 ? rest.length : 0);
 
   return (
     <>
@@ -512,22 +533,29 @@ function Answered({
         ) : null,
       )}
 
-      {(held > 0 || (found.sure && rest.length > 0)) && (
+      {(more || hidden > 0) && (
         <button
           type="button"
           className="link"
           onClick={() => setMore(!more)}
           aria-expanded={more}
         >
-          {more
-            ? "Fewer"
-            : held > 0
-              ? `${held} more printing${held === 1 ? "" : "s"}, and what else it could be`
-              : "What else it could be"}
+          {more ? "Fewer" : holding(first.prints.length - picks.length, rest)}
         </button>
       )}
     </>
   );
+}
+
+// What the fold is still holding back, named as what it is: printings of
+// this artwork, other artworks, or both.
+function holding(printings: number, rest: unknown[]): string {
+  const more =
+    printings > 0
+      ? `${printings} more printing${printings === 1 ? "" : "s"}`
+      : "";
+  const other = rest.length > 0 ? "what else it could be" : "";
+  return [more, other].filter(Boolean).join(", and ");
 }
 
 // Enough of a printing to tell whether it is the card in your hand: the art

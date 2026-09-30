@@ -542,10 +542,12 @@ face `colors` only where the game colors that face separately, so the absence
 is a statement rather than a gap: no flip card carries the key on either half,
 because a flip card is printed with one cost and one color for both (CR
 710.1c). Reading the cost alone made all 26 of them colorless on the flipped
-side, which per-face matching then answered `c=c` for. The other layouts whose
-faces carry no colors — `split`, `adventure`, `prepare` — each give their
-halves a cost apiece, so the cost still settles those and only a face with
-nothing of its own falls through to the card.
+side, which per-face matching then answered `c=c` for. `split` and `prepare`
+give every half a cost, so the cost still settles those; `adventure` gives
+one to all but six faces, the Town lands whose adventure half carries the
+cost, and those six sit on colorless cards, so falling through to the card
+is what they want anyway. Only `flip` needs the fallback and only `flip` and
+those six reach it.
 
 **Carrying them is not showing them.** A back face has its own image, under
 `/back/` rather than `/front/` of the same id, and the detail view draws one
