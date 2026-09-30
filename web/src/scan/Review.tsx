@@ -416,6 +416,7 @@ function Stack({
                 onClick={() =>
                   change((list) => refinish(list, one.id, finish, finishes))
                 }
+                disabled={frozen}
               >
                 {finish}
               </button>
