@@ -55,6 +55,9 @@ skip = [
   { crate = "base64@0.22" },
   # ring holds spin 0.9 against crc-fast's 0.10, both under object_store.
   { crate = "spin@0.9" },
+  # image's png reader is a minor behind the deflate crate under
+  # async-compression. Gone when png takes miniz_oxide 0.9.
+  { crate = "miniz_oxide@0.8" },
 ]
 
 [sources]
