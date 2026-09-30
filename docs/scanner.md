@@ -422,13 +422,12 @@ bytes an artwork. Not added speculatively — the margin a photograph scores
 by is the diagnostic, and adding it before that says which artworks are
 being confused would be answering a question nobody has asked.
 
-**Two cheap things are missing that are not techniques at all.** A camera
+**One cheap thing is missing that is not a technique at all.** A camera
 gives thirty frames a second where this thinks in photographs, and taking
 the sharpest by gradient energy, or voting across several, is most of the
 answer to blur and glare — the glare moves between frames and the card does
-not. And nearest-neighbor always returns something, so a wrong printing
-enters a collection silently; a confidence floor read off the margin is what
-lets it say to try again instead.
+not. The other thing that was missing here, a floor read off the margin, is
+built and is what the accept turns on above.
 
 **The engine is reached over a C ABI, not a bindings generator.** Every call
 is pointers and lengths, so the same signatures serve a browser's

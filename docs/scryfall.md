@@ -68,10 +68,9 @@ Scryfall models the printing and stops there. A serialized card carries
 Ring is collector number `0`.
 
 **Neither the print-run size nor the individual number exists anywhere in
-Scryfall.** So "042/500" is data we hold with nothing to validate it against.
-An optional `serial` string on `app.manaweb.card` covers it, with quantity 1
-whenever it's set, since numbered copies aren't interchangeable. Additive, so
-it can wait for an import path that carries one.
+Scryfall.** So "042/500" would be data we hold with nothing to validate it
+against, which is half of why a field for it is not worth having; the CSV
+survey below is the other half.
 
 ## Scryfall id migrations are smaller than they look
 
