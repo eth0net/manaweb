@@ -149,6 +149,18 @@ export function offered(one: Entry, scryfallId: string): boolean {
   return one.matched.some(({ prints }) => prints.includes(scryfallId));
 }
 
+// Every printing the list needs a catalog row for. The matches alone leave
+// out the one case `choose` exists to cover, a card named that nothing
+// matched.
+export function referenced(list: Entry[]): string[] {
+  const all = new Set<string>();
+  for (const one of list) {
+    all.add(one.scryfallId);
+    for (const { prints } of one.matched) for (const id of prints) all.add(id);
+  }
+  return [...all].sort();
+}
+
 // A finish the printing was never made in is refused whatever asked for it.
 export function refinish(
   list: Entry[],

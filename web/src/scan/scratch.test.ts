@@ -16,6 +16,7 @@ import {
   minus,
   offered,
   plus,
+  referenced,
   refinish,
   reported,
   scanned,
@@ -180,6 +181,17 @@ test("a printing the scan never matched can still be named", () => {
   expect(held?.scryfallId).toBe("elsewhere");
   expect(held?.picked).toBe(true);
   expect(offered(held as Entry, "elsewhere")).toBe(false);
+});
+
+// The review resolves these against the catalog, so one left out is a stack
+// that shows no card and a report that carries no answer.
+test("what the list wants looked up includes the printing it was put right to", () => {
+  const made = () => ["nonfoil"];
+  expect(referenced(choose([one()], "a", "elsewhere", made))).toEqual([
+    "elsewhere",
+    "p1",
+    "p2",
+  ]);
 });
 
 test("pressing the printing already chosen leaves its finish alone", () => {

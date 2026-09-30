@@ -34,6 +34,7 @@ import {
   minus,
   offered,
   plus,
+  referenced,
   refinish,
   reported,
   sure,
@@ -75,14 +76,7 @@ export function Review({
 
   // Changes only when a scan or a removal moves them, so a press on a count
   // does not send the catalog looking again.
-  const wanted = useMemo(() => {
-    const all = new Set<string>();
-    for (const one of list) {
-      for (const { prints } of one.matched)
-        for (const id of prints) all.add(id);
-    }
-    return [...all].sort().join(" ");
-  }, [list]);
+  const wanted = useMemo(() => referenced(list).join(" "), [list]);
 
   const prints = useMemo(
     () => catalog.resolve(wanted ? wanted.split(" ") : []),
