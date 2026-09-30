@@ -1,8 +1,6 @@
 // What a dev build keeps back, so a read can be sent up once it is known to
-// have gone wrong rather than before — `docs/scanner.md`.
-//
-// Reached only through a dynamic import inside `import.meta.env.DEV`, which
-// is what keeps it, and the route it posts to, out of anything that deploys.
+// have gone wrong — `docs/scanner.md`. Reached only through a dynamic import
+// inside `import.meta.env.DEV`, which is what keeps it out of a build.
 
 import { CAPTURE } from "./capture";
 import type { Entry } from "./scratch";

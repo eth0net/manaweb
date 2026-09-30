@@ -37,9 +37,7 @@ export type Finishes = (scryfallId: string) => string[];
 const NONFOIL = "nonfoil";
 
 // Whether the reader settled it on its own. Two conditions, because the
-// margin measures the artwork and an artwork is not a printing — a picture
-// reprinted under two collector numbers is the same picture, so no distance
-// separates them. See `docs/scanner.md`.
+// margin measures the artwork and an artwork is not a printing.
 export function sure(one: Entry): boolean {
   return one.margin >= FLOOR && (one.matched[0]?.prints.length ?? 0) === 1;
 }
@@ -80,10 +78,8 @@ export function scanned(found: Read, id: string, at: string): Entry | null {
   };
 }
 
-// How far the next artwork the catalog can name was. Not the read's own
-// margin, which is measured against every artwork including the ones no
-// printing carries: where one of those was nearer, nothing here was measured
-// against anything and the answer is worth asking about.
+// How far the next artwork the catalog can name was, which is not the read's
+// own margin: that one counts artworks no printing carries.
 function gap(found: Read, matched: Matched[]): number {
   const first = matched[0];
   const second = matched[1];

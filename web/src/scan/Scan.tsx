@@ -232,12 +232,8 @@ export function Scan({
   const shot =
     answer.at === "found" || answer.at === "nothing" ? answer.frame : null;
 
-  // Kept, not affirmed. Keeping is also how a wrong read gets into the list
-  // to be put right, so it cannot stand as somebody naming the card — that
-  // is the review's job, and a label nobody gave is the one thing a report
-  // must never carry.
-  // Picking among the printings one artwork carries, before the stack is
-  // kept. Several of them is why it was not kept in the first place.
+  // Picking among the printings one artwork carries, which is why the read
+  // was not kept in the first place.
   function pick(print: Print, finishes: string[]) {
     setAnswer((was) =>
       was.at === "found" && was.offer
@@ -254,6 +250,8 @@ export function Scan({
     );
   }
 
+  // Kept, not affirmed: keeping is also how a wrong read reaches the list to
+  // be put right, so it cannot stand as naming the card.
   function agree(one: Entry) {
     change((list) => [...list, one]);
     setAnswer((was) =>
