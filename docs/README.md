@@ -15,5 +15,9 @@ doesn't re-derive them; none of it is a spec to build against literally.
 | [`configuration.md`](configuration.md) | Every variable the binary and the tools read. |
 | [`ip.md`](ip.md) | The WotC, Scryfall and EDHREC constraints, and the licenses. |
 
+Reasoning that belongs to one tool lives beside it instead:
+[`tools/icons/README.md`](../tools/icons/README.md) is what the icon is drawn
+from and why.
+
 [`AGENTS.md`](../AGENTS.md) at the root is the condensed orientation for
 picking the project back up; these carry the reasoning behind it.
