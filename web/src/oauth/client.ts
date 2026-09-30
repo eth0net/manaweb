@@ -1,8 +1,9 @@
 import { BrowserOAuthClient } from "@atproto/oauth-client-browser";
 import { CLIENT_ID, RESOLVER, SCOPES } from "../config";
 
-// No OAuth server can fetch a metadata document off a laptop, so servers
-// hard-code a client for `http://localhost` and read the rest out of the id.
+// A server can fetch neither a metadata document off a laptop nor one behind
+// a name only this machine knows, so a loopback client is hard-coded for
+// `http://localhost` and the rest of it read out of the id.
 function loopbackId(): string {
   const host =
     location.hostname === "localhost" ? "127.0.0.1" : location.hostname;
@@ -14,11 +15,21 @@ function loopbackId(): string {
   return `http://localhost?${params}`;
 }
 
+// Which client a dev build is, and why it is not always the loopback one,
+// is `docs/configuration.md`.
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+function devId(): string {
+  return LOOPBACK.has(location.hostname)
+    ? loopbackId()
+    : `${location.origin}/oauth/dev-client-metadata.json`;
+}
+
 let loading: Promise<BrowserOAuthClient> | undefined;
 
 export function oauth(): Promise<BrowserOAuthClient> {
   loading ??= BrowserOAuthClient.load({
-    clientId: import.meta.env.DEV ? loopbackId() : CLIENT_ID,
+    clientId: import.meta.env.DEV ? devId() : CLIENT_ID,
     handleResolver: RESOLVER,
   });
   return loading;

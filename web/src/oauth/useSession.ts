@@ -3,7 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 import { oauth, restore } from "./client";
 
 export type State =
+  // Reading the session back on page load, before anything can be shown.
   | { status: "restoring" }
+  // Leaving for the authorization server, which is a different wait: it was
+  // asked for, and whatever asked has to stay up to say so if it fails.
+  | { status: "signing" }
   | { status: "out"; error?: string }
   | { status: "in"; session: OAuthSession };
 
@@ -34,7 +38,7 @@ export function useSession() {
 
   // Resolves only on failure: success navigates to the authorization server.
   const signIn = useCallback(async (handle: string) => {
-    setState({ status: "restoring" });
+    setState({ status: "signing" });
     try {
       const client = await oauth();
       await client.signIn(handle.trim());

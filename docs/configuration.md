@@ -95,6 +95,18 @@ longer than `MANAWEB_` on purpose: that one names the server's variables, the
 bucket's secret is among them, and only what matches the prefix can be read
 here at all.
 
+**Signing in from a phone needs a client the PDS can fetch.** An OAuth
+server cannot read a metadata document off a laptop, so for `localhost` the
+client is the hard-coded loopback one and everything about it is read out of
+the id. That only answers for a loopback address: reached over a tunnel the
+page has a public name, the loopback client is refused, and the dev server
+serves a document of its own at `/oauth/dev-client-metadata.json` naming that
+origin. Its scope is read from the committed document rather than written
+twice, a scope missing there being refused at PAR rather than at sign-in.
+Plain HTTP over the LAN gets neither — the name is not resolvable from
+outside and the id has to be `https` — which is the second reason the tunnel
+is how a phone reaches this.
+
 ## The builder
 
 `manaweb-artwork` builds and measures the scanner index. What it works on is

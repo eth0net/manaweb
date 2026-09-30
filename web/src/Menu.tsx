@@ -47,6 +47,8 @@ export function Menu({
     };
   }, [state]);
 
+  // Only the page-load read takes the menu away. Signing in keeps it, or the
+  // dialog holding the form is torn down with the failure still to report.
   if (state.status === "restoring") return <span className="quiet">…</span>;
   const session = state.status === "in" ? state.session : null;
 
@@ -86,7 +88,11 @@ export function Menu({
           onWorn={() => setWorn((n) => n + 1)}
         />
       ) : (
-        <SignIn signIn={signIn} error={state.error} />
+        <SignIn
+          signIn={signIn}
+          error={state.status === "out" ? state.error : undefined}
+          going={state.status === "signing"}
+        />
       )}
 
       {loaded && <Catalog loaded={loaded} status={status} />}
@@ -206,9 +212,11 @@ function Picture({
 function SignIn({
   signIn,
   error,
+  going,
 }: {
   signIn: (handle: string) => Promise<void>;
   error?: string;
+  going: boolean;
 }) {
   const [handle, setHandle] = useState("");
 
@@ -230,8 +238,8 @@ function SignIn({
           autoComplete="username"
           spellCheck={false}
         />
-        <button type="submit" disabled={handle.trim().length === 0}>
-          Continue
+        <button type="submit" disabled={going || handle.trim().length === 0}>
+          {going ? "Continuing…" : "Continue"}
         </button>
       </form>
       <p className="quiet">

@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { captures } from "./vite/capture.ts";
 import { headers } from "./vite/headers.ts";
+import { client } from "./vite/oauth.ts";
 
 // Only the dev server sends one; the build has no inline script to allow.
 const NONCE = createHash("sha256")
@@ -71,5 +72,5 @@ export default defineConfig(({ command }) => ({
         }
       : {}),
   },
-  plugins: [react(), worker(), headers(NONCE), captures()],
+  plugins: [react(), worker(), headers(NONCE), captures(), client()],
 }));
