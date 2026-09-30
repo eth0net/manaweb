@@ -43,6 +43,10 @@ export const REVIEW = `${SCAN}/review`;
 
 const APP = appLanguage();
 
+// How many of one artwork's printings to put up before asking. The median
+// artwork carries two and the tail reaches fourteen — `docs/scanner.md`.
+const MOST = 4;
+
 type Answer =
   | { at: "none" }
   | { at: "reading" }
@@ -448,6 +452,7 @@ function Answered({
   // panel names one card while the stack below it holds another.
   const [first, ...rest] = found.found.filter((one) => one.prints.length > 0);
   const certain = stack ? sure(stack) : found.sure;
+  const [more, setMore] = useState(false);
 
   if (!first) {
     return (
@@ -459,6 +464,12 @@ function Answered({
   // number on the card, which nothing reads yet — `docs/scanner.md`.
   const several = first.prints.length > 1;
   const chosen = stack?.scryfallId;
+  const picks = more ? first.prints : first.prints.slice(0, MOST);
+  // A thin margin is the whole reason for keeping the runners-up, so they
+  // stand there on their own. Where the margin is wide the question is which
+  // printing, and another artwork is only noise until it is asked for.
+  const others = !found.sure || more ? rest : [];
+  const held = first.prints.length - picks.length;
 
   return (
     <>
@@ -475,7 +486,7 @@ function Answered({
           " Its outline was not found, so the whole frame was read as the card."}
       </p>
 
-      {first.prints.map(({ card, print }) =>
+      {picks.map(({ card, print }) =>
         onPick && several ? (
           <button
             key={print.id}
@@ -490,17 +501,31 @@ function Answered({
         ),
       )}
 
-      {!found.sure &&
-        rest.map((held) =>
-          held.prints[0] ? (
-            <Named
-              key={held.artwork}
-              card={held.prints[0].card}
-              print={held.prints[0].print}
-              quiet
-            />
-          ) : null,
-        )}
+      {others.map((one) =>
+        one.prints[0] ? (
+          <Named
+            key={one.artwork}
+            card={one.prints[0].card}
+            print={one.prints[0].print}
+            quiet
+          />
+        ) : null,
+      )}
+
+      {(held > 0 || (found.sure && rest.length > 0)) && (
+        <button
+          type="button"
+          className="link"
+          onClick={() => setMore(!more)}
+          aria-expanded={more}
+        >
+          {more
+            ? "Fewer"
+            : held > 0
+              ? `${held} more printing${held === 1 ? "" : "s"}, and what else it could be`
+              : "What else it could be"}
+        </button>
+      )}
     </>
   );
 }
