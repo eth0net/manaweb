@@ -135,6 +135,16 @@ ts: deps
 serve bind="127.0.0.1:8080" hashes="scryfall/hashes":
     MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} {{ if hashes == "scryfall/hashes" { if path_exists(hashes) == "true" { "MANAWEB_HASHES=" + quote(hashes) } else { "" } } else { "MANAWEB_HASHES=" + quote(hashes) } }} cargo run -p manaweb-appview
 
+# Restarts the server on a Rust change, which is about three seconds warm.
+# Worth it for routes and for what the server hands back; a change to what
+# the catalog holds wants `build-catalog` and a test, not a restart.
+# `cargo-watch` is in maintenance — swap the command for `watchexec -r -e rs`
+# if its filtering gets in the way.
+[doc('serve, and restart it whenever the Rust changes')]
+[group('dev')]
+watch bind="127.0.0.1:8080" hashes="scryfall/hashes":
+    cargo watch -w crates -s {{ quote("just serve " + quote(bind) + " " + quote(hashes)) }}
+
 # `hosts` names what a tunnel answers on, and what `any` costs, is in
 # `docs/configuration.md`.
 [doc("the client's dev server, fetching the catalog from `just serve`")]
