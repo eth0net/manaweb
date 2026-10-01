@@ -1,0 +1,12 @@
+# One compiler here and in CI, because a lint arrives with a release and the
+# machine that can fix it should be the one that fails. Bumping this is the
+# deliberate act `rustup update` used to be, and a bump brings a round of new
+# lints with it.
+#
+# Two places override it on purpose: the image builds at the floor
+# `rust-version` names, and the MSRV job asks for that floor by name.
+[toolchain]
+channel = "1.99.0"
+components = ["clippy", "rustfmt"]
+# `just engine` and `just scanner` need it, so a fresh checkout has it.
+targets = ["wasm32-unknown-unknown"]

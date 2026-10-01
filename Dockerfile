@@ -7,9 +7,12 @@ COPY . .
 # Cache mounts rather than cargo-chef: BuildKit is already here and this needs
 # no extra tool. The copy is in the same layer, a cache mount being gone by
 # the next one.
+# `rust-toolchain.toml` pins a checkout's compiler; here the base image does,
+# and leaving the file would pull a second toolchain in to build at.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p manaweb-appview \
+    rm rust-toolchain.toml \
+    && cargo build --release --locked -p manaweb-appview \
     && cp target/release/manaweb /manaweb
 
 FROM debian:trixie-slim

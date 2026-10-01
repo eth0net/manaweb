@@ -25,6 +25,11 @@ TypeScript hooks are scoped by path, so touching one side never asks for the
 other's toolchain. CI runs what a checkout cannot: the macOS and Windows
 matrix and the oldest Rust we support.
 
+`rust-toolchain.toml` names the compiler both of them use, so rustup fetches
+it on your first build and a new release lands on whoever bumped the file
+rather than on whoever pushed next. The container and the oldest-Rust job
+each say in place why they ignore it.
+
 One hook is git's own rather than prek's. A tag-only push runs no hooks at
 all, so `reference-transaction` refuses a `v*` tag the manifest disagrees
 with, before the tag exists — `just release` is the way to cut one, and CI
