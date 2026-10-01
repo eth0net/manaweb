@@ -126,7 +126,7 @@ async fn the_manifest_goes_last_and_is_the_only_one_not_immutable() {
             "manifest.json"
         ]
     );
-    assert!(done.held.is_empty());
+    assert!(done.held.is_empty(), "held: {:?}", done.held);
     assert_eq!(done.version, "2026-09-16T21:05:54.709+00:00");
 
     let seen = log.lock().unwrap().clone();

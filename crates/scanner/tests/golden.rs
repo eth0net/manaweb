@@ -58,5 +58,5 @@ fn a_color_reaches_one_level() {
 
     // Alpha is passed over rather than composited.
     assert_eq!(plane(&[9, 9, 9, 0, 40, 40, 40, 255], 4), vec![9, 40]);
-    assert!(plane(&[1, 2], 2).is_empty());
+    assert_eq!(plane(&[1, 2], 2), Vec::new());
 }

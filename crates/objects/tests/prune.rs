@@ -249,7 +249,7 @@ async fn a_prefix_that_holds_nothing_yet_prunes_to_nothing() {
 
     let done = client(address).prune("catalog").await.unwrap();
 
-    assert!(done.removed.is_empty());
-    assert!(done.kept.is_empty());
+    assert!(done.removed.is_empty(), "removed: {:?}", done.removed);
+    assert!(done.kept.is_empty(), "kept: {:?}", done.kept);
     assert!(deleted.lock().unwrap().is_empty(), "nothing to delete");
 }

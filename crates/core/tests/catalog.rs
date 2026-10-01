@@ -745,7 +745,7 @@ async fn a_pair_points_where_the_printings_file_can_follow() {
         let index = built.artwork.as_ref().expect("an index");
         let part = Part::read(&index.bytes);
 
-        assert!(!part.pairs.is_empty());
+        assert!(!part.pairs.is_empty(), "no pairs to follow");
         for (back, front) in &part.pairs {
             assert!(usize::try_from(*front).unwrap() < part.count("fronts"));
             assert!(usize::try_from(*back).unwrap() < index.rows);
