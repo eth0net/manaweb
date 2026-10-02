@@ -190,6 +190,33 @@ async fn export(
     Ok(built.version)
 }
 
+/// Waits for whichever signal says to stop.
+///
+/// Both, because the binary is the image's entrypoint and so PID 1: a
+/// container is stopped with `SIGTERM` and `ctrl_c` alone never hears it,
+/// which leaves the graceful shutdown to the `SIGKILL` that follows.
+#[cfg(unix)]
+async fn shutdown() {
+    use tokio::signal::unix::{SignalKind, signal};
+
+    let mut term = match signal(SignalKind::terminate()) {
+        Ok(held) => held,
+        Err(error) => {
+            tracing::error!("could not listen for shutdown: {error}");
+            return;
+        }
+    };
+    tokio::select! {
+        held = tokio::signal::ctrl_c() => {
+            if let Err(error) = held {
+                tracing::error!("could not listen for shutdown: {error}");
+            }
+        }
+        _ = term.recv() => {}
+    }
+}
+
+#[cfg(not(unix))]
 async fn shutdown() {
     if let Err(error) = tokio::signal::ctrl_c().await {
         tracing::error!("could not listen for shutdown: {error}");
