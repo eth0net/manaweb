@@ -368,6 +368,29 @@ apart would be a second thing to remember at exactly the moment the first was
 forgotten, and being wrong costs one extra download of a file that changes
 weekly anyway.
 
+**A sync refuses on three counts now**, all of them rolled back by the one
+transaction so the published catalog stays where it was. Nothing written at
+all was the first. The second is a file that lost more than a hundredth of
+itself on the way in: one odd record a week is what the skipped count exists
+to survive, but a parser that stopped reading a field Scryfall renamed loses
+most of a file rather than a hundredth of one, and that share is only read
+off files long enough for it to mean something. The third is a catalog that
+came back more than a twentieth shorter than the last — printings do leave,
+142 of them in the week to 2026-09-30, but not in thousands.
+
+**A healthy sync skips nothing at all.** Measured on the server on
+2026-10-02, over a full file into an empty cache: 118,467 printings written
+and 0 skipped. So the hundredth is three orders of magnitude of headroom
+rather than a guess near the line, which is the right side to be wrong on
+for a guard nobody is watching.
+
+**It is still one measurement**, and `bulk_sync` keeps the count written
+rather than the count lost, so there is no history to read a trend off.
+Tightening either bound wants the skipped count stored first; until then
+they sit where a false alarm is implausible, and the cost of being wrong is
+that the refresh retries on its own backoff — four downloads a day, shouting
+in the log, against a catalog nobody looked at.
+
 **Not every printing has one.** Measured over a full sync on 2026-09-22:
 117,860 of 118,609 carry an illustration, across some 52,400 distinct
 artworks — a count that moved by twelve overnight, Scryfall having

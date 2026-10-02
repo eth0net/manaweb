@@ -21,8 +21,7 @@ pub struct SyncReport {
     pub cards: i64,
     /// Records the cache didn't take, either unparsable or refused by the
     /// schema. Skipped rather than fatal, so one odd record doesn't cost a
-    /// week's refresh — but a jump here means Scryfall changed something, and
-    /// it's the caller's job to notice.
+    /// week's refresh; too many of them refuse the whole sync instead.
     pub skipped: i64,
 }
 
@@ -44,6 +43,32 @@ pub async fn last_synced(pool: &SqlitePool, kind: &str) -> Result<Option<String>
     Ok(row.map(|(updated_at,)| updated_at))
 }
 
+/// How many printings the last file for `kind` held.
+///
+/// Any schema version, unlike [`last_synced`]: a migration since says nothing
+/// about how big Scryfall's catalog was.
+async fn synced_count(pool: &SqlitePool, kind: &str) -> Result<Option<i64>> {
+    let row: Option<(i64,)> = sqlx::query_as("SELECT card_count FROM bulk_sync WHERE kind = ?")
+        .bind(kind)
+        .fetch_optional(pool)
+        .await?;
+    Ok(row.map(|(count,)| count))
+}
+
+/// How much of a file may be unreadable before it is not the file it says it
+/// is. A tripwire rather than a calibration: a parser that stopped reading a
+/// field it used to read loses most of a file, not a hundredth of one.
+const ALLOWED_SKIPS: f64 = 0.01;
+
+/// Below this many records that share is noise, so the count stands on its
+/// own instead. A file that short is what [`LEAST_KEPT`] refuses.
+const ENOUGH_READ: i64 = 1_000;
+
+/// How far a catalog may shrink against the last one and still be published.
+/// Printings do leave — 142 of them one week in September 2026 — but not in
+/// thousands, so a drop like that is Scryfall doing something else.
+const LEAST_KEPT: f64 = 0.95;
+
 /// Replaces the entire cache from `cards`, in one transaction.
 ///
 /// Readers stay on the previous catalog until it commits, and a failure part
@@ -51,14 +76,19 @@ pub async fn last_synced(pool: &SqlitePool, kind: &str) -> Result<Option<String>
 ///
 /// # Errors
 ///
-/// Fails on a database error, an unreadable stream, or a stream that yielded no
-/// cards at all — that last one would otherwise empty the cache silently. A
-/// single row the schema refuses is counted, not raised.
+/// Fails on a database error, an unreadable stream, a stream that yielded no
+/// cards at all, one that lost too many of them on the way in, or one holding
+/// far fewer printings than the last. Each of those would otherwise publish a
+/// catalog nobody looked at. A single row the schema refuses is counted, not
+/// raised.
 pub async fn replace(
     pool: &SqlitePool,
     bulk: &BulkData,
     cards: &mut CardStream,
 ) -> Result<SyncReport> {
+    // Before the deletes, which is the last moment the previous catalog's own
+    // size can be read.
+    let before = synced_count(pool, &bulk.kind).await?;
     let mut tx = pool.begin().await?;
     let mut report = SyncReport::default();
     let mut legalities = HashMap::new();
@@ -101,9 +131,33 @@ pub async fn replace(
         }
     }
 
+    // Dropping the transaction rolls back the deletes, so each of these
+    // leaves the catalog that is published where it was.
     if report.written == 0 {
-        // Dropping the transaction rolls back the deletes.
         return Err(Error::EmptySync);
+    }
+    let read = report.written + report.skipped;
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "a file of 2^53 records is not the one being read"
+    )]
+    if read >= ENOUGH_READ && report.skipped as f64 > read as f64 * ALLOWED_SKIPS {
+        return Err(Error::SkippedSync {
+            skipped: report.skipped,
+            read,
+        });
+    }
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "a catalog of 2^53 printings is not this one"
+    )]
+    if let Some(before) = before
+        && (report.written as f64) < before as f64 * LEAST_KEPT
+    {
+        return Err(Error::ShrunkSync {
+            written: report.written,
+            before,
+        });
     }
 
     report.cards = i64::try_from(oracles.len()).unwrap_or(i64::MAX);

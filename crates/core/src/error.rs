@@ -18,6 +18,22 @@ pub enum Error {
     #[error("the card stream yielded no usable cards, so nothing was replaced")]
     EmptySync,
 
+    /// Too much of the file was unreadable to take it for the file it claims
+    /// to be.
+    #[error(
+        "the card stream skipped {skipped} of {read} records, so nothing was replaced: \
+         Scryfall has changed something the cache cannot read"
+    )]
+    SkippedSync { skipped: i64, read: i64 },
+
+    /// A catalog this much smaller than the last is one to look at before
+    /// publishing rather than after.
+    #[error(
+        "the card stream held {written} printings against {before} last time, so nothing \
+         was replaced: sync again once the file is what it should be"
+    )]
+    ShrunkSync { written: i64, before: i64 },
+
     #[error("serializing the catalog failed: {0}")]
     Json(#[from] serde_json::Error),
 

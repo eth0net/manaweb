@@ -404,6 +404,123 @@ async fn a_printing_the_schema_refuses_is_skipped_and_counted() {
     assert_eq!(cards::count(&pool).await.unwrap(), 1);
 }
 
+/// One printing plus `count` copies of it under numbers of their own, which
+/// is a file long enough for a share of it to mean something.
+fn many(count: usize) -> String {
+    let blank: &[(&str, serde_json::Value)] = &[];
+    variants(&vec![blank; count])
+}
+
+/// A share of a short file is noise, so the guard against one stands on the
+/// count below rather than on the proportion.
+#[tokio::test]
+async fn a_file_losing_more_than_a_hundredth_of_itself_is_refused() {
+    let (pool, _) = seeded().await;
+    let bad = "not json\n".repeat(20);
+
+    let error = cards::replace(&pool, &bulk("x"), &mut stream(many(1200) + &bad))
+        .await
+        .expect_err("a file this unreadable should be refused");
+
+    assert!(
+        matches!(
+            error,
+            Error::SkippedSync {
+                skipped: 20,
+                read: 1221
+            }
+        ),
+        "got {error:?}"
+    );
+    assert_eq!(cards::count(&pool).await.unwrap(), 4, "cache was replaced");
+}
+
+/// One odd record a week is the case the count exists to survive.
+#[tokio::test]
+async fn a_file_losing_a_handful_of_records_still_lands() {
+    let pool = open_memory().await.unwrap();
+    let bad = "not json\n".repeat(5);
+
+    let report = cards::replace(&pool, &bulk("x"), &mut stream(many(1200) + &bad))
+        .await
+        .expect("five of 1206 is not a changed file");
+
+    assert_eq!(report.skipped, 5);
+    assert_eq!(report.written, 1201);
+}
+
+/// The whole of a short file being unreadable is what the other guard is
+/// for, so this one leaves it alone.
+#[tokio::test]
+async fn a_short_file_is_not_judged_by_the_share_it_lost() {
+    let pool = open_memory().await.unwrap();
+    let ndjson = format!("{}\nnot json\n", CARDS.lines().next().unwrap());
+
+    let report = cards::replace(&pool, &bulk("x"), &mut stream(ndjson))
+        .await
+        .expect("one of two is a share of nothing");
+
+    assert_eq!(
+        report,
+        SyncReport {
+            written: 1,
+            cards: 1,
+            skipped: 1
+        }
+    );
+}
+
+/// Printings do leave Scryfall's catalog, in ones and tens.
+#[tokio::test]
+async fn a_catalog_that_lost_a_twentieth_of_itself_is_refused() {
+    let pool = seeded_with(many(1200)).await;
+
+    let error = cards::replace(&pool, &bulk("y"), &mut stream(many(1000)))
+        .await
+        .expect_err("a catalog this much smaller should be refused");
+
+    assert!(
+        matches!(
+            error,
+            Error::ShrunkSync {
+                written: 1001,
+                before: 1201
+            }
+        ),
+        "got {error:?}"
+    );
+    assert_eq!(
+        cards::count(&pool).await.unwrap(),
+        1201,
+        "cache was replaced"
+    );
+}
+
+#[tokio::test]
+async fn a_catalog_a_few_printings_shorter_lands() {
+    let pool = seeded_with(many(1200)).await;
+
+    let report = cards::replace(&pool, &bulk("y"), &mut stream(many(1190)))
+        .await
+        .expect("ten printings fewer is an ordinary week");
+
+    assert_eq!(report.written, 1191);
+    assert_eq!(cards::count(&pool).await.unwrap(), 1191);
+}
+
+/// Nothing to compare against is not a shrink: a first sync into an empty
+/// cache has no previous count, and refusing it would mean never starting.
+#[tokio::test]
+async fn a_first_sync_has_nothing_to_have_shrunk_from() {
+    let pool = open_memory().await.unwrap();
+
+    let report = cards::replace(&pool, &bulk("x"), &mut stream(many(1200)))
+        .await
+        .expect("a first sync should land");
+
+    assert_eq!(report.written, 1201);
+}
+
 /// Builds a stream from the fixture's first card plus mutated copies of it, so
 /// ranking and grouping can be exercised without a second fixture.
 fn variants(mutations: &[&[(&str, serde_json::Value)]]) -> String {
