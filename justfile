@@ -89,10 +89,10 @@ engine: engine-build
     cp target/wasm32-unknown-unknown/wasm/manaweb_scanner.wasm web/src/scan/engine.wasm
 
 # Nobody can read the committed engine, so what stands in for reading it is
-# rebuilding it: the same source and the same compiler give the same bytes.
-# A compiler that has moved fails this, which is not a false alarm — the
-# committed bytes are then what an older one produced. `just engine` settles
-# either.
+# rebuilding it: the same source, compiler and crate version give the same
+# bytes. A compiler or a version that has moved fails this, which is not a
+# false alarm — the committed bytes are then what an older one produced.
+# `just engine` settles either, and `just release` runs it for that reason.
 [doc('hold the committed engine to what this source builds (needs the wasm32 target)')]
 [group('checks')]
 engine-check: engine-build
