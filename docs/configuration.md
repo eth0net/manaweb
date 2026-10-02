@@ -33,6 +33,14 @@ everything but the scanner. The catalog passes through the same server
 rather than being fetched from the binary directly, so one tunnel carries
 both.
 
+**A deployment has no scanner until a store is copied to it.** The builder
+runs where the artwork can be pulled, which is a laptop rather than the box,
+and three things turn it on: `manaweb-artwork pull` then `hash` to write a
+store, that file onto the host, and `MANAWEB_HASHES` naming it. Nothing in
+the image does any of it, and a server without one publishes a catalog that
+is correct and has no index, so the only sign is `no artwork index` in the
+log beside `artwork=0` and a tab saying there is nothing to scan against.
+
 A `MANAWEB_HASHES` naming nothing readable stops the process rather than
 publishing a catalog without an index: the scanner would be missing and only a
 log line would say why. It is read at each export, so a newer store left in

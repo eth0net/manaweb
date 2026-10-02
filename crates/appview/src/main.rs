@@ -180,10 +180,15 @@ async fn export(
     tracing::info!(
         cards = built.cards.rows,
         prints = built.prints.rows,
+        artwork = built.artwork.as_ref().map_or(0, |held| held.rows),
         bytes = built.cards.bytes.len() + built.prints.bytes.len(),
         swept = swept.len(),
         "catalog built"
     );
+    // Correct without one, so nothing else here would be alarming.
+    if built.artwork.is_none() {
+        tracing::warn!("no artwork index: MANAWEB_HASHES names no store");
+    }
     for name in &swept {
         tracing::debug!(name, "swept");
     }
