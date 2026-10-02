@@ -107,6 +107,17 @@ export function Review({
     return weigh(plan(owned, owning.stacks, at), owning.stacks);
   }, [container, grade, list, owning.ready, owning.stacks]);
 
+  // Stacks whose printing the collection already holds but which the plan
+  // did not join. A grade apart is the usual reason, and nothing else on this
+  // page would say so.
+  const apart = useMemo(() => {
+    if (!owning.ready || !weight) return 0;
+    const known = list.filter(
+      (one) => owning.owned(one.scryfallId, one.finish) > 0,
+    ).length;
+    return Math.max(0, known - weight.joined);
+  }, [list, owning, weight]);
+
   async function keep() {
     setKeeping(true);
     setProblem("");
@@ -231,6 +242,16 @@ export function Review({
         <p className="quiet">
           {weight.joined.toLocaleString()} of them join a stack you already
           hold.
+        </p>
+      )}
+
+      {apart > 0 && (
+        <p className="quiet">
+          {apart.toLocaleString()}{" "}
+          {apart === 1 ? "is a printing" : "are printings"} you own already but
+          filed otherwise — another grade, or another place — so{" "}
+          {apart === 1 ? "it stays a stack" : "they stay stacks"} of
+          {apart === 1 ? " its" : " their"} own.
         </p>
       )}
 
