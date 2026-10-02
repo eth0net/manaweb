@@ -189,6 +189,14 @@ artbox art="scryfall/art" cards="scryfall/cards":
 photos dir="scryfall/cards" store="scryfall/hashes":
     cargo run --release -p manaweb-artwork -- photos {{ db }} {{ dir }} {{ store }}
 
+# Which check refused each frame, and what another threshold would have made
+# of the same ones. What it answered once is `docs/scanner.md`. No database:
+# it asks the detector about a directory and nothing else.
+[doc('tally what the detector refuses over a directory of frames')]
+[group('dev')]
+refusals dir="photos" step="10":
+    cargo run --release -p manaweb-artwork -- refusals {{ dir }} {{ step }}
+
 # sync the card cache from Scryfall (~78MB), or from a file already on disk
 [group('dev')]
 sync-cards file="":

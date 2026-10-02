@@ -10,10 +10,16 @@
 //! and score against, and `photos` scores a directory of them.
 //!
 //! Each takes the cache and a directory, then `pull`, `measure` and `cards`
-//! take how many to stop at and `hash` takes where the store goes.
+//! take how many to stop at and `hash` takes where the store goes. `refusals`
+//! is the exception, taking a directory and nothing else.
 //!
 //! `MANAWEB_SHOTS` makes `photos` print a row per photograph rather than
 //! only the misses, which is what a confidence floor is read off.
+//!
+//! `refusals` asks nothing of the index at all: only which of the detector's
+//! checks turned down each frame in a directory, and what some other
+//! threshold would have made of the same ones. `MANAWEB_FRAMES` prints a row
+//! per frame, `MANAWEB_MASKS` names a directory to write each flood into.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -21,8 +27,9 @@ use std::process::ExitCode;
 
 use manaweb_artwork::fetch::Fetcher;
 use manaweb_artwork::luma::Plane;
-use manaweb_artwork::{Artwork, Result, artwork, degrade, photo};
+use manaweb_artwork::{Artwork, Error, Result, artwork, degrade, photo};
 use manaweb_scanner::art::Rect;
+use manaweb_scanner::detect::{self, Reading, Refusal};
 use manaweb_scanner::hash::{self, Frame, Hash};
 use manaweb_scanner::query;
 use manaweb_scanner::{HASHES, Store, store};
@@ -48,6 +55,19 @@ async fn main() -> ExitCode {
 async fn run() -> Result<()> {
     let mut args = std::env::args().skip(1);
     let command = args.next().unwrap_or_default();
+
+    // Before the cache is opened, and so without the argument naming one: it
+    // reads frames off a disk and asks the detector, and a checkout with no
+    // database should still be able to run it.
+    if command == "refusals" {
+        let dir = args.next().unwrap_or_else(|| "photos".into());
+        let step = args
+            .next()
+            .and_then(|held| held.parse().ok())
+            .unwrap_or(detect::STEP);
+        return refusals(&dir, step);
+    }
+
     let db = args.next().unwrap_or_else(|| "manaweb.db".into());
     let dir = args.next().unwrap_or_else(|| "scryfall/art".into());
     let rest = args.next();
@@ -81,7 +101,8 @@ async fn run() -> Result<()> {
         }
         other => {
             tracing::error!(
-                "no such command: {other:?} (pull, hash, measure, cards, photos, artbox)"
+                "no such command: {other:?} \
+                 (pull, hash, measure, cards, photos, artbox, refusals)"
             );
             Ok(())
         }
@@ -185,6 +206,225 @@ async fn artbox(pool: &sqlx::SqlitePool, art: &str, cards: &Path) -> Result<()> 
         );
     }
     Ok(())
+}
+
+/// Every refusal the detector makes over a directory of frames, and what
+/// another threshold would have made of the same ones.
+///
+/// The measurements are kept rather than the verdicts, so every value but the
+/// flood's own step is answered off one pass. `MANAWEB_FRAMES` adds a row per
+/// frame, which is what names the one that went wrong.
+fn refusals(dir: &str, step: u8) -> Result<()> {
+    let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(dir)?
+        .filter_map(|held| {
+            let path = held.ok()?.path();
+            let kind = path.extension()?.to_str()?.to_ascii_lowercase();
+            ["jpg", "jpeg", "png"]
+                .contains(&kind.as_str())
+                .then_some(path)
+        })
+        .collect();
+    paths.sort();
+
+    let detail = std::env::var_os("MANAWEB_FRAMES").is_some();
+    let masks = std::env::var_os("MANAWEB_MASKS").map(std::path::PathBuf::from);
+    if let Some(into) = &masks {
+        std::fs::create_dir_all(into)?;
+    }
+    let mut reads: Vec<Reading> = Vec::with_capacity(paths.len());
+    let mut unreadable = 0usize;
+
+    for path in &paths {
+        let Some(image) = photo::read(path) else {
+            unreadable += 1;
+            tracing::warn!(frame = %path.display(), "will not decode");
+            continue;
+        };
+        let plane = Plane::new(&image);
+        let Some(frame) = plane.frame() else {
+            unreadable += 1;
+            continue;
+        };
+
+        let read = detect::reading_at(&frame, step);
+        if let Some(into) = &masks {
+            mask(
+                &frame,
+                step,
+                &into.join(format!("{stem}.png", stem = stem(path))),
+            );
+        }
+        if detail {
+            println!(
+                "frame\t{}\t{}\t{:.3}\t{:.3}\t{:.3}\t{:.3}\t{:.3}",
+                path.file_name().unwrap_or_default().to_string_lossy(),
+                read.refused.map_or("found", Refusal::name),
+                read.table,
+                read.run,
+                read.fill,
+                read.ratio,
+                read.covering,
+            );
+        }
+        reads.push(read);
+    }
+
+    tracing::info!(frames = reads.len(), unreadable, step, "read");
+    if reads.is_empty() {
+        return Ok(());
+    }
+
+    println!();
+    let shipped = Tally::of(&reads, |read| read.refused);
+    shipped.report("shipped", f32::from(step));
+    println!();
+    let mut adrift = Vec::new();
+    for (name, values) in SWEEPS {
+        for &value in values {
+            let held = Tally::of(&reads, |read| under(read, name, value));
+            held.report(name, value);
+            // `under` states the checks and their order a second time, so a
+            // sweep at the shipped value is what says the two still agree.
+            if shipped_value(name) == Some(value) && held != shipped {
+                adrift.push(name);
+            }
+        }
+    }
+    if !adrift.is_empty() {
+        return Err(Error::Adrift(adrift.join(", ")));
+    }
+    Ok(())
+}
+
+/// What a sweep's own threshold is set to in the detector, for the row that
+/// has to come back saying what the shipped one said.
+fn shipped_value(name: &str) -> Option<f32> {
+    match name {
+        "RATIO_SLACK" => Some(detect::RATIO_SLACK),
+        "LEAST_TABLE" => Some(detect::LEAST_TABLE),
+        "LEAST_FILL" => Some(detect::LEAST_FILL),
+        _ => None,
+    }
+}
+
+/// A file's name without its extension, for naming what is written about it.
+fn stem(path: &Path) -> String {
+    path.file_stem()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into()
+}
+
+/// The grid the checks read, written out: black is the table the flood
+/// reached, white whatever it stopped at.
+///
+/// A refusal names a check; only the outline says what the check was
+/// looking at.
+fn mask(frame: &Frame, step: u8, out: &Path) {
+    let Some((flooded, width, height)) = detect::flooded(frame, step) else {
+        return;
+    };
+    let levels: Vec<u8> = flooded
+        .iter()
+        .map(|held| if *held { 0u8 } else { 255u8 })
+        .collect();
+    let (Ok(width), Ok(height)) = (u32::try_from(width), u32::try_from(height)) else {
+        return;
+    };
+    let Some(image) = image::GrayImage::from_raw(width, height, levels) else {
+        return;
+    };
+    if let Err(error) = image.save(out) {
+        tracing::warn!(mask = %out.display(), "{error}");
+    }
+}
+
+/// The threshold values a sweep asks about beside the shipped one.
+const SWEEPS: [(&str, &[f32]); 3] = [
+    ("RATIO_SLACK", &[0.10, 0.20, 0.35, 0.45]),
+    ("LEAST_TABLE", &[0.10, 0.25, 0.35, 0.45]),
+    ("LEAST_FILL", &[0.80, 0.86, 0.92, 0.96]),
+];
+
+/// The first check a reading fails with one threshold moved.
+///
+/// A refusal no threshold reaches stands whatever the sweep says, and so does
+/// a frame whose corners were never measured.
+fn under(read: &Reading, name: &str, value: f32) -> Option<Refusal> {
+    if matches!(
+        read.refused,
+        Some(Refusal::Grid | Refusal::Nothing | Refusal::Corners | Refusal::Flat)
+    ) || read.ratio.is_nan()
+    {
+        return read.refused;
+    }
+
+    let at = |held: &str, shipped: f32| if held == name { value } else { shipped };
+    if read.table < at("LEAST_TABLE", detect::LEAST_TABLE) {
+        Some(Refusal::Table)
+    } else if read.fill < at("LEAST_FILL", detect::LEAST_FILL) {
+        Some(Refusal::Fill)
+    } else if (read.ratio - detect::RATIO).abs() > at("RATIO_SLACK", detect::RATIO_SLACK) {
+        Some(Refusal::Shape)
+    } else if read.covering < at("LEAST_AREA", detect::LEAST_AREA) {
+        Some(Refusal::Area)
+    } else {
+        None
+    }
+}
+
+/// Every refusal counted, in the order the detector makes them.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Tally {
+    found: usize,
+    counts: [usize; REASONS.len()],
+}
+
+const REASONS: [Refusal; 8] = [
+    Refusal::Grid,
+    Refusal::Table,
+    Refusal::Nothing,
+    Refusal::Corners,
+    Refusal::Flat,
+    Refusal::Fill,
+    Refusal::Shape,
+    Refusal::Area,
+];
+
+impl Tally {
+    fn of(reads: &[Reading], why: impl Fn(&Reading) -> Option<Refusal>) -> Self {
+        let mut held = Self::default();
+        for read in reads {
+            match why(read) {
+                None => held.found += 1,
+                Some(refusal) => {
+                    let at = REASONS
+                        .iter()
+                        .position(|held| *held == refusal)
+                        .expect("REASONS holds every refusal");
+                    held.counts[at] += 1;
+                }
+            }
+        }
+        held
+    }
+
+    fn report(&self, name: &str, value: f32) {
+        let whole = self.found + self.counts.iter().sum::<usize>();
+        // Printed beside the counts rather than under a header, so a run over
+        // one corpus reads without the columns being counted out.
+        let named: Vec<String> = REASONS
+            .iter()
+            .zip(&self.counts)
+            .filter(|&(_, &count)| count > 0)
+            .map(|(why, count)| format!("{}={count}", why.name()))
+            .collect();
+        println!(
+            "{name:<12} {value:>5.2} found {:>4}/{whole:<4} {}",
+            self.found,
+            named.join(" ")
+        );
+    }
 }
 
 /// Where the store lands unless told otherwise, beside the images it covers.
