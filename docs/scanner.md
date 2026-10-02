@@ -581,6 +581,18 @@ does. The store is written through a neighboring file and renamed, a store
 half rewritten being one the next export refuses and so no scanner at all,
 and it is left alone entirely where a run added nothing.
 
+**The refresh is the wrong clock, and 600 is a number somebody guessed.** A
+weekly tick paces the steady state fine — a set is a few hundred artworks and
+the cap covers one several times over — but it is the empty store the cap
+exists for, and once a week is the slowest possible way to fill one. What
+that wants is a job pacing itself off how idle the box is: topping up
+between refreshes while nothing else is running, and standing aside for a
+sync or an export. What stops it being obvious is that "idle" has to be
+measured rather than assumed on a host that also answers requests, and that
+Scryfall's own throttle is the floor whatever the box has spare. Until then
+the cap is the one knob, and `MANAWEB_HASHES_CAP` is how a host with room
+says so.
+
 The order, then: a scan landing somewhere it can be reviewed rather than in
 a collection. Color, a second hash, or anything read off the
 card itself, only where a measurement asks for it.
