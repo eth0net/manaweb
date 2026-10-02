@@ -306,6 +306,13 @@ nav a.here {
   min-width: 0;
 }
 
+/* Sits under the finish, not beside a label. */
+.scratch-grade {
+  font-size: 0.8125rem;
+  margin-top: 0.25rem;
+  max-width: 14rem;
+}
+
 .scratch-count {
   align-items: center;
   display: flex;

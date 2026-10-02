@@ -10,10 +10,11 @@ import {
   cardName,
   image,
   type Print,
+  words,
 } from "../catalog";
 import { FLOOR } from "../catalog/artwork";
 import { parse } from "../catalog/query";
-import type { Holdings, Owned } from "../collection/cards";
+import { CONDITIONS, type Holdings, type Owned } from "../collection/cards";
 import { IMPORT } from "../import/Import";
 import { plan, weigh } from "../import/plan";
 import { digest, sha } from "../import/receipt";
@@ -36,6 +37,7 @@ import {
   plus,
   referenced,
   refinish,
+  regraded,
   reported,
   sure,
 } from "./scratch";
@@ -46,6 +48,10 @@ const APP = appLanguage();
 // What the cards were read out of, which is all the receipt records of where
 // an import came from.
 const SOURCE = "Scan";
+
+// What a stack following the list is shown as. Not `""`: that is a grade in
+// its own right, and the two have to be different presses.
+const FOLLOW = "-";
 
 // A receipt is keyed by its digest, and two scans of one card are two real
 // piles rather than the same list twice — so the moment goes in, where a file
@@ -72,7 +78,7 @@ export function Review({
   container: string | null;
   tools: ReactNode;
 }) {
-  const { list, change } = scratch;
+  const { list, change, grade, regrade } = scratch;
 
   // Changes only when a scan or a removal moves them, so a press on a count
   // does not send the catalog looking again.
@@ -96,16 +102,16 @@ export function Review({
   // file is asked for before it lands.
   const weight = useMemo(() => {
     if (!owning.ready || list.length === 0) return null;
-    const owned = cards(list, container);
+    const owned = cards(list, container, grade);
     const at = new Date().toISOString();
     return weigh(plan(owned, owning.stacks, at), owning.stacks);
-  }, [container, list, owning.ready, owning.stacks]);
+  }, [container, grade, list, owning.ready, owning.stacks]);
 
   async function keep() {
     setKeeping(true);
     setProblem("");
     try {
-      const owned = cards(list, container);
+      const owned = cards(list, container, grade);
       const at = new Date().toISOString();
       const weighed = weigh(plan(owned, owning.stacks, at), owning.stacks);
       // The list is the only copy of these cards, so it goes only once the
@@ -147,7 +153,7 @@ export function Review({
   }
 
   const held = copies(list);
-  const joins = joinable(list);
+  const joins = joinable(list, grade);
 
   return (
     <>
@@ -164,7 +170,7 @@ export function Review({
         <p>
           <button
             type="button"
-            onClick={() => change(merged)}
+            onClick={() => change((held) => merged(held, grade))}
             disabled={keeping}
           >
             Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
@@ -173,6 +179,23 @@ export function Review({
       )}
 
       {tools}
+
+      <p className="field">
+        <label htmlFor="scan-grade">Condition</label>
+        <select
+          id="scan-grade"
+          value={grade}
+          onChange={(event) => regrade(event.target.value)}
+          disabled={keeping}
+        >
+          <option value="">Ungraded</option>
+          {CONDITIONS.map((one) => (
+            <option key={one} value={one}>
+              {words(one)}
+            </option>
+          ))}
+        </select>
+      </p>
 
       {session ? (
         // An import in flight owns the same job record, so keeping now would
@@ -223,6 +246,7 @@ export function Review({
             one={one}
             prints={prints}
             finishes={finishes}
+            grade={grade}
             change={change}
             frozen={keeping}
           />
@@ -305,6 +329,7 @@ function Stack({
   one,
   prints,
   finishes,
+  grade,
   change,
   frozen,
 }: {
@@ -312,6 +337,7 @@ function Stack({
   one: Entry;
   prints: Map<string, Found>;
   finishes: Finishes;
+  grade: string;
   change: Change;
   frozen: boolean;
 }) {
@@ -369,6 +395,31 @@ function Stack({
             {one.finish}
             {one.reported && " · reported"}
           </small>
+          <select
+            className="scratch-grade"
+            aria-label="Condition"
+            value={one.condition ?? FOLLOW}
+            onChange={(event) =>
+              change((list) =>
+                regraded(
+                  list,
+                  one.id,
+                  event.target.value === FOLLOW ? null : event.target.value,
+                ),
+              )
+            }
+            disabled={frozen}
+          >
+            <option value={FOLLOW}>
+              {grade ? words(grade) : "Ungraded"} · as set above
+            </option>
+            <option value="">Ungraded</option>
+            {CONDITIONS.map((grade) => (
+              <option key={grade} value={grade}>
+                {words(grade)}
+              </option>
+            ))}
+          </select>
           {!sure(one) && !one.picked && (
             <small className="warn">
               {one.margin >= FLOOR
