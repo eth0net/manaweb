@@ -54,6 +54,33 @@ impl Fetcher {
         self.fetch(&artwork.art_crop(), &path).await
     }
 
+    /// The artwork's image bytes and nothing on disk, which is what a server
+    /// topping up a store wants: it hashes each one and has no use for four
+    /// gigabytes of originals.
+    ///
+    /// # Errors
+    ///
+    /// Fails on a request error or a refusal from Scryfall.
+    pub async fn bytes(&mut self, artwork: &Artwork) -> Result<Vec<u8>> {
+        self.pull(&artwork.art_crop()).await
+    }
+
+    /// One throttled request, which is the only place the delay is kept.
+    async fn pull(&mut self, url: &str) -> Result<Vec<u8>> {
+        sleep_until(self.next).await;
+        self.next = Instant::now() + DELAY;
+
+        Ok(self
+            .http
+            .get(url)
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await?
+            .to_vec())
+    }
+
     /// Any image, at the same throttle, kept at `path`.
     ///
     /// # Errors
@@ -61,17 +88,7 @@ impl Fetcher {
     /// Fails on a request error, a refusal from Scryfall, or a directory it
     /// can't write.
     pub async fn fetch(&mut self, url: &str, path: &Path) -> Result<Vec<u8>> {
-        sleep_until(self.next).await;
-        self.next = Instant::now() + DELAY;
-
-        let bytes = self
-            .http
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?;
+        let bytes = self.pull(url).await?;
 
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent).await?;
@@ -82,7 +99,7 @@ impl Fetcher {
         tokio::fs::write(&partial, &bytes).await?;
         tokio::fs::rename(&partial, path).await?;
 
-        Ok(bytes.to_vec())
+        Ok(bytes)
     }
 
     /// Whether the image is already on disk.

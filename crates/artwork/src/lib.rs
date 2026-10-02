@@ -11,6 +11,7 @@ mod error;
 pub mod fetch;
 pub mod luma;
 pub mod photo;
+pub mod topup;
 
 pub use artwork::Artwork;
 pub use error::Error;
