@@ -16,6 +16,7 @@
 //! | `MANAWEB_BIND` | `127.0.0.1:8080` |
 //! | `MANAWEB_SYNC` | `1` |
 //! | `MANAWEB_HASHES` | unset |
+//! | `MANAWEB_HASHES_CAP` | `600` |
 //!
 //! The bucket it uploads to is configured too, in `manaweb-objects`.
 
@@ -54,6 +55,12 @@ const RETRY_MAX: Duration = Duration::from_hours(6);
 /// its command is `serve`, so a one-off reaches the same binary without the
 /// operator knowing where it lives.
 const USAGE: &str = "usage: manaweb [serve|health|version]";
+
+/// How many artworks one refresh pulls into the store. At the fetcher's own
+/// throttle that is a minute, and a set is a few hundred, so a store seeded
+/// once keeps up and an empty one fills over months rather than in one pull
+/// of four gigabytes.
+const FILL: usize = 600;
 
 /// How long the health check waits. A server that has not answered by then is
 /// unhealthy whatever it is doing.
@@ -275,6 +282,14 @@ async fn refresh(
         );
     }
 
+    // After the sync and before the export, so a set that arrived with this
+    // file is in the index the same refresh publishes.
+    if let Err(error) = settings.top_up(pool).await {
+        // The store on disk is untouched, so the catalog is still publishable
+        // with whatever it already held.
+        tracing::error!("topping up the store failed: {error}");
+    }
+
     // Outside the check above, because what it answers is whether the cache
     // is current and what has to be true is that the bucket is. An upload
     // that failed after its sync committed would otherwise wait for Scryfall
@@ -302,6 +317,8 @@ struct Settings {
     bucket: Option<Bucket>,
     /// The hashes `manaweb-artwork` left behind — `docs/configuration.md`.
     hashes: Option<PathBuf>,
+    /// How many artworks a refresh adds to that store.
+    fill: usize,
 }
 
 impl Settings {
@@ -316,16 +333,13 @@ impl Settings {
             hashes: env::var_os("MANAWEB_HASHES")
                 .filter(|named| !named.is_empty())
                 .map(PathBuf::from),
+            fill: var("MANAWEB_HASHES_CAP", "").parse().unwrap_or(FILL),
         })
     }
 
     /// The hash store, where one is configured.
     ///
     /// Read at each export rather than held once.
-    ///
-    /// todo(scanner): top this up after a sync instead of only reading it,
-    /// so a set released since does not want the builder run by hand — see
-    /// `docs/scanner.md`.
     fn store(&self) -> Result<Option<catalog::Store>, Box<dyn Error>> {
         let Some(at) = &self.hashes else {
             return Ok(None);
@@ -333,6 +347,33 @@ impl Settings {
         let bytes = std::fs::read(at)
             .map_err(|error| format!("MANAWEB_HASHES: {}: {error}", at.display()))?;
         Ok(Some(catalog::Store::read(&bytes)?))
+    }
+
+    /// Fills in what the index is missing, up to the cap — `docs/scanner.md`.
+    async fn top_up(&self, pool: &SqlitePool) -> Result<(), Box<dyn Error>> {
+        let (Some(at), true) = (&self.hashes, self.fill > 0) else {
+            return Ok(());
+        };
+        let Some(mut store) = self.store()? else {
+            return Ok(());
+        };
+
+        let done = manaweb_artwork::topup::fill(pool, &mut store, self.fill).await?;
+        tracing::info!(
+            added = done.added,
+            waiting = done.waiting,
+            failed = done.failed,
+            held = store.len(),
+            "store topped up"
+        );
+        if done.added == 0 {
+            return Ok(());
+        }
+
+        let beside = at.with_extension("part");
+        std::fs::write(&beside, store.write())?;
+        std::fs::rename(&beside, at)?;
+        Ok(())
     }
 
     /// Takes away what the last upload replaced, then sends a written catalog

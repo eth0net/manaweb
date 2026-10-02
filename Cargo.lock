@@ -1210,6 +1210,7 @@ version = "0.11.0"
 dependencies = [
  "axum",
  "manaweb-api",
+ "manaweb-artwork",
  "manaweb-core",
  "manaweb-objects",
  "manaweb-scryfall",

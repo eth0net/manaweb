@@ -17,6 +17,7 @@ directory.
 | `MANAWEB_BIND` | `127.0.0.1:8080` | Address to listen on. `0.0.0.0:8080` to reach it from another device. |
 | `MANAWEB_SYNC` | `1` | `0` or `false` starts without the weekly Scryfall sync. |
 | `MANAWEB_HASHES` | unset | The store `manaweb-artwork` wrote. Unset publishes a catalog with no artwork index, and so no scanner. |
+| `MANAWEB_HASHES_CAP` | `600` | Artworks one refresh adds to that store. `0` leaves it alone. |
 
 The client's dev server takes `MANAWEB_DEV_HOSTS` — a hostname, several
 comma-separated, or `any` — for reaching it through a tunnel, which answers

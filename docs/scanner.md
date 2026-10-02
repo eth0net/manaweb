@@ -545,23 +545,24 @@ and bytes not opening like a PNG are refused.
 `MANAWEB_HASHES` names one, and a catalog published without it has no scanner
 rather than a broken one.
 
-**Nothing on the server keeps the store current**, so the scanner goes stale
-by a set at a time until someone runs the builder again and copies one up.
-The shape it wants is the opposite of the flag: maintain the store always and
-treat a supplied one as a shortcut past the first build. What stops that
-being a one-line change is the empty case — ~55k images and 4GB is hours on
-1 vCPU and the sort of pull that gets API access restricted — so a top-up has
-to be capped per refresh, which converges a seeded store in one and an empty
-one over many. It also turns the store from something mounted into something
-the server writes, which is a volume rather than a file. A store copied up is
-current until the next set, so what this waits on is the first one it misses.
+**The server tops the store up, a capped run per refresh.** The builder is
+still what makes the first one — ~55k images and 4GB is hours on 1 vCPU and
+the sort of pull that gets API access restricted — so a store is seeded by
+hand and maintained from then on. Each refresh asks for the artworks the
+cache names and the store lacks, 600 of them at the fetcher's own throttle,
+which is a minute and covers a week's new set several times over. An empty
+store converges over months rather than in one pull, which is the case the
+cap exists for.
 
-The version of that worth building is a background job rather than a step in
-the refresh: it starts on the first run that finds no store, reconciles what
-one holds against what the cache now names, and takes its cap from how busy
-the box is rather than from a number someone guessed. A setting is what a
-powerful server uses to say "go faster", not what an ordinary one needs to
-touch.
+**The cap counts what was asked for, not what came back.** One artwork in the
+set has no image behind its URL and 404s every week; a cap counting successes
+would let a thousand like it walk the whole backlog on every refresh.
+
+**Nothing is kept on disk but the store.** The images are fetched, hashed and
+dropped, so the server never holds the four gigabytes the builder's cache
+does. The store is written through a neighboring file and renamed, a store
+half rewritten being one the next export refuses and so no scanner at all,
+and it is left alone entirely where a run added nothing.
 
 The order, then: a scan landing somewhere it can be reviewed rather than in
 a collection. Color, a second hash, or anything read off the

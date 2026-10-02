@@ -20,6 +20,7 @@ repository = "https://github.com/eth0net/manaweb"
 # something noticed later. Features are added per crate where they differ.
 [workspace.dependencies]
 manaweb-api = { path = "crates/api" }
+manaweb-artwork = { path = "crates/artwork" }
 manaweb-core = { path = "crates/core" }
 chrono = { version = "0.4.45", default-features = false, features = ["now"] }
 manaweb-objects = { path = "crates/objects" }
