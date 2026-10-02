@@ -62,6 +62,8 @@ pub struct Query {
 /// One photograph as the index is asked for it.
 #[must_use]
 pub fn query(frame: &Frame) -> Query {
+    // todo(scanner): a quad too square to orient is read a quarter turn and
+    // asks for hashes nothing holds — `docs/scanner.md`.
     let found = detect::card(frame);
     let mut hashes = Vec::with_capacity(MOST);
     for quad in found.iter().flat_map(|quad| [*quad, quad.turned()]) {

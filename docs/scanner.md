@@ -358,15 +358,51 @@ twelve score alike and fourteen begins losing cards — rather than a figure
 anything derives. What it still cannot do is a black border on a dark table,
 where there is no step to stop at.
 
-**A card tilted away from the camera is lost**, held in the hand off a phone
-rather than measured over a set: face on at about the distance the
-photographs were taken at it answers, and leaning the top away until the
-outline stops being a rectangle it stops answering. Which stage drops it is
-not known. The ratio filter should not be the one — the slack admits far
-more tilt than that — which leaves the outline itself, the hull test, or the
-corner ordering putting a rectified card on its side. Photographs at known
-angles are what would say, and there are none: every shot in the set is
-face on or turned in the plane of the table.
+**The hull test is what turns a frame down**, measured 2026-09-30 with
+`manaweb-artwork refusals` over three corpora and `--example tilt` for the
+angles nobody photographed. It is the only check that refuses a photograph
+of a card on a table — two of the 92, three of the eleven captures — and the
+only one that fires at every flood step from 4 to 14, the others appearing
+only at the ends of that range. The flood share comes nowhere near its bound
+in either set.
+
+**But a lean is not what it refuses.** Drawn at a known angle with straight
+edges, a card clears every check out to 60 degrees, and bowing it 3mm moves
+fill by 0.02. What the masks show the refused frames having instead is a
+silhouette gone soft — corners cut off, sides stepping outward — which grows
+the hull faster than it grows the four corners fitted inside it. Both
+photographic sets fail in the same place at the same values, so a shot face
+on in poor light reaches it as readily as a tilted one does.
+
+**`LEAST_FILL` has no margin either way.** Over the 92 photographs fill runs
+from 0.909 to 0.990, a band 0.08 wide with the threshold planted in its
+lower tail: 0.86 recovers every frame in both sets and refuses none, 0.96
+loses half of them. What 0.86 would admit is the open question, and it needs
+the pictures holding no card, which are not in the repo. Nothing else is
+implicated, though `RATIO_SLACK` is closer than it looks: the worst shape
+measured sits 0.26 from a card's ratio against 0.35 allowed, so 0.20 would
+refuse it. The flood reached 53% of the tightest frame against a quarter
+asked, so `LEAST_TABLE` refuses nothing up to 0.45.
+
+**Past 44.3 degrees a card is read a quarter turn and nothing says so**,
+measured by `--example tilt` either side of the crossover rather than
+derived: the flat-projection angle where the foreshortened long side equals
+the short one is 44.29, and where the ordering actually flips depends on how
+the 192-sample grid rounds. `turned` is a half turn, so asking the index both
+ways up does not cover a quarter one, and the detection having succeeded is
+what stops the guessed framings being tried — the path that would have
+answered.
+
+What it costs is probably a read rather than a wrong card: the hashes go out
+for an artwork rotated against every one the index holds, so the nearest
+match should be far away and the margin thin. Probably, because nothing has
+measured it — a rotated artwork landing within `FLOOR` of some unrelated
+single-printing artwork would be reported as certain, and the `tilt` frames
+are what would settle it. `todo(scanner)` at `query::query`.
+
+**One of the 92 is already there.** `hob-206__control-foil` comes back found
+at a ratio of 0.975, which is a quad too square to say which way up it is,
+and the tally counts it a success.
 
 **A quarter of the frame has to have been flooded** before what is left
 over can be the card, an ordinary card's art box being a card's own
