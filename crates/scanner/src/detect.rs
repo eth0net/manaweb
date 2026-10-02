@@ -35,18 +35,18 @@ pub const RATIO: f32 = 63.0 / 88.0;
 /// How far from [`RATIO`] a quadrilateral may be and still be taken for a
 /// card. Wide, because perspective foreshortens one axis and this is a
 /// filter against walls and table edges rather than a measurement.
-const RATIO_SLACK: f32 = 0.35;
+pub const RATIO_SLACK: f32 = 0.35;
 
 /// How much of the frame a card has to cover to be the one meant. Below
 /// this it is something in the background rather than what was pointed at.
-const LEAST_AREA: f32 = 0.04;
+pub const LEAST_AREA: f32 = 0.04;
 
 /// How much of an outline's own hull its four corners have to enclose.
 ///
 /// A card's outline is four straight edges, so its hull is a quadrilateral
 /// and this is nearly one. A bright patch of artwork is not, and four
 /// corners fitted inside that leave the rest of it outside.
-const LEAST_FILL: f32 = 0.92;
+pub const LEAST_FILL: f32 = 0.92;
 
 impl Quad {
     /// Corners in the order [`Quad`] states, or `None` for a degenerate one.
@@ -81,20 +81,6 @@ impl Quad {
         let across = f32::midpoint(side(tl, tr), side(bl, br));
         let down = f32::midpoint(side(tl, bl), side(tr, br));
         (across, down)
-    }
-
-    /// Whether this could be a card: shaped like one, and enough of what was
-    /// being pointed at.
-    #[must_use]
-    pub fn card_like(&self, frame: &Frame) -> bool {
-        let (across, down) = self.sides();
-        if across <= 0.0 || down <= 0.0 {
-            return false;
-        }
-        // Either way up, since a card on its side is still a card.
-        let ratio = (across / down).min(down / across);
-        let covering = self.area() / (frame.width() * frame.height()) as f32;
-        (ratio - RATIO).abs() <= RATIO_SLACK && covering >= LEAST_AREA
     }
 }
 
@@ -147,10 +133,10 @@ impl Small {
     }
 
     /// Everything reachable from the frame's own edge without stepping over
-    /// [`STEP`], which is the table the card is lying on.
+    /// `step`, which is the table the card is lying on.
     ///
     /// What this reads that a level could not is `docs/scanner.md`.
-    fn outside(&self) -> Vec<bool> {
+    fn outside(&self, step: u8) -> Vec<bool> {
         let mut seen = vec![false; self.levels.len()];
         let mut stack: Vec<usize> = Vec::new();
         for y in 0..self.height {
@@ -166,24 +152,24 @@ impl Small {
         while let Some(at) = stack.pop() {
             let (x, y) = (at % self.width, at / self.width);
             let level = self.levels[at];
-            let mut step = |nx: usize, ny: usize, stack: &mut Vec<usize>| {
+            let mut reach = |nx: usize, ny: usize, stack: &mut Vec<usize>| {
                 let next = ny * self.width + nx;
-                if !seen[next] && self.levels[next].abs_diff(level) <= STEP {
+                if !seen[next] && self.levels[next].abs_diff(level) <= step {
                     seen[next] = true;
                     stack.push(next);
                 }
             };
             if x > 0 {
-                step(x - 1, y, &mut stack);
+                reach(x - 1, y, &mut stack);
             }
             if x + 1 < self.width {
-                step(x + 1, y, &mut stack);
+                reach(x + 1, y, &mut stack);
             }
             if y > 0 {
-                step(x, y - 1, &mut stack);
+                reach(x, y - 1, &mut stack);
             }
             if y + 1 < self.height {
-                step(x, y + 1, &mut stack);
+                reach(x, y + 1, &mut stack);
             }
         }
         seen
@@ -194,31 +180,144 @@ impl Small {
 ///
 /// What it keeps out, and why raising it costs more than it keeps, is
 /// `docs/scanner.md`.
-const LEAST_TABLE: f32 = 0.25;
+pub const LEAST_TABLE: f32 = 0.25;
 
 /// The level difference between neighbors that stops the flood. Below it is
 /// shading across a surface, above it is one thing ending and another
 /// starting.
-const STEP: u8 = 10;
+pub const STEP: u8 = 10;
 
 /// The card in a frame, or `None` where nothing in it is shaped like one.
 #[must_use]
 pub fn card(frame: &Frame) -> Option<Quad> {
+    reading(frame).quad
+}
+
+/// Which of [`card`]'s checks turned a frame down.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Refusal {
+    /// Under eight samples on a side once the frame was sampled down.
+    Grid,
+    /// Under [`LEAST_TABLE`] of the frame was reached from its own edge.
+    Table,
+    /// The flood reached everything, leaving nothing to be the card.
+    Nothing,
+    /// The largest run's hull holds under four points.
+    Corners,
+    /// Four corners enclosing nothing.
+    Flat,
+    /// The corners hold under [`LEAST_FILL`] of their own hull.
+    Fill,
+    /// Further from [`RATIO`] than [`RATIO_SLACK`] allows, or a side of
+    /// nothing.
+    Shape,
+    /// Under [`LEAST_AREA`] of the frame.
+    Area,
+}
+
+impl Refusal {
+    /// The name a tally prints, matching the variant.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Grid => "grid",
+            Self::Table => "table",
+            Self::Nothing => "nothing",
+            Self::Corners => "corners",
+            Self::Flat => "flat",
+            Self::Fill => "fill",
+            Self::Shape => "shape",
+            Self::Area => "area",
+        }
+    }
+}
+
+/// Every measurement [`card`] weighs, and the first check that refused one.
+///
+/// Carried past that refusal wherever the rest still has something to read,
+/// so one pass answers for thresholds other than the shipped ones. `NaN` for
+/// whatever a run never reached, which is why two of these are not compared:
+/// a refused frame would read as unequal to itself.
+#[derive(Debug, Clone, Copy)]
+pub struct Reading {
+    /// The card, where nothing refused the frame.
+    pub quad: Option<Quad>,
+    pub refused: Option<Refusal>,
+    /// Share of the grid the flood reached.
+    pub table: f32,
+    /// Share of the grid the largest run left over covers.
+    pub run: f32,
+    /// Share of its own hull the four corners enclose.
+    pub fill: f32,
+    /// Shorter mean side over longer, so never above one.
+    pub ratio: f32,
+    /// Share of the frame the four corners cover.
+    pub covering: f32,
+}
+
+/// What [`card`] saw in a frame, whether or not it answered.
+#[must_use]
+pub fn reading(frame: &Frame) -> Reading {
+    reading_at(frame, STEP)
+}
+
+/// The flood's own reach, with the width and height of the grid it covers,
+/// which are the sampled-down frame's rather than the frame's.
+#[must_use]
+pub fn flooded(frame: &Frame, step: u8) -> Option<(Vec<bool>, usize, usize)> {
     let small = Small::of(frame)?;
+    Some((small.outside(step), small.width, small.height))
+}
+
+/// The same as [`reading`], flooding at some other step, which is what says
+/// whether [`STEP`] is the constant a lost frame turns on.
+#[must_use]
+pub fn reading_at(frame: &Frame, step: u8) -> Reading {
+    let mut read = Reading {
+        quad: None,
+        refused: None,
+        table: f32::NAN,
+        run: f32::NAN,
+        fill: f32::NAN,
+        ratio: f32::NAN,
+        covering: f32::NAN,
+    };
+
+    let Some(small) = Small::of(frame) else {
+        read.refused = Some(Refusal::Grid);
+        return read;
+    };
     // Whatever the flood could not reach, which is the card and anything else
     // standing off the surface — no assumption about which is the brighter.
-    let outside = small.outside();
-    let table = outside.iter().filter(|held| **held).count() as f32 / outside.len() as f32;
-    if table < LEAST_TABLE {
-        return None;
+    let outside = small.outside(step);
+    read.table = outside.iter().filter(|held| **held).count() as f32 / outside.len() as f32;
+    if read.table < LEAST_TABLE {
+        read.refused.get_or_insert(Refusal::Table);
     }
 
     let inside: Vec<bool> = outside.iter().map(|held| !held).collect();
-    let run = largest(&inside, small.width, small.height)?;
+    let Some(run) = largest(&inside, small.width, small.height) else {
+        read.refused.get_or_insert(Refusal::Nothing);
+        return read;
+    };
+    read.run = run.len() as f32 / inside.len() as f32;
+
     let hull = hull(&run);
-    let held = Quad::new(upright(clockwise(widest(&hull)?)))?;
-    if held.area() < enclosed(&hull) * LEAST_FILL {
-        return None;
+    let Some(four) = widest(&hull) else {
+        read.refused.get_or_insert(Refusal::Corners);
+        return read;
+    };
+    let Some(held) = Quad::new(upright(clockwise(four))) else {
+        read.refused.get_or_insert(Refusal::Flat);
+        return read;
+    };
+
+    let whole = enclosed(&hull);
+    read.fill = held.area() / whole;
+    // Multiplied rather than compared against the division above: the two
+    // disagree by an ulp at the threshold, and this is the one that ships.
+    if held.area() < whole * LEAST_FILL {
+        read.refused.get_or_insert(Refusal::Fill);
     }
 
     // Back to the frame's own pixels, the grid having been a way of looking
@@ -229,7 +328,25 @@ pub fn card(frame: &Frame) -> Option<Quad> {
             y: at.y * small.scale,
         }),
     };
-    found.card_like(frame).then_some(found)
+    let (across, down) = found.sides();
+    if across <= 0.0 || down <= 0.0 {
+        read.refused.get_or_insert(Refusal::Shape);
+        return read;
+    }
+    // Either way up, since a card on its side is still a card.
+    read.ratio = (across / down).min(down / across);
+    read.covering = found.area() / (frame.width() * frame.height()) as f32;
+    if (read.ratio - RATIO).abs() > RATIO_SLACK {
+        read.refused.get_or_insert(Refusal::Shape);
+    }
+    if read.covering < LEAST_AREA {
+        read.refused.get_or_insert(Refusal::Area);
+    }
+
+    if read.refused.is_none() {
+        read.quad = Some(found);
+    }
+    read
 }
 
 /// The area a closed run of points encloses, by the shoelace formula.
@@ -544,4 +661,54 @@ fn level(frame: &Frame, x: f32, y: f32) -> u8 {
     let across = |y| (at(x1, y) - at(x0, y)).mul_add(fx, at(x0, y));
     let (top, bottom) = (across(y0), across(y1));
     (bottom - top).mul_add(fy, top).round().clamp(0.0, 255.0) as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Point, Quad, clockwise, hull, upright, widest};
+
+    /// Xorshift rather than a dependency, and seeded, so a failure replays.
+    fn next(state: &mut u64) -> u64 {
+        *state ^= *state << 13;
+        *state ^= *state >> 7;
+        *state ^= *state << 17;
+        *state
+    }
+
+    /// A whole coordinate in `0..=span`, which f32 holds exactly.
+    fn coord(state: &mut u64, span: u64) -> f32 {
+        f32::from(u8::try_from(next(state) % (span + 1)).expect("span is one digit"))
+    }
+
+    /// Which is why [`Refusal::Flat`] never answers for a frame: both
+    /// triangles [`widest`] measures are positive and every corner it picks
+    /// is a hull point, so the four enclose what [`Quad::new`] asks for.
+    ///
+    /// Its two guards each suffice, so this fails only when both go — the
+    /// hull's minimum and the area the best four came to.
+    ///
+    /// [`Refusal::Flat`]: super::Refusal::Flat
+    #[test]
+    fn a_quad_from_widest_encloses_something() {
+        let mut state = 0x2545_F491_4F6C_DD1D;
+        for _ in 0..200_000 {
+            // Coordinates this close together are mostly collinear or equal,
+            // which is what a degenerate four would have to come from.
+            let span = 1 + next(&mut state) % 6;
+            let count = 4 + next(&mut state) % 12;
+            let at: Vec<Point> = (0..count)
+                .map(|_| Point {
+                    x: coord(&mut state, span),
+                    y: coord(&mut state, span),
+                })
+                .collect();
+
+            if let Some(four) = widest(&hull(&at)) {
+                assert!(
+                    Quad::new(upright(clockwise(four))).is_some(),
+                    "widest gave a degenerate four from {at:?}"
+                );
+            }
+        }
+    }
 }
