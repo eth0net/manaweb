@@ -13,7 +13,7 @@ deps:
 
 # every check CI runs that can run on one machine
 [group('checks')]
-check: rust deny spell prose lexicons scanner ts
+check: rust deny spell prose lexicons scanner engine-check ts
 
 # the Rust side, needing nothing but a cargo toolchain
 [group('checks')]
