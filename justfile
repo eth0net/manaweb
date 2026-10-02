@@ -235,8 +235,11 @@ release version title body="":
     awk '!done && /^version = / { sub(/=.*/, "= \"{{ version }}\""); done = 1 } 1' \
         Cargo.toml > Cargo.toml.next && mv Cargo.toml.next Cargo.toml
     cargo check --quiet --all-targets
+    # The crate version reaches the wasm, so the bump moves the committed
+    # engine and `just check` would otherwise refuse the release it is for.
+    just engine
     just check
-    git add Cargo.toml Cargo.lock
+    git add Cargo.toml Cargo.lock web/src/scan/engine.wasm
     # Nothing to commit where the manifest already reads this, which is the
     # normal shape when the bump landed with the work.
     @git diff --cached --quiet || git commit -s -m "chore: {{ version }}"
