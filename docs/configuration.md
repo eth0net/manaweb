@@ -46,6 +46,23 @@ artwork the builder pulls rather than anything a deployment holds. The image
 leaves `MANAWEB_HASHES` unset for that reason — a default pointing into the
 volume would stop every container that has no store yet.
 
+**A container that will not start may be holding a stranded cache.** sqlx
+checksums every migration it applies and refuses a database whose record
+disagrees, so a migration edited after it shipped — `0003` was, in a commit
+that only retargeted a comment — stops the process before it binds, with
+`applying migrations failed: migration 3 was previously applied but has been
+modified` and nothing else. A test holds the four checksums now, so it cannot
+happen again; a volume it already happened to is unstuck either by deleting
+the database, the cache being derived from Scryfall and disposable, or by
+writing the file's own sha384 over the recorded one:
+
+```sql
+UPDATE _sqlx_migrations SET checksum = x'<sha384 of the file>' WHERE version = <n>;
+```
+
+Deleting it is the one to reach for. It costs a download that happens weekly
+anyway, and it leaves a cache nobody has edited by hand.
+
 The catalog directory does not hold every export ever made. Each one keeps
 what the manifest before it named, and keeps anything written in the last six
 hours whatever the manifests say, so nothing is taken from a client part way
