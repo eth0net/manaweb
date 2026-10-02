@@ -299,6 +299,23 @@ prior held for a session, and a switch for showing the numbers, are the same
 one store in the browser and none of it is worth a record. The cards have
 their own already, being cards rather than a preference.
 
+**A list starts near mint**, that being what most of a collection is, and
+the picker sits over the review where it is read before anything is kept
+rather than under a setting nobody opens. Nothing reads a grade off the
+photograph, so the number is an assumption either way; one that is usually
+right and visibly changed beats a collection carrying no grades at all.
+
+**A stack may say its own**, including ungraded, which is why following the
+list and grading nothing are two presses rather than one: a box of played
+cards is one answer and the mint one in it is a second, and neither should
+cost the other. A join across the two pins what they agreed on, there being
+nothing left for the joined stack to follow.
+
+**The answer belongs to the list rather than to the person**, so it is
+stored beside it and goes when the cards do. A grade that outlived the pile
+it was set over would reach the next box unannounced, and a grade the list
+outlived would write a scan somebody had already graded as something else.
+
 **A prior never overrides what was read.** A finish the catalog rules out is
 not offered whatever the session says; a card found to be from another set
 is taken at its word and marked, because scanning the wrong pile is a thing

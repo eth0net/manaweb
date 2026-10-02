@@ -11,6 +11,7 @@ import {
   choose,
   drop,
   type Entry,
+  graded,
   joinable,
   merged,
   minus,
@@ -18,6 +19,7 @@ import {
   plus,
   referenced,
   refinish,
+  regraded,
   reported,
   scanned,
   settled,
@@ -213,8 +215,8 @@ test("scanning the same card twice makes two stacks until a merge", () => {
     one({ id: "c", quantity: 3 }),
   ];
 
-  expect(joinable(list)).toBe(1);
-  expect(merged(list).map((held) => [held.id, held.quantity])).toEqual([
+  expect(joinable(list, "")).toBe(1);
+  expect(merged(list, "").map((held) => [held.id, held.quantity])).toEqual([
     ["a", 4],
     ["b", 1],
   ]);
@@ -223,7 +225,7 @@ test("scanning the same card twice makes two stacks until a merge", () => {
 
 test("a merge joins one finish and leaves the other", () => {
   const list = [one({ id: "a" }), one({ id: "b", finish: "foil" })];
-  expect(joinable(list)).toBe(0);
+  expect(joinable(list, "")).toBe(0);
 });
 
 test("a stack the ceiling closed does not stop the next one joining", () => {
@@ -233,8 +235,8 @@ test("a stack the ceiling closed does not stop the next one joining", () => {
     one({ id: "c", quantity: 5000 }),
   ];
 
-  expect(joinable(list)).toBe(1);
-  expect(merged(list).map((held) => held.quantity)).toEqual([10000, 6000]);
+  expect(joinable(list, "")).toBe(1);
+  expect(merged(list, "").map((held) => held.quantity)).toEqual([10000, 6000]);
 });
 
 test("a plus stops at the ceiling", () => {
@@ -247,7 +249,7 @@ test("a merge keeps what the first of them was read as", () => {
     one({ id: "a", at: "first", detected: false, quantity: 1 }),
     one({ id: "b", at: "second", detected: true, quantity: 1 }),
   ];
-  const [joined] = merged(list);
+  const [joined] = merged(list, "");
 
   expect(joined?.at).toBe("first");
   expect(joined?.detected).toBe(false);
@@ -257,7 +259,7 @@ test("a merge keeps what the first of them was read as", () => {
 test("the list comes to cards a file would have named", () => {
   const list = [one({ id: "a", quantity: 2 })];
 
-  expect(cards(list, null)).toEqual([
+  expect(cards(list, null, "")).toEqual([
     {
       scryfallId: "p1",
       finish: "nonfoil",
@@ -265,5 +267,88 @@ test("the list comes to cards a file would have named", () => {
       createdAt: "2026-09-29T00:00:00.000Z",
     },
   ]);
-  expect(cards(list, "binder")[0]?.container).toBe("binder");
+  expect(cards(list, "binder", "")[0]?.container).toBe("binder");
+});
+
+test("a stack saying nothing of its own is kept at what the list says", () => {
+  expect(graded(one(), "played")).toBe("played");
+  expect(graded(one({ condition: "mint" }), "played")).toBe("mint");
+});
+
+test("ungraded is a grade a stack can be put to, not the absence of one", () => {
+  const list = regraded([one()], "a", "");
+
+  expect(list[0]?.condition).toBe("");
+  expect(graded(list[0] as Entry, "played")).toBe("");
+});
+
+test("a stack is put back to following the list, which is not ungraded", () => {
+  const list = regraded(regraded([one()], "a", "mint"), "a", null);
+
+  expect("condition" in (list[0] as Entry)).toBe(false);
+  expect(graded(list[0] as Entry, "played")).toBe("played");
+});
+
+// The pair that `??` cannot tell apart, and the one that writes a wrong grade.
+test("a stack put to ungraded does not join one following a graded list", () => {
+  const list = [one({ id: "a" }), one({ id: "b", condition: "" })];
+
+  expect(joinable(list, "mint")).toBe(0);
+  expect(cards(list, null, "mint").map((held) => held.condition)).toEqual([
+    "mint",
+    undefined,
+  ]);
+});
+
+test("a stack is not joined to one the list grades otherwise", () => {
+  const list = [one({ id: "a" }), one({ id: "b", condition: "played" })];
+  expect(joinable(list, "mint")).toBe(0);
+});
+
+test("saying the grade the list says is the same card to write", () => {
+  const list = [one({ id: "a" }), one({ id: "b", condition: "mint" })];
+  const [joined] = merged(list, "mint");
+
+  expect(joinable(list, "mint")).toBe(1);
+  expect(joined?.quantity).toBe(2);
+  // Pinned by the join: following the list afterwards would move copies the
+  // person had said were mint.
+  expect(joined?.condition).toBe("mint");
+});
+
+// Either way round: the stack that said it can arrive first, and the pin has
+// to hold what it said rather than what the other one did not say.
+test("the grade is pinned whichever of them said it", () => {
+  const said = merged(
+    [one({ id: "a", condition: "mint" }), one({ id: "b" })],
+    "mint",
+  );
+  const followed = merged(
+    [one({ id: "a" }), one({ id: "b", condition: "mint" })],
+    "mint",
+  );
+
+  expect(said[0]?.condition).toBe("mint");
+  expect(followed[0]?.condition).toBe("mint");
+});
+
+test("two stacks following the list are joined still following it", () => {
+  const [joined] = merged([one({ id: "a" }), one({ id: "b" })], "mint");
+
+  expect(joined?.quantity).toBe(2);
+  expect("condition" in (joined as Entry)).toBe(false);
+});
+
+test("the grade reaches the cards, and a stack's own beats the list's", () => {
+  const list = [one({ id: "a" }), one({ id: "b", condition: "mint" })];
+  const owned = cards(list, null, "played");
+
+  expect(owned.map((held) => held.condition)).toEqual(["played", "mint"]);
+  expect(cards(list, null, "")[0]?.condition).toBeUndefined();
+});
+
+test("ungraded is written as no field at all, whatever asked for it", () => {
+  expect(cards([one({ condition: "" })], null, "mint")[0]).not.toHaveProperty(
+    "condition",
+  );
 });
