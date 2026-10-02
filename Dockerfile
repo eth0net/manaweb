@@ -33,6 +33,7 @@ USER manaweb
 # Loopback is the right default for a checkout and useless in a container.
 ENV MANAWEB_DATABASE=/data/manaweb.db \
     MANAWEB_CATALOG=/data/catalog \
+    MANAWEB_HASHES=/data/hashes \
     MANAWEB_BIND=0.0.0.0:8080
 EXPOSE 8080
 

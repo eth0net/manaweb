@@ -16,7 +16,7 @@ directory.
 | `MANAWEB_CATALOG` | `catalog` | Where the exported catalog is written, and what is served for local development. |
 | `MANAWEB_BIND` | `127.0.0.1:8080` | Address to listen on. `0.0.0.0:8080` to reach it from another device. |
 | `MANAWEB_SYNC` | `1` | `0` or `false` starts without the weekly Scryfall sync. |
-| `MANAWEB_HASHES` | unset | The store `manaweb-artwork` wrote. Unset publishes a catalog with no artwork index, and so no scanner. |
+| `MANAWEB_HASHES` | `scryfall/hashes` | Where the artwork hashes are kept. No file yet is a store to start filling. |
 | `MANAWEB_HASHES_CAP` | `600` | Artworks one refresh adds to that store. `0` leaves it alone. |
 
 The client's dev server takes `MANAWEB_DEV_HOSTS` — a hostname, several
@@ -34,26 +34,26 @@ everything but the scanner. The catalog passes through the same server
 rather than being fetched from the binary directly, so one tunnel carries
 both.
 
-**A deployment has no scanner until a store is copied to it.** The builder
-runs where the artwork can be pulled, which is a laptop rather than the box,
-and three things turn it on: `manaweb-artwork pull` then `hash` to write a
-store, that file onto the host, and `MANAWEB_HASHES` naming it. Nothing in
-the image does any of it, and a server without one publishes a catalog that
-is correct and has no index, so the only sign is `no artwork index` in the
-log beside `artwork=0` and a tab saying there is nothing to scan against.
+**The store fills itself, and seeding it is what makes that quick.** A server
+given nothing starts with an empty one and adds a capped run per refresh,
+which reaches a full index in months rather than days. Copying a built store
+in — `manaweb-artwork pull` then `hash`, on a machine that can spend four
+gigabytes and some hours — skips the wait, and the top-up keeps it current
+from then on. Both arrive at the same file, so seeding is a shortcut rather
+than a step, and a server nobody seeds still ends up with a scanner.
 
-A `MANAWEB_HASHES` naming nothing readable stops the process rather than
-publishing a catalog without an index: the scanner would be missing and only a
-log line would say why. It is read at each export, so a newer store left in
-place is picked up by the weekly sync.
+**Absent and unreadable are different answers.** No file is a store waiting
+to be filled. One that will not parse stops the process, because the index is
+what a scan retrieves against and a damaged store published as a good one
+answers wrongly rather than not at all. Until there is one, the catalog is
+published without an index and the log says `artwork=0` beside a warning.
 
-Both paths want a volume of their own in a container: the cache is 96MB and
-several minutes of Scryfall's bandwidth to rebuild, and the catalog is what
-the upload reads back to decide what has moved. The store is a third, and
-read-only: nothing on the server writes it, and building one wants the
-artwork the builder pulls rather than anything a deployment holds. The image
-leaves `MANAWEB_HASHES` unset for that reason — a default pointing into the
-volume would stop every container that has no store yet.
+All three paths want a volume of their own in a container, and the image
+names one for each: the cache is 96MB and several minutes of Scryfall's
+bandwidth to rebuild, the catalog is what the upload reads back to decide
+what has moved, and the store is written by the server as it fills in. A
+store bind-mounted read-only is the shape to avoid, being the one the
+top-up cannot write.
 
 **A container that will not start may be holding a stranded cache.** sqlx
 checksums every migration it applies and refuses a database whose record

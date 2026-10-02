@@ -126,14 +126,10 @@ ts: deps
     bun run check
 
 # Both default to loopback; pass 0.0.0.0 to either to reach it from a phone.
-# Only the default is dropped when it is not there, a checkout that has not
-# run `hash-art` having no store. A path someone typed is passed whether it
-# exists or not, so that a typo stops the server rather than quietly serving
-# a catalog with no scanner in it.
 [doc('export the catalog and serve it for local development')]
 [group('dev')]
 serve bind="127.0.0.1:8080" hashes="scryfall/hashes":
-    MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} {{ if hashes == "scryfall/hashes" { if path_exists(hashes) == "true" { "MANAWEB_HASHES=" + quote(hashes) } else { "" } } else { "MANAWEB_HASHES=" + quote(hashes) } }} cargo run -p manaweb-appview
+    MANAWEB_DATABASE={{ db }} MANAWEB_BIND={{ bind }} MANAWEB_HASHES={{ quote(hashes) }} cargo run -p manaweb-appview
 
 # Restarts the server on a Rust change, which is about three seconds warm.
 # Worth it for routes and for what the server hands back; a change to what

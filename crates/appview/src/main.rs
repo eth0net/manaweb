@@ -15,7 +15,7 @@
 //! | `MANAWEB_CATALOG` | `catalog` |
 //! | `MANAWEB_BIND` | `127.0.0.1:8080` |
 //! | `MANAWEB_SYNC` | `1` |
-//! | `MANAWEB_HASHES` | unset |
+//! | `MANAWEB_HASHES` | `scryfall/hashes` |
 //! | `MANAWEB_HASHES_CAP` | `600` |
 //!
 //! The bucket it uploads to is configured too, in `manaweb-objects`.
@@ -194,7 +194,7 @@ async fn export(
     );
     // Correct without one, so nothing else here would be alarming.
     if built.artwork.is_none() {
-        tracing::warn!("no artwork index: MANAWEB_HASHES names no store");
+        tracing::warn!("no artwork index yet: nothing has been hashed into the store");
     }
     for name in &swept {
         tracing::debug!(name, "swept");
@@ -315,8 +315,8 @@ struct Settings {
     /// Where a written catalog goes. Unconfigured leaves it on disk, which
     /// is what local development wants.
     bucket: Option<Bucket>,
-    /// The hashes `manaweb-artwork` left behind — `docs/configuration.md`.
-    hashes: Option<PathBuf>,
+    /// Where the artwork hashes are kept — `docs/configuration.md`.
+    hashes: PathBuf,
     /// How many artworks a refresh adds to that store.
     fill: usize,
 }
@@ -330,33 +330,33 @@ impl Settings {
             bind: bind.parse().map_err(|_| format!("MANAWEB_BIND: {bind}"))?,
             sync: !matches!(var("MANAWEB_SYNC", "1").as_str(), "0" | "false"),
             bucket: Bucket::from_env()?,
-            hashes: env::var_os("MANAWEB_HASHES")
-                .filter(|named| !named.is_empty())
-                .map(PathBuf::from),
+            hashes: PathBuf::from(var("MANAWEB_HASHES", "scryfall/hashes")),
             fill: var("MANAWEB_HASHES_CAP", "").parse().unwrap_or(FILL),
         })
     }
 
-    /// The hash store, where one is configured.
+    /// The hash store, read at each export rather than held once.
     ///
-    /// Read at each export rather than held once.
+    /// `None` only where the file is not there — `docs/configuration.md`.
     fn store(&self) -> Result<Option<catalog::Store>, Box<dyn Error>> {
-        let Some(at) = &self.hashes else {
-            return Ok(None);
+        let bytes = match std::fs::read(&self.hashes) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => {
+                return Err(format!("MANAWEB_HASHES: {}: {error}", self.hashes.display()).into());
+            }
         };
-        let bytes = std::fs::read(at)
-            .map_err(|error| format!("MANAWEB_HASHES: {}: {error}", at.display()))?;
         Ok(Some(catalog::Store::read(&bytes)?))
     }
 
     /// Fills in what the index is missing, up to the cap — `docs/scanner.md`.
     async fn top_up(&self, pool: &SqlitePool) -> Result<(), Box<dyn Error>> {
-        let (Some(at), true) = (&self.hashes, self.fill > 0) else {
+        if self.fill == 0 {
             return Ok(());
-        };
-        let Some(mut store) = self.store()? else {
-            return Ok(());
-        };
+        }
+        // Nothing there yet is an empty store to start filling, which is what
+        // makes a server with no store converge rather than stay without one.
+        let mut store = self.store()?.unwrap_or_default();
 
         let done = manaweb_artwork::topup::fill(pool, &mut store, self.fill).await?;
         tracing::info!(
@@ -370,9 +370,16 @@ impl Settings {
             return Ok(());
         }
 
-        let beside = at.with_extension("part");
+        let beside = self.hashes.with_extension("part");
+        if let Some(parent) = self
+            .hashes
+            .parent()
+            .filter(|held| !held.as_os_str().is_empty())
+        {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(&beside, store.write())?;
-        std::fs::rename(&beside, at)?;
+        std::fs::rename(&beside, &self.hashes)?;
         Ok(())
     }
 
