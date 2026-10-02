@@ -371,7 +371,14 @@ const FIXTURES = join(dirname(dirname(import.meta.dir)), "fixtures/records");
 const TID = /^[234567abcdefghij][234567abcdefghijklmnopqrstuvwxyz]{12}$/;
 
 console.log("\nfixture records:");
-for (const collection of readdirSync(FIXTURES).sort()) {
+// A collection is a directory named for its NSID, so anything else here is
+// something the filesystem left rather than a record to check.
+const collections = readdirSync(FIXTURES, { withFileTypes: true })
+  .filter((held) => held.isDirectory())
+  .map((held) => held.name)
+  .sort();
+
+for (const collection of collections) {
   for (const file of readdirSync(join(FIXTURES, collection)).sort()) {
     const at = `${collection}/${file}`;
     const record = JSON.parse(
