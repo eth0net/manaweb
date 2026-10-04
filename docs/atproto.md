@@ -440,6 +440,14 @@ records being publicly readable.
 
 ## Open questions
 
+**A drain batch is briefly in neither place.** The part leaves the waiting
+list before the records it became are handed to the collection, and an
+IndexedDB write sits between the two, so a render in that gap is short by up
+to 199 cards. Harmless while it only moved a total on screen; a file written
+in that gap is wrong and says nothing. Putting the two together closes it, at
+the cost of counting a batch twice if the write that separates them fails —
+which is the choice to make, not an oversight to correct blind.
+
 **Backfill has an upstream answer.** Handled for a user's own data by reading
 their own PDS, and a real problem only at Phase 3, where the index needs
 records predating our subscription. Tangled's Bobbin doesn't build it: Hydrant

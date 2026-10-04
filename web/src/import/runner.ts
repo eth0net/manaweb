@@ -355,6 +355,8 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
   }
 
   const wrote = landed(writes, applied.results);
+  // todo: a render between this and `report` sees neither the part nor the
+  // records it became — `docs/atproto.md`.
   holding(pending.slice(1));
   for (const made of wrote) recent.set(made.uri, made);
   job.misses = 0;
