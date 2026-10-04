@@ -6,6 +6,7 @@ import { useContainers } from "./collection/containers";
 import { Owning } from "./collection/context";
 import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
+import { EXPORT, Export } from "./export/Export";
 import { IMPORT, Import, ImportStatus } from "./import/Import";
 import { attach, useWaiting } from "./import/runner";
 import { Menu } from "./Menu";
@@ -124,6 +125,13 @@ export function App() {
                   session={signedIn}
                   owning={collection}
                   catalog={load.status === "ready" ? load.catalog : null}
+                />
+              ) : path === EXPORT ? (
+                <Export
+                  session={signedIn}
+                  owning={collection}
+                  catalog={load.status === "ready" ? load.catalog : null}
+                  containers={containers}
                 />
               ) : signedIn ? (
                 <Collection

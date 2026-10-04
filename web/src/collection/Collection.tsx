@@ -1,4 +1,5 @@
 import { type Catalog, words } from "../catalog";
+import { EXPORT } from "../export/Export";
 import { IMPORT } from "../import/Import";
 import { useWaiting } from "../import/runner";
 import { rkey } from "../oauth/repo";
@@ -60,6 +61,14 @@ export function Collection({
         <Link className="link" to={IMPORT}>
           Import a CSV
         </Link>
+        {owning.total > 0 && (
+          <>
+            {" · "}
+            <Link className="link" to={EXPORT}>
+              Export one
+            </Link>
+          </>
+        )}
       </p>
 
       {empty ? (

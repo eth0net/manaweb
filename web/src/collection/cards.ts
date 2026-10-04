@@ -91,6 +91,9 @@ export type Change = {
 
 export type Holdings = {
   ready: boolean;
+  // Whether the repo itself has answered, as against a cache having painted.
+  // What an export waits for: a stale view of a collection is a wrong file.
+  fresh: boolean;
   error?: string;
   // Copies of one printing, wherever they sit and whatever grade they carry,
   // narrowed to one finish where that is given.
@@ -228,7 +231,6 @@ export function useCollection(
 ): Holdings {
   const [held, setHeld] = useState<Stack[]>([]);
   const [ready, setReady] = useState(false);
-  // Whether the repo itself has answered, as against the cache having painted.
   const [fresh, setFresh] = useState(false);
   const [error, setError] = useState<string>();
   // Which read is the current one, so a slow answer to a stale session or an
@@ -458,6 +460,7 @@ export function useCollection(
 
   return {
     ready,
+    fresh,
     error,
     owned,
     copies,

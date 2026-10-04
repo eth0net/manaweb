@@ -76,10 +76,14 @@ let taken = new Set<string>();
 // The cards inside them, for the collection to show. Recomputed rather than
 // derived on read, so a subscriber gets one stable value per change.
 let waiting: Owned[] = [];
+// Whether the repo has said what an import left in it. Nothing waiting and
+// nobody having asked look the same, and only one of them is an answer.
+let listed = false;
 
 function holding(parts: Held<Receipt>[]): void {
   pending = parts;
   waiting = parts.flatMap((one) => (one.value.entries ?? []) as Owned[]);
+  listed = true;
   notify();
 }
 // What this runner wrote and the collection has not rendered back yet. Parts
@@ -396,6 +400,8 @@ async function refresh(now: OAuthSession): Promise<boolean> {
     holding(left);
     return true;
   } catch {
+    listed = false;
+    notify();
     return false;
   }
 }
@@ -475,6 +481,8 @@ export async function attach(
   session = now;
   holdings = stacks;
   report = onWritten ?? null;
+  listed = false;
+  notify();
   if (!now) {
     holding([]);
     recent = new Map();
@@ -706,4 +714,11 @@ export function useImport(): State {
 // Cards the repo holds inside an import rather than as records of their own.
 export function useWaiting(): Owned[] {
   return useSyncExternalStore(listen, () => waiting);
+}
+
+// Whether [`useWaiting`] is an answer yet. False until a listing comes back,
+// and again while one is refused, which is when a file written from the
+// collection would be short without saying so.
+export function useListed(): boolean {
+  return useSyncExternalStore(listen, () => listed);
 }
