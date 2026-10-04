@@ -144,6 +144,47 @@ differently, the spellings are gathered per field and grow as formats land,
 because inventing a vendor's vocabulary before holding one of its exports is
 how an import silently mangles a collection.
 
+### What an export decides that an import does not
+
+Reading a file throws nothing away. Writing one has to choose.
+
+A record holds copies and a history of the lots they came in, where a row
+holds one figure, so a stack goes out as one row per lot. History need not sum
+to what is held, so lots are spent in order until the copies run out and
+whatever is left over is written with no figure beside it. A file says what
+you own now, never what you once did.
+
+Rows go out in set and collector number order rather than the repo's, which is
+whatever order the records happened to be written in. Two exports of an
+unchanged collection are then the same file, which is what makes one worth
+diffing.
+
+An export invents nothing it was not holding. A lot counting none of the
+copies, or a fraction of one, is a record some other client wrote, and
+subtracting it would put cards in the file that nobody owns, so it is spent
+for the whole copies it covers and no more.
+
+Columns the format cannot fill are named before the file is written rather
+than noticed afterwards. A ManaBox file has nowhere to put a container, a
+note, a proxy flag or what you paid, and dropping those quietly is the same
+defect as mangling an import. A printing the catalog cannot name is counted
+the same way and still written: the print id is on the record, so we can read
+the row back even with the name beside it blank. A finish the vendor has no
+word for is counted too, and that row really is lost on the way back in — the
+record says what it says, and guessing at `foil` would be the silent mangling
+the whole arrangement exists to avoid.
+
+A format names the header it writes rather than deriving one from its binding,
+because `ManaBox ID` is theirs to issue and ours goes out empty. A mapping
+built in the browser from a file's own headers has no such column, so it
+writes what it binds.
+
+Whether ManaBox will read ours is a question only their file answers, so the
+fixtures are imported, exported and held to themselves row by row. All 403
+match outside those two columns, the second being a currency they print
+against a blank price: no amount is no lot, so there is nothing to write the
+currency back from and the row says as little either way.
+
 ### What you paid is not what it was worth
 
 ManaBox's `Purchase price` holds two different things. Left alone it fills in

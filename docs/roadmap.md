@@ -34,10 +34,17 @@ printing — and bulk scanning from uploaded photographs.
 
 ## Phase 0 — Collection tracking (done)
 
-- Manual search + CSV import only. No scanner, no live pricing.
+- Manual search + CSV import and export. No scanner, no live pricing.
 - Everything about the card cache is in [`scryfall.md`](scryfall.md); the
   client-side caching that keeps the server light is in
   [`architecture.md`](architecture.md).
+
+**Export was never a phase, and should have been.** A collection nobody can
+get back out is one you are asked to take on trust, which is the opposite of
+the claim in [`scryfall.md`](scryfall.md). ManaBox reads both ways so far;
+Moxfield, Archidekt and a shape carrying every column we hold are each a
+binding and a header, not another writer. What writing one has to decide is
+in that file too.
 
 **A local importer is a power-user option, not a way out of the ceiling.** A
 CLI reading a ManaBox CSV would still need a live session and would still write
