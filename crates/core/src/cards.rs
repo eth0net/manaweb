@@ -474,8 +474,9 @@ struct Face {
 }
 
 /// Scryfall omits the top-level `oracle_id` on `reversible_card` printings, but
-/// both faces carry it and across all 81 they agree. Lift it, or a card you own
-/// can't be referenced by a deck: design entries key on `oracle_id`.
+/// both faces carry it and across every one of them they agree. Lift it, or a
+/// card you own can't be referenced by a deck: design entries key on
+/// `oracle_id`.
 fn oracle_id(card: &Card) -> Option<String> {
     if let Some(id) = card.oracle_id {
         return Some(id.to_string());
