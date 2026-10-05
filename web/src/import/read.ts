@@ -24,7 +24,7 @@ import {
 
 // Columns a file can carry that a read has nowhere to put, which an export
 // says before it writes one — `docs/scryfall.md`.
-export const UNREAD: Field[] = ["container", "updatedAt"];
+export const UNREAD: Field[] = ["container"];
 
 // A row nothing can be made of, and the line it sat on.
 export type Skipped = { line: number; reason: string };
@@ -123,6 +123,9 @@ export function read(
     if (note) one.note = note;
 
     if (flag(cell("proxy"))) one.proxy = true;
+
+    const changed = when(cell("updatedAt"));
+    if (changed) one.updatedAt = changed;
 
     const lot = acquisition(quantity, cell);
     if (lot) one.acquisitions = [lot];

@@ -194,16 +194,18 @@ export function joins(one: Owned, other: Owned): boolean {
   );
 }
 
-// The record that replaces both: every copy, both histories, and the earlier
-// of the two beginnings. A merge with no timestamp is one not written yet.
+// The record that replaces both: every copy, both histories, the earlier of
+// the two beginnings and the later of the two changes. A merge with no
+// timestamp is one not written yet, so it touches neither date it was given
+// — `docs/scryfall.md`.
 export function merge(one: Owned, other: Owned, at?: string): Owned {
   const all = [...lots(one), ...lots(other)];
   return clean({
     ...one,
-    ...(at ? { updatedAt: at } : {}),
     quantity: one.quantity + other.quantity,
     acquisitions: all.length > 0 ? all : undefined,
     createdAt: earlier(one.createdAt, other.createdAt),
+    updatedAt: at ?? later(one.updatedAt, other.updatedAt),
   });
 }
 
@@ -490,6 +492,15 @@ export function fold(found: Stack[], since: Map<string, Stack>): Stack[] {
 // Timestamps carry whatever offset wrote them, so they compare as instants.
 export function earlier(one: string, other: string): string {
   return Date.parse(one) <= Date.parse(other) ? one : other;
+}
+
+// Either may be absent, and a stack nobody has amended stays that way.
+export function later(
+  one: string | undefined,
+  other: string | undefined,
+): string | undefined {
+  if (!one || !other) return one ?? other;
+  return Date.parse(one) >= Date.parse(other) ? one : other;
 }
 
 // The shape a record is written in: tags as the set they are, history in date

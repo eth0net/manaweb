@@ -112,7 +112,12 @@
           },
           "description": "Free-form labels. Moxfield exports these."
         },
-        "createdAt": { "type": "string", "format": "datetime" }
+        "createdAt": { "type": "string", "format": "datetime" },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Client-declared, so it can be stale: a PDS records no modification time."
+        }
       }
     }
   }

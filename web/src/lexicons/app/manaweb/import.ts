@@ -48,4 +48,6 @@ export interface Entry {
   /** Free-form labels. Moxfield exports these. */
   tags?: ('altered' | 'misprint' | 'signed' | (string & {}))[]
   createdAt: string
+  /** Client-declared, so it can be stale: a PDS records no modification time. */
+  updatedAt?: string
 }

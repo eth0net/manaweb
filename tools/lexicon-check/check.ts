@@ -463,8 +463,9 @@ for (const scope of scopes) {
   const written = card.defs.main.record.properties;
   const planned = bulk.defs.entry.properties;
 
-  // `updatedAt` is the one field a plan cannot carry: nothing has amended it.
-  const expected = Object.keys(written).filter((name) => name !== "updatedAt");
+  // Every field, `updatedAt` included: a plan built from another tracker's
+  // file carries whatever that tracker said the stack was last changed.
+  const expected = Object.keys(written);
   expect(
     "an import entry holds every field a card does",
     expected.every((name) => name in planned) &&

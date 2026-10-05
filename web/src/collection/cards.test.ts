@@ -4,6 +4,7 @@ import {
   type Change,
   fold,
   landing,
+  merge,
   type Owned,
   type Stack,
   shown,
@@ -338,4 +339,32 @@ test("nothing landing is ever part of what a record says", () => {
 test("a collection with nothing landing is the same array", () => {
   const held = [record(copy)];
   expect(landing(held, [])).toBe(held);
+});
+
+test("two stacks becoming one were last changed at the later of the two", () => {
+  const one = { ...copy, updatedAt: JAN };
+  const other = { ...copy, quantity: 2, updatedAt: JUN };
+
+  expect(merge(one, other).updatedAt).toBe(JUN);
+  expect(merge(other, one).updatedAt).toBe(JUN);
+});
+
+test("a stack nobody has amended stays that way through a merge", () => {
+  expect(merge(copy, copy).updatedAt).toBeUndefined();
+});
+
+test("one side's date carries where the other has none", () => {
+  const dated = { ...copy, updatedAt: MAR };
+
+  expect(merge(dated, copy).updatedAt).toBe(MAR);
+  expect(merge(copy, dated).updatedAt).toBe(MAR);
+});
+
+// A write that joins two stacks really does change them, so it says so rather
+// than carrying what either side claimed.
+test("a merge with a timestamp is changed at that timestamp", () => {
+  const one = { ...copy, updatedAt: JAN };
+  const other = { ...copy, quantity: 2, updatedAt: JUN };
+
+  expect(merge(one, other, NOW).updatedAt).toBe(NOW);
 });

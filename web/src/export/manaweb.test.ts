@@ -71,13 +71,13 @@ test("every column a record can fill is one this format has", () => {
   ).toEqual([]);
 });
 
-// The two fields a reader cannot put back — `docs/scryfall.md`.
-test("a collection comes back whole but for the two a read drops", () => {
+// The one field a reader cannot put back — `docs/scryfall.md`.
+test("a collection comes back whole but for where it was filed", () => {
   const { stacks: back, skipped } = read(exported(), MANAWEB, NOW);
 
   expect(skipped).toEqual([]);
   expect(back).toEqual(
-    WHOLE.map(({ container: _c, updatedAt: _u, ...rest }) => rest as Owned),
+    WHOLE.map(({ container: _, ...rest }) => rest as Owned),
   );
 });
 
@@ -114,15 +114,13 @@ test("no format writes one column twice", () => {
   }
 });
 
-test("what is written and not read back is said so", () => {
+test("a container written and not read back is said so", () => {
   const { unread } = rows(stacks(WHOLE), MANAWEB, () => new Map(), PLACES);
-  expect(unread).toEqual(["container", "updatedAt"]);
+  expect(unread).toEqual(["container"]);
 });
 
-test("a collection carrying neither loses nothing to them", () => {
-  const loose = WHOLE.map(
-    ({ container: _c, updatedAt: _u, ...rest }) => rest as Owned,
-  );
+test("a collection filed nowhere loses nothing to that", () => {
+  const loose = WHOLE.map(({ container: _, ...rest }) => rest as Owned);
   const { unread, dropped } = rows(stacks(loose), MANAWEB, () => new Map());
   expect([...unread, ...dropped]).toEqual([]);
 });
@@ -255,11 +253,27 @@ test("a note is cut between characters, never through one", () => {
   expect(note).not.toMatch(/[\uD800-\uDFFF]/u);
 });
 
-// A read drops it, so nothing else here would notice the column going blank.
-test("when a stack last changed is written even so", () => {
+test("when a stack last changed survives the trip", () => {
   const { rows: out } = rows(stacks(WHOLE), MANAWEB, () => new Map(), PLACES);
   const at = columns(MANAWEB).indexOf("Updated");
 
   expect(out[1]?.[at]).toBe("2026-02-02T00:00:00.000Z");
   expect(out[3]?.[at]).toBe("");
+});
+
+// Reading changes nothing, so the later date stands — `docs/scryfall.md`.
+test("two rows of one stack keep the later date between them", () => {
+  const early: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2025-01-01T00:00:00.000Z",
+  };
+  const late: Owned = { ...early, updatedAt: "2026-06-06T00:00:00.000Z" };
+  const { stacks: back } = read(exported([early, late]), MANAWEB, NOW);
+
+  expect(back).toHaveLength(1);
+  expect(back[0]?.quantity).toBe(2);
+  expect(back[0]?.updatedAt).toBe("2026-06-06T00:00:00.000Z");
 });
