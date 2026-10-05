@@ -18,10 +18,18 @@ const KEEP = 60_000;
 // What a column the format lacks would have carried, in the app's own words.
 const WORDS: Partial<Record<Field, string>> = {
   container: "where cards are filed",
+  updatedAt: "when a stack last changed",
   note: "notes",
   proxy: "which cards are proxies",
   tags: "tags",
   price: "what you paid",
+};
+
+// Which file to ask for, since the choice is what reads it rather than what
+// is in it. A format nobody described says nothing rather than breaking.
+const FOR: Record<string, string> = {
+  ManaBox: "what another tracker will read",
+  Manaweb: "every column a record holds",
 };
 
 // Your collection as a file another tracker reads, which is the half of
@@ -122,6 +130,9 @@ export function Export({
 
       <p className="tally">
         {cards.toLocaleString()} card{cards === 1 ? "" : "s"}
+        {FOR[format.name] && (
+          <span className="quiet"> · {FOR[format.name]}</span>
+        )}
       </p>
 
       {!catalog ? (
@@ -140,6 +151,14 @@ export function Export({
       )}
     </>
   );
+}
+
+// A list with the verb that agrees with it, which is why this is not a join.
+function said(fields: Field[]): string {
+  const words = fields.map((field) => WORDS[field] ?? field);
+  const last = words.pop() ?? "";
+  const all = words.length > 0 ? `${words.join(", ")} and ${last}` : last;
+  return `${all} ${fields.length === 1 ? "is" : "are"}`;
 }
 
 // What the file will not say, while there is still a chance not to write it.
@@ -164,6 +183,20 @@ function Losses({ written, format }: { written: Written; format: string }) {
           {written.unnamed.toLocaleString()} card
           {written.unnamed === 1 ? "" : "s"} the catalog does not know, so only
           the Scryfall id names {written.unnamed === 1 ? "it" : "them"}.
+        </p>
+      )}
+      {written.unread.length > 0 && (
+        <p className="warn">
+          {said(written.unread)} written here, and reading this file back would
+          not restore {written.unread.length === 1 ? "it" : "them"}.
+        </p>
+      )}
+      {written.unkept > 0 && (
+        <p className="warn">
+          {written.unkept.toLocaleString()} card
+          {written.unkept === 1 ? "" : "s"} say something a row carries and a
+          read makes nothing of — a tag holding a comma, or a figure with no
+          currency beside it.
         </p>
       )}
       {written.unspelled > 0 && (

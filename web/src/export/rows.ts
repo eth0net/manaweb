@@ -8,6 +8,7 @@ import {
   graded,
   key,
 } from "../import/formats";
+import { UNREAD } from "../import/read";
 import type { Acquisition } from "../lexicons/app/manaweb/card";
 
 // What a printing says about itself, which is everything a row carries that
@@ -35,6 +36,11 @@ export type Written = {
   // Copies whose finish this format has no word for. The row goes out as the
   // record holds it and reads back as nothing, so it is counted here.
   unspelled: number;
+  // Copies saying something a row carries but a read cannot put back:
+  // `docs/scryfall.md` names each.
+  unkept: number;
+  // What this file says that reading it back would not restore.
+  unread: Field[];
 };
 
 // 10 follows 9 and "329★" follows "329", so a collector number orders as text
@@ -57,6 +63,7 @@ export function rows(
   const out: string[][] = [head];
   let unnamed = 0;
   let unspelled = 0;
+  let unkept = 0;
 
   for (const one of sorted(stacks, held)) {
     const count = shown(one);
@@ -65,6 +72,7 @@ export function rows(
     const printing = held.get(one.value.scryfallId);
     if (!printing) unnamed += count;
     if (!foil(one.value.finish)) unspelled += count;
+    if (vague(one.value, format)) unkept += count;
 
     for (const lot of split(count, one.value.acquisitions ?? [])) {
       const row = new Array<string>(head.length).fill("");
@@ -78,7 +86,14 @@ export function rows(
     }
   }
 
-  return { rows: out, unnamed, unspelled, dropped: dropped(stacks, format) };
+  return {
+    rows: out,
+    unnamed,
+    unspelled,
+    unkept,
+    dropped: dropped(stacks, format),
+    unread: unread(stacks, format),
+  };
 }
 
 // Records come back in whatever order they were written, which no export
@@ -163,9 +178,42 @@ function cell(
       return lot.lot?.marketValue ?? "";
     case "marketCurrency":
       return lot.lot?.marketCurrency ?? "";
+    case "acquiredAt":
+      return lot.lot?.at ?? "";
     case "createdAt":
       return one.createdAt;
+    case "updatedAt":
+      return one.updatedAt ?? "";
   }
+}
+
+// What a row carries that a read makes less of — `docs/scryfall.md` names
+// the three.
+function vague(one: Owned, format: Format): boolean {
+  const tagged =
+    format.binding.tags !== undefined &&
+    (one.tags ?? []).some((label) => label.includes(","));
+
+  return (
+    tagged ||
+    (one.acquisitions ?? []).some(
+      (lot) =>
+        (lot.price !== undefined && lot.currency === undefined) ||
+        (lot.marketValue !== undefined && lot.marketCurrency === undefined) ||
+        (lot.price === undefined &&
+          lot.marketValue === undefined &&
+          lot.at === undefined),
+    )
+  );
+}
+
+// A column written and not read is only a loss where a card fills it.
+function unread(stacks: Stack[], format: Format): Field[] {
+  return UNREAD.filter(
+    (field) =>
+      format.binding[field] !== undefined &&
+      stacks.some((one) => one.value[field] !== undefined),
+  );
 }
 
 function labeled(one: Owned, label: string): boolean {

@@ -24,7 +24,9 @@ export type Field =
   | "currency"
   | "marketValue"
   | "marketCurrency"
-  | "createdAt";
+  | "acquiredAt"
+  | "createdAt"
+  | "updatedAt";
 
 // Which column feeds each field. A supported format is one of these written
 // down and a custom one is the same thing built in the browser, so nothing but
@@ -96,12 +98,42 @@ export const MANABOX: Format = {
   ],
 };
 
-export const FORMATS = [MANABOX];
+// Every column a record has, under our own names, so a collection comes out
+// whole rather than as much of it as somebody else's file has room for. No
+// header of its own: what it writes is what it binds.
+export const MANAWEB: Format = {
+  name: "Manaweb",
+  binding: {
+    scryfallId: "Scryfall ID",
+    name: "Name",
+    setCode: "Set code",
+    setName: "Set name",
+    collectorNumber: "Collector number",
+    rarity: "Rarity",
+    language: "Language",
+    finish: "Finish",
+    quantity: "Quantity",
+    condition: "Condition",
+    container: "Container",
+    proxy: "Proxy",
+    tags: "Tags",
+    note: "Note",
+    price: "Price",
+    currency: "Price currency",
+    marketValue: "Market value",
+    marketCurrency: "Market value currency",
+    acquiredAt: "Acquired",
+    createdAt: "Added",
+    updatedAt: "Updated",
+  },
+};
+
+export const FORMATS = [MANABOX, MANAWEB];
 
 // Facts about a printing that the catalog already holds, so an export fills
-// them and nothing reads them back. `Name` is the other one, and stays
+// them and no reader consults them. `Name` is the other one, and stays
 // required because it is what tells one tracker's file from another's.
-const FILLED: Field[] = ["setName", "rarity", "language", "proxy"];
+const FILLED: Field[] = ["setName", "rarity", "language"];
 
 // The format whose every bound column the file carries. Two formats can both
 // fit, and the first wins, so a narrower one is listed before a broader.

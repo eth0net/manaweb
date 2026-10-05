@@ -22,6 +22,10 @@ import {
   needed,
 } from "./formats";
 
+// Columns a file can carry that a read has nowhere to put, which an export
+// says before it writes one — `docs/scryfall.md`.
+export const UNREAD: Field[] = ["container", "updatedAt"];
+
 // A row nothing can be made of, and the line it sat on.
 export type Skipped = { line: number; reason: string };
 
@@ -34,6 +38,9 @@ type Waiting = { one: Owned; line: number; key: string; said: string };
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MONEY = /^\d+(\.\d+)?$/;
 const CURRENCY = /^[a-z]{3}$/i;
+// A four-digit year first, because `Date.parse` otherwise reads "12" as a
+// December and mints years past 9999 that no lexicon will take.
+const WHEN = /^\d{4}-\d{2}-\d{2}([T ]|$)/;
 
 // The column names alone, for naming a file's format before reading it.
 export function header(text: string): string[] {
@@ -111,8 +118,11 @@ export function read(
     const labels = tags(cell);
     if (labels.length > 0) one.tags = labels;
 
-    const note = cell("note").slice(0, NOTE);
+    // By code point rather than by unit, so a cut never leaves half a pair.
+    const note = [...cell("note")].slice(0, NOTE).join("");
     if (note) one.note = note;
+
+    if (flag(cell("proxy"))) one.proxy = true;
 
     const lot = acquisition(quantity, cell);
     if (lot) one.acquisitions = [lot];
@@ -200,14 +210,15 @@ function tags(cell: (field: Field) => string): string[] {
   if (flag(cell("misprint"))) labels.add("misprint");
 
   for (const one of cell("tags").split(",")) {
-    const label = one.trim().slice(0, TAG);
+    const label = fits(one.trim(), TAG);
     if (label) labels.add(label);
   }
   return [...labels].slice(0, TAGS);
 }
 
 // A sum with no currency beside it is not a figure, so it waits for a column
-// that names one.
+// that names one. A date on its own is still a lot: when you came by these
+// copies is worth as much as what they cost.
 function acquisition(
   quantity: number,
   cell: (field: Field) => string,
@@ -223,16 +234,37 @@ function acquisition(
     lot.marketCurrency = cell("marketCurrency").toUpperCase();
   }
 
-  return lot.price || lot.marketValue ? lot : undefined;
+  const at = when(cell("acquiredAt"));
+  if (at) lot.at = at;
+
+  return lot.price || lot.marketValue || lot.at ? lot : undefined;
 }
 
 function money(amount: string, currency: string): boolean {
   return MONEY.test(amount) && CURRENCY.test(currency);
 }
 
+// A lexicon counts bytes, so a tag of emoji is four times what `length` says
+// and the record is refused on arrival — `docs/scryfall.md`.
+function fits(text: string, bytes: number): string {
+  const encoded = new TextEncoder().encode(text);
+  if (encoded.length <= bytes) return text;
+  // Decoding a cut sequence ends in a replacement character, which is the
+  // half character to drop.
+  return new TextDecoder()
+    .decode(encoded.subarray(0, bytes))
+    .replace(/\ufffd$/, "");
+}
+
+// A date a lexicon will take, or nothing.
+function when(text: string): string | undefined {
+  if (!WHEN.test(text)) return undefined;
+  const at = Date.parse(text);
+  return Number.isNaN(at) ? undefined : new Date(at).toISOString();
+}
+
 // When the row entered the tool it came from, which for a collection entered in
 // one session is one timestamp across all of it rather than a purchase date.
 function added(text: string, now: string): string {
-  const when = Date.parse(text);
-  return Number.isNaN(when) ? now : new Date(when).toISOString();
+  return when(text) ?? now;
 }
