@@ -89,6 +89,9 @@ engine-build:
 engine: engine-build
     cp target/wasm32-unknown-unknown/wasm/manaweb_scanner.wasm web/src/scan/engine.wasm
 
+# todo(container): a pinned build environment puts this back in CI, and is
+# worth it for a stable build either way — `docs/scanner.md`.
+#
 # Nobody can read the committed engine, so what stands in for reading it is
 # rebuilding it. One machine's answer only: a build host this hasn't run on
 # lands elsewhere, so it belongs on the way out of a checkout rather than in

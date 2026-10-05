@@ -524,6 +524,17 @@ is what deploys, so that is also the last moment anything can stop a drifted
 module going live. CI asks the question the other way, of the bytes
 themselves rather than of a rebuild, which no host can disagree about.
 
+**Pinning the build rather than the runner is what would give it back**, and
+it is worth doing for its own sake. Build the module in a container and the
+host stops being whichever laptop is open: a checkout, a runner and a machine
+bought next year all answer alike, and the exact comparison goes back into CI
+with nothing brittle holding it up. What it costs is a container runtime
+wherever `just engine` runs, which today is a Mac with none. The mechanism
+behind the divergence was never identified — the compiler, its flags, the
+crate metadata and the symbol mangling were each ruled out by varying them
+one at a time — so pinning the whole environment is also the only fix that
+does not depend on knowing which part of it matters.
+
 A margin reaches it too: the reader answers with the nearest five, so a scan
 carries how much further the runner-up was. So does a camera: the scan page
 opens one, takes a frame at 1280 on its longer side, and shows what came back
