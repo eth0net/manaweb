@@ -183,16 +183,30 @@ the way the record names them. It states no header, because what it writes is
 what it binds — which is also what a mapping built from a file's own columns
 would do, and keeping one path for both means the uncommon one is exercised.
 
-**Two things it writes and cannot read back.** A container is a record of its
+**One thing it writes and cannot read back.** A container is a record of its
 own, and a file carries the name rather than the key, so putting one back
 means deciding whether to create a container that is no longer there, match
-one by name, or ask. `updatedAt` is the other, and that one is settled
-already: an import entry has every field a card does except that one, because
-a plan is a card nobody has amended yet, and a check holds the two shapes
-together. A file written from a collection that *has* been amended is the
-first thing that makes the premise arguable — see the open question. Both are
-questions about importing rather than about writing a file, and the export
-says so rather than implying a round trip it does not make.
+one by name, or ask. That is a question about importing rather than about
+writing a file, and it is open. The export says so rather than implying a
+round trip it does not make.
+
+**`updatedAt` crosses, and the plan carries it.** An import entry held every
+field a card does except that one, on the reasoning that a plan is a card
+nobody has amended yet. A file from another tracker breaks it: a collection
+kept somewhere else for two years has been amended plenty, and the date is
+the only record of when. So the entry gained the field and
+`lexicon-check` now holds the two shapes equal rather than equal-but-one.
+
+**What a merge does to that date is the part worth knowing.** Two rows of one
+file describing one stack change nothing by being read, so the stack keeps
+the later of the two dates — the dual of taking the earlier of two
+`createdAt`. A row that joins a stack already in the repo is different: the
+quantity really does change, at that moment, so the write stamps it with the
+time of the write and the file's date is discarded. Which means a collection
+moved between trackers keeps its modification history exactly where nothing
+merged, and resets it where something did. That is the honest answer rather
+than a tidy one, and there is no third option: a stack that gained copies
+today was last changed today.
 
 Reading a lot's date arrives with it: a date on its own is a lot, where
 before a lot needed a figure. When copies were come by is the fact Dragon
@@ -666,16 +680,6 @@ still names the one artwork on the front, and a back that is only ever a back
 takes a number past every front, where no column reaches.
 
 ## Open questions
-
-**An imported card has been amended before.** `app.manaweb.import#entry`
-carries every field a card does but `updatedAt`, on the reasoning that a plan
-is a card nobody has changed yet, and `lexicon-check` holds it that way. A
-file written by our own export breaks that: the stack it describes may have
-been amended for years before it was written out, and re-importing it resets
-that to nothing. Adding the field is backward-compatible — an optional
-property on an open object — but it is a lexicon change and the premise it
-rests on is worth saying out loud before it moves. Until then the export
-writes the column and reports that a read drops it.
 
 **Trade quantity.** Two of the trackers we import from carry one. A trade list
 is the better model, but the column has nowhere to land, so import and export
