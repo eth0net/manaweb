@@ -34,6 +34,14 @@ pub enum Error {
     )]
     ShrunkSync { written: i64, before: i64 },
 
+    /// Fields every record carries that no record carried. Nothing fails to
+    /// parse, so this is the only thing that would have said so.
+    #[error(
+        "no record in the card stream carried {fields}, so nothing was replaced: \
+         Scryfall has renamed or dropped a field the cache reads"
+    )]
+    ShapeSync { fields: String },
+
     #[error("serializing the catalog failed: {0}")]
     Json(#[from] serde_json::Error),
 

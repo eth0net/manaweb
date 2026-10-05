@@ -714,6 +714,7 @@ async fn a_reversible_printing_inherits_gameplay_data_from_a_normal_one() {
         &[&[
             ("layout", serde_json::json!("normal")),
             ("mana_cost", serde_json::json!("{R/G}{G}{G/W}")),
+            ("cmc", serde_json::json!(3.0)),
             (
                 "type_line",
                 serde_json::json!("Legendary Creature — Elf Druid"),
@@ -750,6 +751,7 @@ async fn gameplay_data_survives_a_better_ranked_faceless_printing() {
     normal["layout"] = serde_json::json!("normal");
     normal["type_line"] = serde_json::json!("Legendary Creature — Elf Druid");
     normal["mana_cost"] = serde_json::json!("{R/G}{G}{G/W}");
+    normal["cmc"] = serde_json::json!(3.0);
 
     // A booster expansion outranks the box set the fixture printing came from.
     let mut better = faceless;
@@ -802,5 +804,96 @@ async fn a_two_faced_printing_takes_the_artwork_of_its_front() {
             "6b8fb6bb-c0d1-4715-a4df-e4f4695c6130", // reversible_card
             "83559f92-ec25-4f3e-8f67-a66970c1e01e", // transform
         ]
+    );
+}
+
+/// The file with one field renamed, which to a parser is a file that simply
+/// does not carry it: every record still reads.
+fn renamed(ndjson: &str, field: &str) -> String {
+    ndjson
+        .lines()
+        .map(|line| {
+            let mut card: serde_json::Value =
+                serde_json::from_str(line).expect("fixture should parse");
+            let object = card.as_object_mut().expect("a card is an object");
+            if let Some(was) = object.remove(field) {
+                object.insert(format!("{field}_2"), was);
+            }
+            card.to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Each of these is `Option` or defaulted, so losing one costs no record and
+/// raises nothing. Without this the catalog ships with the column empty.
+#[tokio::test]
+async fn a_field_no_record_carries_refuses_the_sync() {
+    for field in ["cmc", "finishes", "games", "legalities", "type_line"] {
+        let pool = open_memory().await.unwrap();
+        let error = cards::replace(&pool, &bulk("x"), &mut stream(renamed(CARDS, field)))
+            .await
+            .expect_err("a field nothing carries should be refused");
+
+        assert!(
+            matches!(&error, Error::ShapeSync { fields } if fields == field),
+            "{field}: got {error:?}"
+        );
+        assert_eq!(cards::count(&pool).await.unwrap(), 0, "{field} was written");
+    }
+}
+
+/// A field some records lack is Scryfall's business rather than ours.
+#[tokio::test]
+async fn a_field_one_record_still_carries_lands() {
+    let pool = open_memory().await.unwrap();
+    let kept = CARDS.lines().next().unwrap();
+    let rest = renamed(
+        &CARDS.lines().skip(1).collect::<Vec<_>>().join("\n"),
+        "finishes",
+    );
+
+    let report = cards::replace(&pool, &bulk("x"), &mut stream(format!("{kept}\n{rest}")))
+        .await
+        .expect("one record carrying it is one too many to be a rename");
+
+    assert_eq!(report.written, 4);
+}
+
+/// Losing the one field the schema insists on is loud already, which is why
+/// the shape check does not answer for it.
+#[tokio::test]
+async fn a_printing_naming_no_oracle_is_refused_as_a_row() {
+    let pool = open_memory().await.unwrap();
+    let lines: Vec<&str> = CARDS.lines().collect();
+    // The transform printing keeps its own, so the file still holds a card.
+    let ndjson = format!(
+        "{}\n{}\n{}",
+        renamed(lines[0], "oracle_id"),
+        lines[2],
+        renamed(lines[3], "oracle_id"),
+    );
+
+    let report = cards::replace(&pool, &bulk("x"), &mut stream(ndjson))
+        .await
+        .expect("a short file is not judged by the share it lost");
+
+    assert_eq!(report.written, 1);
+    assert_eq!(report.skipped, 2);
+}
+
+/// One refusal naming both, rather than a release between them.
+#[tokio::test]
+async fn every_field_nothing_carries_is_named_at_once() {
+    let pool = open_memory().await.unwrap();
+    let gone = renamed(&renamed(CARDS, "games"), "finishes");
+
+    let error = cards::replace(&pool, &bulk("x"), &mut stream(gone))
+        .await
+        .expect_err("two fields nothing carries should be refused");
+
+    assert!(
+        matches!(&error, Error::ShapeSync { fields } if fields == "finishes, games"),
+        "got {error:?}"
     );
 }

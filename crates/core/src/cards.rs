@@ -69,6 +69,48 @@ const ENOUGH_READ: i64 = 1_000;
 /// thousands, so a drop like that is Scryfall doing something else.
 const LEAST_KEPT: f64 = 0.95;
 
+/// Fields a record can lose without failing to parse, because each is
+/// `Option` or defaulted: every row still reads, nothing is skipped, and the
+/// column ships empty. Counted, and refused at zero — `docs/scryfall.md`
+/// carries why that bound wants no calibration, and why `oracle_id` is not
+/// among them.
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct Shape {
+    cmc: i64,
+    finishes: i64,
+    games: i64,
+    legalities: i64,
+    type_line: i64,
+}
+
+impl Shape {
+    /// Counted off the record rather than off what the cache kept, which is
+    /// the difference between asking about Scryfall and asking about us.
+    fn see(&mut self, card: &Card) {
+        self.cmc += i64::from(card.cmc.is_some());
+        self.finishes += i64::from(!card.finishes.is_empty());
+        self.games += i64::from(!card.games.is_empty());
+        self.legalities += i64::from(!card.legalities.is_empty());
+        self.type_line += i64::from(card.type_line.is_some());
+    }
+
+    /// Every field nothing in the file carried, so a file restructured rather
+    /// than renamed costs one refusal and not one per field.
+    fn missing(self) -> Vec<&'static str> {
+        [
+            ("cmc", self.cmc),
+            ("finishes", self.finishes),
+            ("games", self.games),
+            ("legalities", self.legalities),
+            ("type_line", self.type_line),
+        ]
+        .into_iter()
+        .filter_map(|(field, seen)| (seen == 0).then_some(field))
+        .collect()
+    }
+}
+
 /// Replaces the entire cache from `cards`, in one transaction.
 ///
 /// Readers stay on the previous catalog until it commits, and a failure part
@@ -77,8 +119,9 @@ const LEAST_KEPT: f64 = 0.95;
 /// # Errors
 ///
 /// Fails on a database error, an unreadable stream, a stream that yielded no
-/// cards at all, one that lost too many of them on the way in, or one holding
-/// far fewer printings than the last. Each of those would otherwise publish a
+/// cards at all, one that lost too many of them on the way in, one no record
+/// of which carried a field the cache reads, or one holding far fewer
+/// printings than the last. Each of those would otherwise publish a
 /// catalog nobody looked at. A single row the schema refuses is counted, not
 /// raised.
 pub async fn replace(
@@ -91,6 +134,7 @@ pub async fn replace(
     let before = synced_count(pool, &bulk.kind).await?;
     let mut tx = pool.begin().await?;
     let mut report = SyncReport::default();
+    let mut shape = Shape::default();
     let mut legalities = HashMap::new();
     let mut oracles: HashMap<String, Oracle> = HashMap::new();
 
@@ -112,6 +156,7 @@ pub async fn replace(
         match cards.try_next().await {
             Ok(None) => break,
             Ok(Some(card)) => {
+                shape.see(&card);
                 let legalities_id = intern_legalities(&mut tx, &mut legalities, &card).await?;
                 match insert_printing(&mut tx, &card, legalities_id).await {
                     Ok(()) => {
@@ -147,6 +192,7 @@ pub async fn replace(
             read,
         });
     }
+
     #[expect(
         clippy::cast_precision_loss,
         reason = "a catalog of 2^53 printings is not this one"
@@ -157,6 +203,13 @@ pub async fn replace(
         return Err(Error::ShrunkSync {
             written: report.written,
             before,
+        });
+    }
+
+    let missing = shape.missing();
+    if !missing.is_empty() {
+        return Err(Error::ShapeSync {
+            fields: missing.join(", "),
         });
     }
 
