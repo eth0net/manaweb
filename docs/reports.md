@@ -1,7 +1,8 @@
 # Reported scans
 
 A plan, not a built thing. Written 3 Oct 2026, after two failures showed up
-in production that nothing in the repo can reproduce.
+in production that nothing in the repo can reproduce. Four of its decisions
+were overturned on 4 Oct and are marked where they were made.
 
 ## What this is for
 
@@ -36,8 +37,15 @@ Four pieces, in the order they earn their place.
 `web/src/scan/frames.ts` already holds frames in IndexedDB behind a cap and a
 time limit, with the whole path inside `import.meta.env.DEV` and
 `web/vite/sealed.ts` failing a build that carries it. Keeping them in a
-production build, still local, with a way to write them out, costs almost
-nothing and answers the question for one person's own scanning.
+production build, still local, costs almost nothing and is what a report has
+to have to carry.
+
+**There is no local export, and that was a decision.** An earlier draft of
+this gave the device a way to write frames out, on the reasoning that one
+person scanning their own collection could then move them by hand. Nobody is
+going to. A fault found mid-scan is reported in the three seconds it takes to
+press a button or it is not reported at all, and a leg that asks for a cable
+and an evening is a leg that turns every report into a chore nobody does.
 
 It also settles the privacy shape before any of it leaves a device: frames
 are kept because a scan might be worth reporting, and reporting is a press.
@@ -56,23 +64,23 @@ index later, and `fingerprint` exists for exactly this kind of stamping.
 
 ### 3. Who may send
 
-A named list of DIDs, and nobody else, until there is a reason to widen it.
-The AppView verifies an inter-service token the client asks its own PDS for
+**Anyone signed in, which is not the same as anyone.** The AppView verifies
+an inter-service token the client asks its own PDS for
 (`com.atproto.server.getServiceAuth`, audience our own DID), which is the
 atproto way to prove who is asking without the server holding anything of
-theirs.
+theirs. A DID that reached that point is an account on a PDS somewhere, which
+is a cost to forge a hundred of.
 
-A list is simpler than a counter and becomes one when it has to. What widens
-it is somebody other than the people who build this wanting to send, and at
-that point the quota, the global ceiling and the abuse surface all arrive
-together — a 1 vCPU host with 1GB of RAM and a disposable database should not
-be the thing that discovers it is accepting images from the internet.
+An earlier draft said a named list of DIDs and nobody else. That is the wrong
+shape for what this is for: the people whose scans go wrong are the people
+not building this, and an allowlist means every one of them has to ask to be
+added before they can tell us anything. The corpus this exists to grow comes
+from exactly the users an allowlist excludes.
 
-**It earns its place with one reporter.** The faults happen on a phone, and
-the frames are on the phone. Writing them out on the device and moving them
-by hand is a cable and a sitting down; a press that puts them where the
-scoring tools can reach them is the difference between a corpus that grows
-and one that waits for an evening.
+**It earns its place with one reporter and gets better with five.** The
+faults happen on a phone and the frames are on the phone, so a press that
+puts them where the scoring tools can reach them is the difference between a
+corpus that grows and one that does not.
 
 ### 4. A way to fetch them, which is not a view
 
@@ -113,6 +121,25 @@ today it fetched itself from Scryfall. The first thing it accepts from a
 browser needs a size bound, a type check that does not trust the extension,
 and a quota, before it needs anything else.
 
+**The quota has to live in the process, and that is why.** The obvious place
+to count is the bucket, which already holds one object per report. It cannot
+work: a client asks for a grant and uploads afterwards, so fifty URLs can be
+signed before the first object exists, and a counter reading the bucket would
+authorize all fifty. What is being limited is the signing, so the count has
+to sit where the signing happens. In memory is the right kind of state —
+a restart resetting a rate limit costs nothing, and it keeps the promise that
+this feature adds no table.
+
+**Caps here are blast radius, not budget.** Five people at ten reports a week
+is about two gigabyte-months a year against ten free, and some hundreds of
+writes a month against a million — three orders of magnitude inside the free
+tier, in both dimensions. So nothing sized against cost would ever bind. What
+the numbers are actually for is a retry loop that signs in a tight circle, or
+somebody who found the endpoint: size them so that a fortnight of either is
+still inside the allowance, not so that ordinary use approaches them. A
+starting pair worth arguing with rather than adopting: twenty grants per DID
+per day, two hundred across everyone, and a lifecycle expiry behind both.
+
 **A record in the reporter's own repo would need no write handler**, and is
 the wrong answer anyway: a repo is world-readable, as `defs.json` says of
 visibility, so filing a photograph of somebody's room there publishes it. The
@@ -131,9 +158,15 @@ that is negotiable and all of it is cheaper to build now than to retrofit.
   one is scoped. Two tokens is the safer default: the catalog's is scoped to
   one bucket today and widening it would put the frames behind the same key
   that publishes the catalog.
-- Whether the quota is worth having before there is a second user. A list of
-  one is simpler than a counter, and a counter is what it becomes.
+- What the three numbers should be. The ceiling above is reasoned from the
+  free tier and from nothing else: nobody has reported a frame yet, so there
+  is no rate to size against, and the first week of real use is the
+  measurement.
 - What a frame costs to store once there are thousands.
+- Whether a report from a DID nobody recognizes is worth keeping by default
+  or worth holding until somebody looks. Open because it only matters once
+  somebody who is not a friend finds the endpoint, and the answer then
+  depends on what they send.
 
 ## Where the frames live
 
