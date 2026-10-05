@@ -1192,7 +1192,7 @@ checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
 name = "manaweb-api"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "axum",
  "manaweb-core",
@@ -1206,7 +1206,7 @@ dependencies = [
 
 [[package]]
 name = "manaweb-appview"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "axum",
  "manaweb-api",
@@ -1224,7 +1224,7 @@ dependencies = [
 
 [[package]]
 name = "manaweb-artwork"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "image",
  "manaweb-scanner",
@@ -1239,7 +1239,7 @@ dependencies = [
 
 [[package]]
 name = "manaweb-core"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "futures-util",
  "manaweb-scanner",
@@ -1253,7 +1253,7 @@ dependencies = [
 
 [[package]]
 name = "manaweb-objects"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "axum",
  "chrono",
@@ -1269,7 +1269,7 @@ dependencies = [
 
 [[package]]
 name = "manaweb-scanner"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "libm",
  "thiserror",
@@ -1277,7 +1277,7 @@ dependencies = [
 
 [[package]]
 name = "manaweb-scryfall"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-compression",
  "futures-util",
