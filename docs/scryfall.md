@@ -409,7 +409,7 @@ apart would be a second thing to remember at exactly the moment the first was
 forgotten, and being wrong costs one extra download of a file that changes
 weekly anyway.
 
-**A sync refuses on three counts now**, all of them rolled back by the one
+**A sync refuses on four counts now**, all of them rolled back by the one
 transaction so the published catalog stays where it was. Nothing written at
 all was the first. The second is a file that lost more than a hundredth of
 itself on the way in: one odd record a week is what the skipped count exists
@@ -418,6 +418,37 @@ most of a file rather than a hundredth of one, and that share is only read
 off files long enough for it to mean something. The third is a catalog that
 came back more than a twentieth shorter than the last — printings do leave,
 142 of them in the week to 2026-09-30, but not in thousands.
+
+**The fourth is the one the other three cannot see.** A rename only loses
+records where the field is required to parse. `cmc`, `type_line`,
+`legalities`, `games` and `finishes` are each optional or defaulted, so a
+renamed one costs nothing: every record reads, the skipped count stays at
+zero, the catalog is the same size as last week, and every card in it has no
+mana value, or no legality, or no finish to pick. So the sync counts how many
+records carried each of the five and refuses a file where any of those counts
+is zero, naming all of them: a file restructured rather than renamed should
+cost one refusal and not one download per field.
+
+**Zero is the whole test, and it needs no calibration.** A rename takes a
+field from every record at once, so one record still carrying it means the
+cache is still reading it; nothing sits between the two states for a
+threshold to be wrong about. Healthy, measured on the server's own cache on
+2026-10-05: 118,467 printings carry a legality, 118,464 a finish, 118,447 a
+game, and all 38,705 cards a mana value and a type line. Broken is 0 in every
+case.
+
+All five are counted off the record as it is read, before the schema has had
+an opinion on it, because the question is what Scryfall sent rather than what
+the cache kept. A reversible printing carries no `cmc` or `type_line` of its
+own and takes both from a sibling, which at this bound changes nothing: every
+other printing has them, so a count reaches zero only on a rename. Counting
+after the card is assembled would have answered the same question through our
+own merge, and a bug in that would then read as Scryfall having changed
+something.
+
+`oracle_id` is deliberately not among them. A printing naming no oracle is
+one the schema refuses, so losing it shows up as a skipped record and the
+second guard already answers for it.
 
 **A healthy sync skips nothing at all.** Measured on the server on
 2026-10-02, over a full file into an empty cache: 118,467 printings written
