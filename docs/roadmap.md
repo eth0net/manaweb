@@ -41,8 +41,8 @@ printing — and bulk scanning from uploaded photographs.
 
 **Export was never a phase, and should have been.** A collection nobody can
 get back out is one you are asked to take on trust, which is the opposite of
-the claim in [`scryfall.md`](scryfall.md). ManaBox reads both ways so far;
-Moxfield, Archidekt and a shape carrying every column we hold are each a
+the claim in [`scryfall.md`](scryfall.md). ManaBox and a shape of our own
+read both ways so far; Moxfield, Archidekt and Toploader OS are each a
 binding and a header, not another writer. What writing one has to decide is
 in that file too.
 

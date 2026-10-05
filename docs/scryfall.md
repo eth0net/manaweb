@@ -174,6 +174,58 @@ word for is counted too, and that row really is lost on the way back in — the
 record says what it says, and guessing at `foil` would be the silent mangling
 the whole arrangement exists to avoid.
 
+### A file of our own, for everything a vendor has no room for
+
+Every supported format is somebody else's shape, and each drops something: a
+ManaBox file has nowhere to put a container, a note, a proxy or what you paid.
+So one format is ours, carrying a column per field a record can hold, named
+the way the record names them. It states no header, because what it writes is
+what it binds — which is also what a mapping built from a file's own columns
+would do, and keeping one path for both means the uncommon one is exercised.
+
+**Two things it writes and cannot read back.** A container is a record of its
+own, and a file carries the name rather than the key, so putting one back
+means deciding whether to create a container that is no longer there, match
+one by name, or ask. `updatedAt` is the other, and that one is settled
+already: an import entry has every field a card does except that one, because
+a plan is a card nobody has amended yet, and a check holds the two shapes
+together. A file written from a collection that *has* been amended is the
+first thing that makes the premise arguable — see the open question. Both are
+questions about importing rather than about writing a file, and the export
+says so rather than implying a round trip it does not make.
+
+Reading a lot's date arrives with it: a date on its own is a lot, where
+before a lot needed a figure. When copies were come by is the fact Dragon
+Shield exports and a drift-since-acquisition figure needs.
+
+**Writing a column is not the same as being able to read it.** Three things a
+row carries come back as less than they went out, and the export counts the
+copies rather than letting the file imply a round trip: a tag holding the
+comma the column is joined on, which comes back as two tags; a figure with no
+currency beside it, which is a legal record and no figure at all to a reader
+that wants both; and a lot that is only a count, which leaves nothing in the
+row to rebuild it from. None of the three is something this app writes, and
+all three are records another client may.
+
+**A date is gated on its shape before it is parsed.** `Date.parse` reads `12`
+as a December, `Mar 3` as this year, and anything past the year 9999 as an
+expanded-year string no lexicon will take — and the refusal lands not where
+the file was read but inside the transaction that retires an import part,
+which pauses the import and pauses it again on every retry. So a cell is a
+date only if it starts with a four-digit year, and anything else is treated
+as the absence it probably is.
+
+**A tag is cut to bytes and a note between characters.** A lexicon's
+`maxLength` counts UTF-8, so 32 emoji are 128 of the 64 bytes a tag may have;
+a slice by length would pass the check here and be refused on arrival. The
+same slice through a surrogate pair leaves half a character behind, which
+nothing refuses and everything renders wrong.
+
+Nothing escapes a leading `=` or `@`. A spreadsheet reads those as formulas,
+but the only hand that writes a note into your collection is yours, and
+quoting them would break the round trip for every file that is read back
+rather than opened.
+
 A format names the header it writes rather than deriving one from its binding,
 because `ManaBox ID` is theirs to issue and ours goes out empty. A mapping
 built in the browser from a file's own headers has no such column, so it
@@ -614,6 +666,16 @@ still names the one artwork on the front, and a back that is only ever a back
 takes a number past every front, where no column reaches.
 
 ## Open questions
+
+**An imported card has been amended before.** `app.manaweb.import#entry`
+carries every field a card does but `updatedAt`, on the reasoning that a plan
+is a card nobody has changed yet, and `lexicon-check` holds it that way. A
+file written by our own export breaks that: the stack it describes may have
+been amended for years before it was written out, and re-importing it resets
+that to nothing. Adding the field is backward-compatible — an optional
+property on an open object — but it is a lexicon change and the premise it
+rests on is worth saying out loud before it moves. Until then the export
+writes the column and reports that a read drops it.
 
 **Trade quantity.** Two of the trackers we import from carry one. A trade list
 is the better model, but the column has nowhere to land, so import and export
