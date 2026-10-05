@@ -11,7 +11,8 @@ default:
 deps:
     @bun install
 
-# every check CI runs that can run on one machine
+# every check CI runs that can run on one machine, and `engine-check`, which
+# CI cannot run at all
 [group('checks')]
 check: rust deny spell prose lexicons scanner engine-check ts
 
@@ -89,10 +90,11 @@ engine: engine-build
     cp target/wasm32-unknown-unknown/wasm/manaweb_scanner.wasm web/src/scan/engine.wasm
 
 # Nobody can read the committed engine, so what stands in for reading it is
-# rebuilding it: the same source, compiler and crate version give the same
-# bytes. A compiler or a version that has moved fails this, which is not a
-# false alarm — the committed bytes are then what an older one produced.
-# `just engine` settles either, and `just release` runs it for that reason.
+# rebuilding it. One machine's answer only: a build host this hasn't run on
+# lands elsewhere, so it belongs on the way out of a checkout rather than in
+# CI — `docs/scanner.md`. A compiler or a crate version that has moved fails
+# it, which is not a false alarm: the committed bytes are then what an older
+# one produced. `just engine` settles either, and `just release` runs it.
 [doc('hold the committed engine to what this source builds (needs the wasm32 target)')]
 [group('checks')]
 engine-check: engine-build

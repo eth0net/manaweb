@@ -89,12 +89,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
+      # Reads the committed module beside one built here, so the bytes a
+      # browser is served are what this answers for. Comparing those bytes to
+      # a rebuild is the pre-push hook's job — see `docs/scanner.md`.
       - run: bun run check
         working-directory: tools/scanner-check
-      # Through `just` rather than restated here: a copy of the recipe that
-      # went stale would check the wrong bytes and say nothing.
-      - uses: extractions/setup-just@v4
-      - run: just engine-check
 
   typescript:
     name: typescript

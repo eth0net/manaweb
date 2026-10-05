@@ -510,8 +510,19 @@ gives the compiler no license to reassociate a float.
 49KB, built for size, and the client imports it for its URL so the build
 hashes it and the service worker holds it with the rest of the shell. What
 keeps it honest is the same check: it is read beside a build made here and
-held to the same exports and the same answers. Byte-for-byte would be the
-wrong test, the toolchain being unpinned. `just engine` rewrites it.
+held to the same exports and the same answers. `just engine` rewrites it.
+
+**Byte-for-byte is the wrong test anywhere but one machine**, and that was
+learned the expensive way: a CI job comparing the committed bytes to a build
+of its own went in on 2 Oct 2026 and failed every run until it came out
+again, including the one that cut v0.13.0. `rust-toolchain.toml` pins the
+compiler, so the original reason no longer holds, but the build host is not
+pinned and cannot be — the same compiler on two hosts emits two modules that
+answer alike and differ at byte 203. The comparison still earns its place
+where both sides are built in one place, which is the pre-push hook: the push
+is what deploys, so that is also the last moment anything can stop a drifted
+module going live. CI asks the question the other way, of the bytes
+themselves rather than of a rebuild, which no host can disagree about.
 
 A margin reaches it too: the reader answers with the nearest five, so a scan
 carries how much further the runner-up was. So does a camera: the scan page
