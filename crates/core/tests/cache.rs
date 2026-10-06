@@ -897,3 +897,61 @@ async fn every_field_nothing_carries_is_named_at_once() {
         "got {error:?}"
     );
 }
+
+/// The ordinary printing of a card that also has a reversible one, which is
+/// what the doubled name in the fixture is not — `docs/scryfall.md`.
+fn plain(line: usize, keep: &str) -> serde_json::Value {
+    let mut card: serde_json::Value =
+        serde_json::from_str(CARDS.lines().nth(line).unwrap()).expect("fixture parses");
+    card["id"] = serde_json::json!("00000000-0000-4000-8000-00000000000f");
+    card["collector_number"] = serde_json::json!("v0");
+    card["layout"] = serde_json::json!("normal");
+    card["name"] = serde_json::json!(keep);
+    card["type_line"] = serde_json::json!("Legendary Creature — Elf Druid");
+    card["mana_cost"] = serde_json::json!("{R/G}{G}{G/W}");
+    card["cmc"] = serde_json::json!(3.0);
+    card
+}
+
+/// The two tie on every other count — one set, one day, one kind of release —
+/// so without a rank that tells them apart the file's order decides the name.
+/// Three of the eight cards this was found on are this shape.
+#[tokio::test]
+async fn a_card_is_not_named_after_the_printing_folded_back_on_itself() {
+    let kept = "Jinnie Fay, Jetmir's Second";
+    let faceless = CARDS.lines().nth(1).unwrap();
+    let normal = plain(1, kept);
+
+    for (what, ndjson) in [
+        ("reversible first", format!("{faceless}\n{normal}\n")),
+        ("reversible last", format!("{normal}\n{faceless}\n")),
+    ] {
+        let pool = seeded_with(ndjson).await;
+        let held: (String,) = sqlx::query_as("SELECT name FROM oracle")
+            .fetch_one(&pool)
+            .await
+            .expect("one card across the two printings");
+
+        assert_eq!(held.0, kept, "{what}");
+    }
+}
+
+/// The other five: a Secret Lair years newer than the only ordinary printing,
+/// which the date alone would hand the card to whatever order it arrived in.
+#[tokio::test]
+async fn a_newer_reversible_printing_still_does_not_name_the_card() {
+    let kept = "Jinnie Fay, Jetmir's Second";
+    let faceless = CARDS.lines().nth(1).unwrap();
+    let mut normal = plain(1, kept);
+    normal["set"] = serde_json::json!("c19");
+    normal["set_type"] = serde_json::json!("commander");
+    normal["released_at"] = serde_json::json!("2019-08-23");
+
+    let pool = seeded_with(format!("{faceless}\n{normal}\n")).await;
+    let held: (String,) = sqlx::query_as("SELECT name FROM oracle")
+        .fetch_one(&pool)
+        .await
+        .expect("one card across the two printings");
+
+    assert_eq!(held.0, kept);
+}

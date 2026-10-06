@@ -277,14 +277,16 @@ struct Oracle {
 }
 
 /// Orders printings so the one a person means comes first: paper over digital,
-/// a set someone drafted over a boutique release, then newest.
-type Rank = (bool, bool, bool, Reverse<String>);
+/// a set someone drafted over a boutique release, a card over the novelty
+/// printed back to back with itself, then newest.
+type Rank = (bool, bool, bool, bool, Reverse<String>);
 
 fn rank(card: &Card) -> Rank {
     (
         card.digital,
         !matches!(card.set_type.as_str(), "expansion" | "core"),
         !card.booster,
+        card.layout == "reversible_card",
         Reverse(card.released_at.clone()),
     )
 }
@@ -340,7 +342,8 @@ impl Oracle {
                 slot.insert(incoming);
             }
             // Whichever ranks better keeps its own fields and folds the
-            // other in, so the file's order decides nothing.
+            // other in. Printings alike to the last of those are alike in
+            // what they would contribute, so the first of them stands.
             Entry::Occupied(slot) => {
                 let entry = slot.into_mut();
                 if incoming.rank < entry.rank {
