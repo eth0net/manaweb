@@ -297,7 +297,21 @@ guessed: group every printing by `oracle_id` and count the columns that
 disagree. Six never do — `color_identity`, `defense`, `edhrec_rank`,
 `game_changer`, `keywords`, `reserved`. Ten more disagree for 71 cards, and
 every one of those 71 is a reversible printing sharing an id with a normal
-one, whose nulls are the whole disagreement.
+one, whose nulls are almost the whole disagreement.
+
+**`name` is the one that disagrees by value rather than by absence**, and
+that was missed until ManaBox refused an export in October 2026. A reversible
+printing is named for both its sides, which are the same card twice, so
+Scryfall calls it `Blood Crypt // Blood Crypt` — a fact about the printing
+wearing the shape of a fact about the card. Taken as the card's name it makes
+a name no tracker and no search will match.
+
+Counting them wants care. 2,255 cards in the cache are named `X // X` and
+almost all of them rightly are: 2,232 are art series and fifteen are
+double-faced tokens, neither of which ever shares a card with a printing of
+another layout, so the doubled name is the only name there is. The eight that
+were wrong are the ones whose representative printing was reversible while an
+ordinary printing of the same card sat beside it.
 
 So `name`, `type_line`, `mana_cost`, `cmc`, `oracle_text`, `colors`, `power`,
 `toughness`, `loyalty` and `defense` are card-level. `legalities` is not: 2% of
@@ -311,10 +325,22 @@ it to come from; the card's row is filled from the best-ranked printing and any
 field still missing from whichever printing has it. Every one of them now
 resolves to a card with a type line.
 
-Best-ranked is not first-seen: a reversible printing can be a card's best, so
-a printing arriving later can displace what earlier ones established.
-The two merge either way round rather than the later one starting over, or the
-file's order would decide what a card's type line is.
+Best-ranked is not first-seen: a printing arriving later can displace what
+earlier ones established. The two merge either way round rather than the
+later one starting over, or the file's order would decide what a card's type
+line is.
+
+**A reversible printing ranks below the card it depicts**, which is the last
+thing the order asks before falling back to the date. It carries no top-level
+gameplay data, so it is the worst printing to take a card's fields from, and
+its name is the printing's rather than the card's. Without that, eight cards
+were named twice over, in two shapes. Three are a tie: Scryfall shipped a
+reversible Blood Crypt in the same expansion, on the same day, as the
+ordinary one, so the two agreed on every count the order knew about and
+whichever the file listed first won. The other five are not close — a Secret
+Lair from 2025 against a commander printing from 2019 — and the date alone
+handed the card to the novelty, whatever order they arrived in. After the
+change no card in the cache takes its fields from a reversible printing.
 
 Measured: the database drops by about an eighth and the client's gameplay
 payload by nearly two thirds — the artifact is the real prize, being the
