@@ -92,7 +92,7 @@ columns are the evidence for what a collection row needs.
 
 | | container | trade qty | tags | notes | serial | price paid | date added | date bought |
 |---|---|---|---|---|---|---|---|---|
-| ManaBox | Binder Name + Type | — | — | — | — | yes | yes | — |
+| ManaBox | Binder Name + Type | — | signed, altered, misprint | — | — | yes | yes | — |
 | Moxfield | — | yes | yes | — | — | yes | — | — |
 | Dragon Shield | Folder Name | yes | — | — | — | yes | — | yes |
 | MTGGoldfish | — | — | — | — | — | — | — | — |
@@ -250,6 +250,51 @@ fixtures are imported, exported and held to themselves row by row. All 403
 match outside those two columns, the second being a currency they print
 against a blank price: no amount is no lot, so there is nothing to write the
 currency back from and the row says as little either way.
+
+### A vendor's columns move, and a binding has to let them
+
+ManaBox's export was sixteen columns when the first of these fixtures was
+captured and is eighteen now: `Signed` and `Proxy` arrived in between, both
+of which a record here can hold — `signed` is one of the labels a tag may
+be, and a proxy has a field of its own. Until October 2026 neither was bound,
+so importing a current file dropped both without saying so.
+
+That is why a bound column is no longer the same thing as a required one.
+Anything a vendor added after we last looked is read when it is there and
+missed when it is not, so a file written before the column existed is still
+that vendor's file. The alternative is a binding that can never grow without
+refusing every export older than itself.
+
+**Which columns those are belongs to the format, not to the field.** Two
+things excuse a missing column and they are not the same thing. A printing's
+set name, rarity and language are filled from the catalog and read back by
+nobody, so no format is recognized by them — that is a fact about the reader.
+`Signed` and `Proxy` arriving late is a fact about ManaBox, and saying so
+once for every format would have quietly stopped our own format requiring a
+column it has carried since the day it was written.
+
+### The one place our file is righter than theirs
+
+ManaBox refused six rows of an export in October 2026 for a language it would
+not take: `ph`, the Phyrexian of the Phyrexia: All Will Be One cards. The
+`ph` is ours. Their own export of that collection — the file those cards came
+from — does not use the code anywhere, and calls those exact print ids
+English, while Scryfall gives them `lang: ph` and a printed name in glyphs no
+font on the device will render.
+
+So ManaBox does not model Phyrexian. It writes English for a Phyrexian
+printing on the way out and refuses the true code on the way in, which is
+consistent rather than contradictory and simply coarser than the id it is
+carrying. Nothing here is wrong either: an import reads the language off the
+print id and never off the column, which `data-model.md` settles, so the id
+carried a truth the file beside it had lost.
+
+What to do about it is the user's. The column says what the card is, and an
+export offers to say English instead for the languages a vendor is known to
+turn down — which is what that vendor already calls those printings, so the
+offer is to speak its vocabulary rather than to invent anything. It is off
+unless asked for, named with the count it would change, and the list of
+refused languages belongs to the format rather than to the exporter.
 
 ### What you paid is not what it was worth
 
