@@ -1,14 +1,14 @@
-Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency,Added
-Alluring Suitor // Deadly Dancer,VOW,Innistrad: Crimson Vow,300,normal,uncommon,1,64288,8075878b-b673-4d0c-b335-8a37295cd8d8,,false,false,near_mint,en,GBP,2026-01-20T19:21:58.101Z
-Giant Growth,SOA,Secrets of Strixhaven Mystical Archive,117,normal,uncommon,1,111802,64490086-2e8b-4921-ab08-68960c47277c,,false,false,near_mint,en,GBP,2026-04-05T12:01:25.987Z
-Subterranean Tremors,SOA,Secrets of Strixhaven Mystical Archive,48,normal,mythic,1,111778,02a20564-90af-4dbd-bf5c-debc49e4f391,,false,false,near_mint,en,GBP,2026-04-05T12:02:18.206Z
-Mischievous Catgeist // Catlike Curiosity,VOW,Innistrad: Crimson Vow,69,normal,uncommon,2,64353,a3ff628a-ef8e-45c4-84e7-a33ec28f025a,0.11,false,false,near_mint,en,GBP,2026-02-16T01:03:19.114Z
-"Valentin, Dean of the Vein // Lisette, Dean of the Root",STX,Strixhaven: School of Mages,161,normal,rare,1,58125,65008352-bc7e-40b2-a832-b46813e5dc4c,0.53,false,false,near_mint,en,GBP,2026-02-19T15:23:15.038Z
-"Jinnie Fay, Jetmir's Second",SNC,Streets of New Capenna,195,normal,rare,1,67998,c5f9326a-2a41-45b3-97c3-548f0bdc0882,0.43,false,false,near_mint,en,GBP,2026-02-16T01:03:32.033Z
-"Ayara, Widow of the Realm // Ayara, Furnace Queen",MOM,March of the Machine,90,normal,rare,1,81178,a21b1734-a773-4107-95c1-b44d5ccdfd82,0.2,false,false,near_mint,en,GBP,2026-02-19T16:53:07.026Z
-Ayara's Oathsworn,MAT,March of the Machine: The Aftermath,111,etched,rare,1,82444,0133c618-faab-4b40-8da0-fc91edf49785,0.76,false,false,near_mint,en,GBP,2026-02-19T16:54:17.915Z
-"Ayara, First of Locthwain",MUL,Multiverse Legends,143,foil,rare,1,81594,31d8b740-007d-40c5-a176-2e10ef246db7,15.93,false,false,near_mint,en,GBP,2026-02-19T16:59:02.845Z
-Vengeful Reaper,KHM,Kaldheim,116,normal,uncommon,1,56960,854c99fd-71ba-40b7-98cf-b783f01a77b4,0.09,false,false,near_mint,en,GBP,2025-11-25T13:56:41.762Z
-Star of Extinction,CMM,Commander Masters,259,normal,rare,1,84366,526d13cb-3616-4ac8-9ac0-04c729d447b2,0.6,false,false,near_mint,en,GBP,2026-01-29T20:30:19.267Z
-Black Cat,M15,Magic 2015,86,normal,common,1,13766,32efcfad-818c-4485-9022-cf94403f370b,0.13,false,false,near_mint,en,GBP,2026-02-01T01:13:33.723Z
-Professor Onyx,STX,Strixhaven: School of Mages,276,normal,mythic,1,58307,c2ad8536-15f6-42c1-8521-dc37feee8e67,5.71,false,false,near_mint,en,GBP,2026-02-19T15:04:30.698Z
+Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Signed,Condition,Language,Proxy,Purchase price currency,Added
+Alluring Suitor // Deadly Dancer,VOW,Innistrad: Crimson Vow,300,normal,uncommon,1,64288,8075878b-b673-4d0c-b335-8a37295cd8d8,,false,false,false,near_mint,en,false,GBP,2026-01-20T19:21:58.101Z
+Giant Growth,SOA,Secrets of Strixhaven Mystical Archive,117,normal,uncommon,1,111802,64490086-2e8b-4921-ab08-68960c47277c,,false,false,false,near_mint,en,false,GBP,2026-04-05T12:01:25.987Z
+Subterranean Tremors,SOA,Secrets of Strixhaven Mystical Archive,48,normal,mythic,1,111778,02a20564-90af-4dbd-bf5c-debc49e4f391,,false,false,false,near_mint,en,false,GBP,2026-04-05T12:02:18.206Z
+Mischievous Catgeist // Catlike Curiosity,VOW,Innistrad: Crimson Vow,69,normal,uncommon,2,64353,a3ff628a-ef8e-45c4-84e7-a33ec28f025a,0.11,false,false,false,near_mint,en,false,GBP,2026-02-16T01:03:19.114Z
+"Valentin, Dean of the Vein // Lisette, Dean of the Root",STX,Strixhaven: School of Mages,161,normal,rare,1,58125,65008352-bc7e-40b2-a832-b46813e5dc4c,0.53,false,false,false,near_mint,en,false,GBP,2026-02-19T15:23:15.038Z
+"Jinnie Fay, Jetmir's Second",SNC,Streets of New Capenna,195,normal,rare,1,67998,c5f9326a-2a41-45b3-97c3-548f0bdc0882,0.43,false,false,false,near_mint,en,false,GBP,2026-02-16T01:03:32.033Z
+"Ayara, Widow of the Realm // Ayara, Furnace Queen",MOM,March of the Machine,90,normal,rare,1,81178,a21b1734-a773-4107-95c1-b44d5ccdfd82,0.2,false,false,false,near_mint,en,false,GBP,2026-02-19T16:53:07.026Z
+Ayara's Oathsworn,MAT,March of the Machine: The Aftermath,111,etched,rare,1,82444,0133c618-faab-4b40-8da0-fc91edf49785,0.76,false,false,false,near_mint,en,false,GBP,2026-02-19T16:54:17.915Z
+"Ayara, First of Locthwain",MUL,Multiverse Legends,143,foil,rare,1,81594,31d8b740-007d-40c5-a176-2e10ef246db7,15.93,false,false,false,near_mint,en,false,GBP,2026-02-19T16:59:02.845Z
+Vengeful Reaper,KHM,Kaldheim,116,normal,uncommon,1,56960,854c99fd-71ba-40b7-98cf-b783f01a77b4,0.09,false,false,false,near_mint,en,false,GBP,2025-11-25T13:56:41.762Z
+Star of Extinction,CMM,Commander Masters,259,normal,rare,1,84366,526d13cb-3616-4ac8-9ac0-04c729d447b2,0.6,false,false,false,near_mint,en,false,GBP,2026-01-29T20:30:19.267Z
+Black Cat,M15,Magic 2015,86,normal,common,1,13766,32efcfad-818c-4485-9022-cf94403f370b,0.13,false,false,false,near_mint,en,false,GBP,2026-02-01T01:13:33.723Z
+Professor Onyx,STX,Strixhaven: School of Mages,276,normal,mythic,1,58307,c2ad8536-15f6-42c1-8521-dc37feee8e67,5.71,false,false,false,near_mint,en,false,GBP,2026-02-19T15:04:30.698Z

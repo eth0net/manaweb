@@ -3,7 +3,7 @@ import type { Owned, Stack } from "../collection/cards";
 import { columns, detect, FORMATS, MANABOX, MANAWEB } from "../import/formats";
 import { header, read } from "../import/read";
 import { write } from "./csv";
-import { rows } from "./rows";
+import { type Describe, rows } from "./rows";
 
 const NOW = "2026-10-05T00:00:00.000Z";
 const ID = "d40c73de-7a5f-46f2-a70b-449bc8ecfe24";
@@ -53,7 +53,9 @@ function stacks(owned: Owned[]): Stack[] {
 }
 
 function exported(owned: Owned[] = WHOLE): string {
-  return write(rows(stacks(owned), MANAWEB, () => new Map(), PLACES).rows);
+  return write(
+    rows(stacks(owned), MANAWEB, () => new Map(), { places: PLACES }).rows,
+  );
 }
 
 test("the file names itself rather than the tracker it is not", () => {
@@ -67,7 +69,7 @@ test("a format with no header of its own writes what it binds", () => {
 
 test("every column a record can fill is one this format has", () => {
   expect(
-    rows(stacks(WHOLE), MANAWEB, () => new Map(), PLACES).dropped,
+    rows(stacks(WHOLE), MANAWEB, () => new Map(), { places: PLACES }).dropped,
   ).toEqual([]);
 });
 
@@ -82,7 +84,9 @@ test("a collection comes back whole but for where it was filed", () => {
 });
 
 test("where it was filed is written even so", () => {
-  const { rows: out } = rows(stacks(WHOLE), MANAWEB, () => new Map(), PLACES);
+  const { rows: out } = rows(stacks(WHOLE), MANAWEB, () => new Map(), {
+    places: PLACES,
+  });
   const at = columns(MANAWEB).indexOf("Container");
 
   expect(out[1]?.[at]).toBe("Draft binder");
@@ -115,7 +119,9 @@ test("no format writes one column twice", () => {
 });
 
 test("a container written and not read back is said so", () => {
-  const { unread } = rows(stacks(WHOLE), MANAWEB, () => new Map(), PLACES);
+  const { unread } = rows(stacks(WHOLE), MANAWEB, () => new Map(), {
+    places: PLACES,
+  });
   expect(unread).toEqual(["container"]);
 });
 
@@ -126,7 +132,9 @@ test("a collection filed nowhere loses nothing to that", () => {
 });
 
 test("a format with no column for it says nothing about reading it back", () => {
-  const { unread } = rows(stacks(WHOLE), MANABOX, () => new Map(), PLACES);
+  const { unread } = rows(stacks(WHOLE), MANABOX, () => new Map(), {
+    places: PLACES,
+  });
   expect(unread).toEqual([]);
 });
 
@@ -145,7 +153,23 @@ test("a day with no figure beside it is still a lot", () => {
   ]);
 });
 
-test("a column the reader consults is one the file has to carry", () => {
+// ManaBox added `Signed` and `Proxy` after we had read one of its files, so
+// a file written before they existed is still a ManaBox file.
+test("a vendor's older file is still that vendor's file", () => {
+  const before = columns(MANABOX).filter(
+    (one) => one !== "Signed" && one !== "Proxy",
+  );
+  expect(detect(before)?.name).toBe("ManaBox");
+});
+
+test("a column no reader could do without is still required", () => {
+  const short = columns(MANAWEB).filter((one) => one !== "Finish");
+  expect(detect(short)).toBeNull();
+});
+
+// One vendor's lateness is not another's: ManaBox added `Proxy` after we had
+// read one of its files, and ours has carried it from the first.
+test("a column another vendor added late is still ours to require", () => {
   const short = columns(MANAWEB).filter((one) => one !== "Proxy");
   expect(detect(short)).toBeNull();
 });
@@ -222,7 +246,9 @@ test("a lot that is only a count is counted as lost", () => {
 });
 
 test("a collection a read puts back whole is counted as nothing", () => {
-  expect(rows(stacks(WHOLE), MANAWEB, () => new Map(), PLACES).unkept).toBe(0);
+  expect(
+    rows(stacks(WHOLE), MANAWEB, () => new Map(), { places: PLACES }).unkept,
+  ).toBe(0);
 });
 
 test("a tag comma is nothing to a format with no tags column", () => {
@@ -254,7 +280,9 @@ test("a note is cut between characters, never through one", () => {
 });
 
 test("when a stack last changed survives the trip", () => {
-  const { rows: out } = rows(stacks(WHOLE), MANAWEB, () => new Map(), PLACES);
+  const { rows: out } = rows(stacks(WHOLE), MANAWEB, () => new Map(), {
+    places: PLACES,
+  });
   const at = columns(MANAWEB).indexOf("Updated");
 
   expect(out[1]?.[at]).toBe("2026-02-02T00:00:00.000Z");
@@ -276,4 +304,123 @@ test("two rows of one stack keep the later date between them", () => {
   expect(back).toHaveLength(1);
   expect(back[0]?.quantity).toBe(2);
   expect(back[0]?.updatedAt).toBe("2026-06-06T00:00:00.000Z");
+});
+
+// Both were in ManaBox's export before they were in our binding, so a card
+// came back from one having lost them.
+test("a vendor's newer columns are read and written", () => {
+  const marked: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    proxy: true,
+    tags: ["altered", "misprint", "signed"],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const file = write(rows(stacks([marked]), MANABOX, () => new Map()).rows);
+  const { stacks: back } = read(file, MANABOX, NOW);
+
+  expect(back[0]?.tags).toEqual(["altered", "misprint", "signed"]);
+  expect(back[0]?.proxy).toBe(true);
+});
+
+test("a card that is none of those says so rather than nothing", () => {
+  const plain: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const { stacks: back } = read(
+    write(rows(stacks([plain]), MANABOX, () => new Map()).rows),
+    MANABOX,
+    NOW,
+  );
+
+  expect(back[0]?.tags).toBeUndefined();
+  expect(back[0]?.proxy).toBeUndefined();
+});
+
+const PHYREXIAN = "36ccde39-98bd-4a67-bfcf-a66d9fbd9417";
+
+// ManaBox refuses this one while its own export calls those printings
+// English — `docs/scryfall.md`.
+function phyrexian(): Describe {
+  return () =>
+    new Map([
+      [
+        PHYREXIAN,
+        {
+          card: { name: "Plains" },
+          print: {
+            set: "one",
+            setName: "Phyrexia: All Will Be One",
+            collectorNumber: "267",
+            rarity: "common",
+            lang: "ph",
+          },
+        },
+      ],
+    ]);
+}
+
+const LAND: Owned = {
+  scryfallId: PHYREXIAN,
+  finish: "nonfoil",
+  quantity: 3,
+  createdAt: "2024-01-01T00:00:00.000Z",
+};
+
+test("a language the vendor turns down is counted and still written", () => {
+  const written = rows(stacks([LAND]), MANABOX, phyrexian());
+  const at = columns(MANABOX).indexOf("Language");
+
+  expect(written.refused).toBe(3);
+  expect(written.rows[1]?.[at]).toBe("ph");
+});
+
+test("asked for English, that is what the column says", () => {
+  const written = rows(stacks([LAND]), MANABOX, phyrexian(), {
+    english: true,
+  });
+  const at = columns(MANABOX).indexOf("Language");
+
+  expect(written.refused).toBe(3);
+  expect(written.rows[1]?.[at]).toBe("en");
+});
+
+test("a language the vendor takes is left alone either way", () => {
+  const japanese: Describe = () =>
+    new Map([
+      [
+        PHYREXIAN,
+        {
+          card: { name: "Plains" },
+          print: {
+            set: "one",
+            setName: "x",
+            collectorNumber: "1",
+            rarity: "common",
+            lang: "ja",
+          },
+        },
+      ],
+    ]);
+  const at = columns(MANABOX).indexOf("Language");
+
+  for (const english of [false, true]) {
+    const written = rows(stacks([LAND]), MANABOX, japanese, { english });
+    expect(written.refused).toBe(0);
+    expect(written.rows[1]?.[at]).toBe("ja");
+  }
+});
+
+test("a format that refuses nothing is never asked to substitute", () => {
+  const written = rows(stacks([LAND]), MANAWEB, phyrexian(), {
+    english: true,
+  });
+  const at = columns(MANAWEB).indexOf("Language");
+
+  expect(written.refused).toBe(0);
+  expect(written.rows[1]?.[at]).toBe("ph");
 });

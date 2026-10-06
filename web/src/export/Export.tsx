@@ -47,6 +47,9 @@ export function Export({
 }) {
   const [format, setFormat] = useState(MANABOX);
   const [scope, setScope] = useState(ALL);
+  // Off by default: the file says what the card is until somebody decides
+  // they would rather it said what the tracker will take.
+  const [english, setEnglish] = useState(false);
   // An import puts cards in the repo hours before they are records, and a
   // listing that has not come back looks exactly like one holding nothing.
   const counted = useListed();
@@ -65,9 +68,12 @@ export function Export({
   const written = useMemo(
     () =>
       catalog && ready
-        ? rows(chosen, format, (ids) => catalog.resolve(ids), places)
+        ? rows(chosen, format, (ids) => catalog.resolve(ids), {
+            places,
+            english,
+          })
         : null,
-    [catalog, ready, chosen, format, places],
+    [catalog, ready, chosen, format, places, english],
   );
 
   const cards = chosen.reduce((sum, one) => sum + shown(one), 0);
@@ -147,7 +153,26 @@ export function Export({
       ) : !ready ? (
         <p className="quiet">Reading your collection…</p>
       ) : (
-        written && <Losses written={written} format={format.name} />
+        written && (
+          <>
+            <Losses written={written} format={format.name} />
+            {written.refused > 0 && (
+              <p className="warn">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={english}
+                    onChange={(event) => setEnglish(event.target.checked)}
+                  />{" "}
+                  {written.refused.toLocaleString()} card
+                  {written.refused === 1 ? "" : "s"} in a language{" "}
+                  {format.name} will not import. Say English instead, which is
+                  what their own export says of those printings.
+                </label>
+              </p>
+            )}
+          </>
+        )
       )}
     </>
   );

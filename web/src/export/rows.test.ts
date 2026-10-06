@@ -10,6 +10,18 @@ const NOW = "2026-10-04T00:00:00.000Z";
 
 const FIXTURES = ["manabox-binder", "manabox-collection", "manabox-list"];
 
+// By name rather than by position: ManaBox has added a column before now.
+const COLUMN = Object.fromEntries(
+  columns(MANABOX).map((one, at) => [one, at]),
+) as Record<string, number>;
+const QUANTITY = COLUMN.Quantity as number;
+const PRICE = COLUMN["Purchase price"] as number;
+const CURRENCY = COLUMN["Purchase price currency"] as number;
+const THEIR_ID = COLUMN["ManaBox ID"] as number;
+const NAME = COLUMN.Name as number;
+const FINISH = COLUMN.Foil as number;
+const SCRYFALL = COLUMN["Scryfall ID"] as number;
+
 async function fixture(name: string): Promise<string> {
   const at = new URL(`../import/fixtures/${name}.csv`, import.meta.url);
   return await Bun.file(at).text();
@@ -93,7 +105,7 @@ test("copies bought at two figures are two rows", () => {
   };
   const { rows: out } = rows(stacks([one]), MANABOX, () => new Map());
 
-  expect(out.slice(1).map((row) => [row[6], row[9]])).toEqual([
+  expect(out.slice(1).map((row) => [row[QUANTITY], row[PRICE]])).toEqual([
     ["1", "0.18"],
     ["2", "0.20"],
   ]);
@@ -111,7 +123,7 @@ test("copies no lot covers go out with no figure against them", () => {
   };
   const { rows: out } = rows(stacks([one]), MANABOX, () => new Map());
 
-  expect(out.slice(1).map((row) => [row[6], row[9]])).toEqual([
+  expect(out.slice(1).map((row) => [row[QUANTITY], row[PRICE]])).toEqual([
     ["2", "0.18"],
     ["3", ""],
   ]);
@@ -129,7 +141,7 @@ test("a history outrunning what is held exports what is held", () => {
   };
   const { rows: out } = rows(stacks([one]), MANABOX, () => new Map());
 
-  expect(out.slice(1).map((row) => row[6])).toEqual(["1"]);
+  expect(out.slice(1).map((row) => row[QUANTITY])).toEqual(["1"]);
 });
 
 test("a printing the catalog cannot name is counted, not dropped", () => {
@@ -143,8 +155,8 @@ test("a printing the catalog cannot name is counted, not dropped", () => {
 
   expect(written.unnamed).toBe(2);
   expect(written.rows).toHaveLength(2);
-  expect(written.rows[1]?.[8]).toBe(one.scryfallId);
-  expect(written.rows[1]?.[0]).toBe("");
+  expect(written.rows[1]?.[SCRYFALL]).toBe(one.scryfallId);
+  expect(written.rows[1]?.[NAME]).toBe("");
 });
 
 test("what the format has no column for is named before the file is", () => {
@@ -161,7 +173,7 @@ test("what the format has no column for is named before the file is", () => {
   };
   const { dropped } = rows(stacks([one]), MANABOX, () => new Map());
 
-  expect(dropped).toEqual(["container", "note", "proxy", "tags", "price"]);
+  expect(dropped).toEqual(["container", "note", "price"]);
 });
 
 test("a collection carrying only what fits loses nothing", () => {
@@ -201,8 +213,8 @@ test.each(FIXTURES)(
 
     const same = (row: string[]) =>
       row
-        .map((cell, at) => (at === 14 && !row[9] ? "" : cell))
-        .filter((_, at) => at !== 7)
+        .map((cell, at) => (at === CURRENCY && !row[PRICE] ? "" : cell))
+        .filter((_, at) => at !== THEIR_ID)
         .join("|");
 
     const theirs = parse(text).slice(1).map(same).sort();
@@ -220,7 +232,7 @@ test("a lot counting none of the copies puts none in the file", () => {
   };
   const { rows: out } = rows(stacks([none]), MANABOX, () => new Map());
 
-  expect(out.slice(1).map((row) => row[6])).toEqual(["2"]);
+  expect(out.slice(1).map((row) => row[QUANTITY])).toEqual(["2"]);
 });
 
 test("a fractional lot is the copies it covers whole", () => {
@@ -233,7 +245,7 @@ test("a fractional lot is the copies it covers whole", () => {
   };
   const { rows: out } = rows(stacks([part]), MANABOX, () => new Map());
 
-  expect(out.slice(1).map((row) => row[6])).toEqual(["1", "2"]);
+  expect(out.slice(1).map((row) => row[QUANTITY])).toEqual(["1", "2"]);
 });
 
 test("a finish the format cannot spell is counted, not assumed", () => {
@@ -246,7 +258,7 @@ test("a finish the format cannot spell is counted, not assumed", () => {
   const written = rows(stacks([odd]), MANABOX, () => new Map());
 
   expect(written.unspelled).toBe(2);
-  expect(written.rows[1]?.[4]).toBe("glossy");
+  expect(written.rows[1]?.[FINISH]).toBe("glossy");
 });
 
 test("a finish the format spells is not counted against it", () => {

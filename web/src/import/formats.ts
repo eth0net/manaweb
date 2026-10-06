@@ -17,6 +17,7 @@ export type Field =
   | "container"
   | "altered"
   | "misprint"
+  | "signed"
   | "tags"
   | "note"
   | "proxy"
@@ -36,7 +37,20 @@ export type Binding = Partial<Record<Field, string>>;
 
 // `header` is what an export writes, in the vendor's own order. A column no
 // field binds goes out empty: `ManaBox ID` is theirs to issue.
-export type Format = { name: string; binding: Binding; header?: string[] };
+//
+// `refuses` names languages this vendor's own importer turns down. Ours
+// refuses none — see `docs/scryfall.md`.
+//
+// `optional` names columns this vendor added after we had read one of its
+// files, so an older export is still recognized. It belongs to the format
+// because lateness is the vendor's, not a fact about the field.
+export type Format = {
+  name: string;
+  binding: Binding;
+  header?: string[];
+  refuses?: string[];
+  optional?: Field[];
+};
 
 // A format built from a file's own headers states none, so it writes the
 // columns it binds and nothing else.
@@ -74,6 +88,8 @@ export const MANABOX: Format = {
     condition: "Condition",
     altered: "Altered",
     misprint: "Misprint",
+    signed: "Signed",
+    proxy: "Proxy",
     marketValue: "Purchase price",
     marketCurrency: "Purchase price currency",
     createdAt: "Added",
@@ -91,11 +107,18 @@ export const MANABOX: Format = {
     "Purchase price",
     "Misprint",
     "Altered",
+    "Signed",
     "Condition",
     "Language",
+    "Proxy",
     "Purchase price currency",
     "Added",
   ],
+  // Their importer turns Phyrexian down, for printings their own export
+  // calls English — `docs/scryfall.md`.
+  refuses: ["ph"],
+  // Both arrived in their export after these fixtures were captured.
+  optional: ["signed", "proxy"],
 };
 
 // Every column a record has, under our own names, so a collection comes out
@@ -130,10 +153,17 @@ export const MANAWEB: Format = {
 
 export const FORMATS = [MANABOX, MANAWEB];
 
-// Facts about a printing that the catalog already holds, so an export fills
-// them and no reader consults them. `Name` is the other one, and stays
-// required because it is what tells one tracker's file from another's.
+// Facts about a printing the catalog already holds, so an export fills them
+// and no reader consults them. `Name` is the other one, and stays required
+// because it is what tells one tracker's file from another's.
 const FILLED: Field[] = ["setName", "rarity", "language"];
+
+// Whether a file has to carry this column to be read as this format. A
+// binding that could never grow would refuse every export older than itself,
+// so a format says which of its own columns arrived late.
+function required(format: Format, field: Field): boolean {
+  return !FILLED.includes(field) && !format.optional?.includes(field);
+}
 
 // The format whose every bound column the file carries. Two formats can both
 // fit, and the first wins, so a narrower one is listed before a broader.
@@ -143,7 +173,9 @@ export function detect(head: string[]): Format | null {
     FORMATS.find((format) =>
       Object.entries(format.binding).every(
         ([field, column]) =>
-          !column || FILLED.includes(field as Field) || names.has(key(column)),
+          !column ||
+          !required(format, field as Field) ||
+          names.has(key(column)),
       ),
     ) ?? null
   );

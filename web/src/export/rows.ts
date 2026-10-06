@@ -41,7 +41,21 @@ export type Written = {
   unkept: number;
   // What this file says that reading it back would not restore.
   unread: Field[];
+  // Copies in a language this format's own importer turns down.
+  refused: number;
 };
+
+// What an export was asked for beyond the rows themselves.
+export type Writing = {
+  // Containers by their record's URI, for a format with a column for one.
+  places?: Map<string, string>;
+  // Say English where the vendor refuses the true language. Theirs says the
+  // same of those printings — `docs/scryfall.md`.
+  english?: boolean;
+};
+
+// What a row needs that is neither the record nor the printing.
+type How = { places: Map<string, string>; lang: string };
 
 // 10 follows 9 and "329★" follows "329", so a collector number orders as text
 // that happens to start with a number. Pinned to one locale, or two devices
@@ -55,7 +69,7 @@ export function rows(
   stacks: Stack[],
   format: Format,
   describe: Describe,
-  places: Map<string, string> = new Map(),
+  { places = new Map(), english = false }: Writing = {},
 ): Written {
   const held = describe(new Set(stacks.map((one) => one.value.scryfallId)));
   const head = columns(format);
@@ -64,6 +78,7 @@ export function rows(
   let unnamed = 0;
   let unspelled = 0;
   let unkept = 0;
+  let refused = 0;
 
   for (const one of sorted(stacks, held)) {
     const count = shown(one);
@@ -74,12 +89,20 @@ export function rows(
     if (!foil(one.value.finish)) unspelled += count;
     if (vague(one.value, format)) unkept += count;
 
+    const said = printing?.print.lang ?? "";
+    const turned = format.refuses?.includes(said) ?? false;
+    if (turned) refused += count;
+    const lang = turned && english ? "en" : said;
+
     for (const lot of split(count, one.value.acquisitions ?? [])) {
       const row = new Array<string>(head.length).fill("");
       for (const [field, column] of Object.entries(format.binding)) {
         const index = at.get(key(column));
         if (index !== undefined) {
-          row[index] = cell(field as Field, one.value, printing, lot, places);
+          row[index] = cell(field as Field, one.value, printing, lot, {
+            places,
+            lang,
+          });
         }
       }
       out.push(row);
@@ -91,6 +114,7 @@ export function rows(
     unnamed,
     unspelled,
     unkept,
+    refused,
     dropped: dropped(stacks, format),
     unread: unread(stacks, format),
   };
@@ -135,7 +159,7 @@ function cell(
   one: Owned,
   printing: Printing | undefined,
   lot: Lot,
-  places: Map<string, string>,
+  how: How,
 ): string {
   switch (field) {
     case "scryfallId":
@@ -151,7 +175,7 @@ function cell(
     case "rarity":
       return printing?.print.rarity ?? "";
     case "language":
-      return printing?.print.lang ?? "";
+      return how.lang;
     case "finish":
       return foil(one.finish) ?? one.finish;
     case "quantity":
@@ -159,11 +183,13 @@ function cell(
     case "condition":
       return one.condition ? graded(one.condition) : "";
     case "container":
-      return one.container ? (places.get(one.container) ?? "") : "";
+      return one.container ? (how.places.get(one.container) ?? "") : "";
     case "altered":
       return flagged(labeled(one, "altered"));
     case "misprint":
       return flagged(labeled(one, "misprint"));
+    case "signed":
+      return flagged(labeled(one, "signed"));
     case "tags":
       return (one.tags ?? []).join(",");
     case "note":
@@ -243,12 +269,14 @@ function dropped(stacks: Stack[], format: Format): Field[] {
   return lost;
 }
 
+// The labels a vendor gives a column each rather than a list, named alike on
+// both sides so the column is the field.
+const FLAGGED: Field[] = ["altered", "misprint", "signed"];
+
 // A label with a column of its own survives a format carrying no tags.
 function kept(label: string, held: (field: Field) => boolean): boolean {
-  if (held("tags")) return true;
   return (
-    (label === "altered" && held("altered")) ||
-    (label === "misprint" && held("misprint"))
+    held("tags") || (FLAGGED.includes(label as Field) && held(label as Field))
   );
 }
 

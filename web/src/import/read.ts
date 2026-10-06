@@ -211,6 +211,7 @@ function tags(cell: (field: Field) => string): string[] {
   const labels = new Set<string>();
   if (flag(cell("altered"))) labels.add("altered");
   if (flag(cell("misprint"))) labels.add("misprint");
+  if (flag(cell("signed"))) labels.add("signed");
 
   for (const one of cell("tags").split(",")) {
     const label = fits(one.trim(), TAG);
