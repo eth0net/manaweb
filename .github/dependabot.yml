@@ -21,11 +21,13 @@ updates:
     schedule:
       interval: weekly
 
-  # One bun workspace at the root covers `web/` and every `tools/` package.
-  - package-ecosystem: npm
+  # Bun rather than npm: a `bun.lock` with no `package-lock.json` is Bun's to
+  # update, and the npm ecosystem aborts on one rather than passing it over.
+  # The one workspace at the root covers `web/` and every `tools/` package.
+  - package-ecosystem: bun
     directory: /
     schedule:
       interval: weekly
     groups:
-      npm:
+      bun:
         patterns: ["*"]
