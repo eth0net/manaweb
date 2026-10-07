@@ -168,6 +168,11 @@ counting no copies is neither, wherever it sits in a history: `minimum: 1`
 keeps it out of a valid record, and what a PDS hands back is unvalidated, so
 the same record read twice must not count two ways.
 
+One lot ending short of the copies it states is the case this leaves silent.
+Its amount and its day are in the row and only its count was shortened, which
+is a different loss in a different unit, and folding it in would make the
+count of purchases nothing in particular.
+
 Rows go out in set and collector number order rather than the repo's, which is
 whatever order the records happened to be written in. Two exports of an
 unchanged collection are then the same file, which is what makes one worth
