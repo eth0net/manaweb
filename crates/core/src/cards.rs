@@ -254,6 +254,10 @@ async fn ingest(
         }
     }
 
+    // Before the guards below, so a refused attempt is recorded with the count
+    // it read rather than with a zero that contradicts its own `written`.
+    report.cards = i64::try_from(oracles.len()).unwrap_or(i64::MAX);
+
     // Dropping the transaction rolls back the deletes, so each of these
     // leaves the catalog that is published where it was.
     if report.written == 0 {
@@ -291,7 +295,6 @@ async fn ingest(
         });
     }
 
-    report.cards = i64::try_from(oracles.len()).unwrap_or(i64::MAX);
     for (id, oracle) in &oracles {
         oracle.insert(&mut tx, id).await?;
     }

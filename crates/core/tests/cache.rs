@@ -567,6 +567,40 @@ async fn a_sync_that_lands_is_a_row_of_what_it_wrote() {
     assert_eq!(held[0].held, None, "nothing was in the cache before it");
 }
 
+/// Which guard stopped it is the column a history is grouped by, so each of
+/// them has to answer differently.
+#[tokio::test]
+async fn every_refusal_names_which_guard_it_was() {
+    let unreadable = "not json\n".repeat(20);
+    let cases = [
+        ("empty", String::new(), false),
+        ("skipped", many(1200) + &unreadable, false),
+        ("shrunk", many(1000), true),
+        ("shape", renamed(CARDS, "cmc"), false),
+    ];
+
+    for (tag, ndjson, over_a_catalog) in cases {
+        let pool = if over_a_catalog {
+            seeded_with(many(1200)).await
+        } else {
+            open_memory().await.unwrap()
+        };
+
+        cards::replace(&pool, &bulk("y"), &mut stream(ndjson))
+            .await
+            .expect_err("each of these should be refused");
+
+        let held = history(&pool).await;
+        let row = held.last().expect("a row per attempt");
+        assert_eq!(row.outcome, tag, "got {row:?}");
+        assert_eq!(
+            row.written == 0,
+            row.cards == 0,
+            "{tag}: printings of no cards, or cards of no printings: {row:?}"
+        );
+    }
+}
+
 /// The case the row exists for: the replace rolls back, so a row written
 /// inside it would roll back with the catalog and leave the refusal unseen.
 #[tokio::test]
@@ -582,6 +616,7 @@ async fn a_refused_sync_leaves_the_row_the_rollback_would_have_taken() {
     assert_eq!(held[1].outcome, "shrunk");
     assert_eq!(held[1].updated_at, "y");
     assert_eq!(held[1].written, 1001);
+    assert_eq!(held[1].cards, 1, "the count it read, not a zero");
     assert_eq!(held[1].held, Some(1201), "what it was weighed against");
     assert_eq!(
         cards::count(&pool).await.unwrap(),
