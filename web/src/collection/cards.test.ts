@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
   apply,
   type Change,
+  clip,
   fold,
   labels,
   landing,
@@ -416,4 +417,18 @@ test("a tag is cut on a cluster, never through one", () => {
   const flags = tagged(`a${FLAG.repeat(10)}`);
   expect(flags).toBe(`a${FLAG.repeat(7)}`);
   expect(graphemes(flags)).toBe(8);
+});
+
+// The ceiling an import keeps a file name under, which is a byte count like
+// every other and the one a surrogate pair straddles.
+const FILE = 255;
+
+test("a name past the byte ceiling is cut to it, on a whole character", () => {
+  const japanese = clip(`${"コレクション".repeat(30)}.csv`, FILE);
+  expect(bytes(japanese)).toBe(FILE);
+  expect(japanese).toBe(`${"コレクション".repeat(14)}コ`);
+
+  const emoji = clip(`${"x".repeat(254)}😀.csv`, FILE);
+  expect(emoji).toBe("x".repeat(254));
+  expect(emoji).not.toMatch(/[\ud800-\udfff]/);
 });

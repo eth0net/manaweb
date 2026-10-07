@@ -1,7 +1,7 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useMemo, useState } from "react";
 import type { Catalog } from "../catalog";
-import type { Holdings } from "../collection/cards";
+import { clip, type Holdings } from "../collection/cards";
 import { Link } from "../router";
 import { detect, FORMATS, type Format } from "./formats";
 import { plan, type Weight, weigh } from "./plan";
@@ -19,7 +19,7 @@ import {
 
 export const IMPORT = "/collection/import";
 
-// The lexicon's ceiling on a remembered file name.
+// The lexicon's ceiling on a remembered file name, in bytes.
 const FILE = 255;
 
 // A file read and identified, which is everything the receipt for it needs.
@@ -114,7 +114,7 @@ export function Import({
     setFound({
       format,
       got,
-      file: file.name.slice(0, FILE),
+      file: clip(file.name, FILE),
       digest: await digest(got.stacks),
     });
   }
