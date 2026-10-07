@@ -132,6 +132,16 @@ export const TAG = 64;
 export const NOTE = 300;
 export const NOTE_BYTES = 3000;
 
+// Comma-separated in the field, a list in the record.
+export function labels(text: string): string[] | undefined {
+  const tags = text
+    .split(",")
+    .map((one) => one.trim().slice(0, TAG))
+    .filter(Boolean)
+    .slice(0, TAGS);
+  return tags.length > 0 ? tags : undefined;
+}
+
 // Everything said about these copies in particular, which is what makes two
 // stacks of one printing different things rather than one count split in two.
 export function stack(

@@ -16,12 +16,11 @@ import { Link } from "../router";
 import {
   CONDITIONS,
   type Holdings,
+  labels,
   NOTE,
   type Stack,
   shown,
   stack,
-  TAG,
-  TAGS,
   unwritten,
 } from "./cards";
 import { type Containers, UNFILED } from "./containers";
@@ -371,14 +370,4 @@ function Fields({
       </p>
     </>
   );
-}
-
-// Comma-separated in the field, a list in the record.
-function labels(text: string): string[] | undefined {
-  const tags = text
-    .split(",")
-    .map((one) => one.trim().slice(0, TAG))
-    .filter(Boolean)
-    .slice(0, TAGS);
-  return tags.length > 0 ? tags : undefined;
 }
