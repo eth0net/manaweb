@@ -277,6 +277,23 @@ function labeled(one: Owned, label: string): boolean {
   return (one.tags ?? []).includes(label);
 }
 
+// Every field a record can fill, and what a card filling it looks like. Tags
+// are not here: a label can survive a format with no column for them.
+const FILLED: [Field, (one: Owned) => boolean][] = [
+  ["container", (one) => one.container !== undefined],
+  ["note", (one) => one.note !== undefined],
+  ["proxy", (one) => one.proxy === true],
+  ["condition", (one) => one.condition !== undefined],
+  ["price", (one) => lots(one).some((lot) => lot.price !== undefined)],
+  [
+    "marketValue",
+    (one) => lots(one).some((lot) => lot.marketValue !== undefined),
+  ],
+  ["acquiredAt", (one) => lots(one).some((lot) => lot.at !== undefined)],
+  ["createdAt", () => true],
+  ["updatedAt", (one) => one.updatedAt !== undefined],
+];
+
 // What the file will not say, named before it is written rather than found
 // missing afterwards.
 function dropped(stacks: Stack[], format: Format): Field[] {
@@ -285,20 +302,12 @@ function dropped(stacks: Stack[], format: Format): Field[] {
   const any = (said: (one: Owned) => boolean) =>
     stacks.some((one) => said(one.value));
 
-  const lost: Field[] = [];
-  if (!held("container") && any((one) => one.container !== undefined)) {
-    lost.push("container");
-  }
-  if (!held("note") && any((one) => one.note !== undefined)) lost.push("note");
-  if (!held("proxy") && any((one) => one.proxy === true)) lost.push("proxy");
+  const lost = FILLED.filter(([field, said]) => !held(field) && any(said)).map(
+    ([field]) => field,
+  );
+
   if (any((one) => (one.tags ?? []).some((label) => !kept(label, held)))) {
     lost.push("tags");
-  }
-  if (!held("price") && any((one) => lots(one).some((lot) => lot.price))) {
-    lost.push("price");
-  }
-  if (!held("acquiredAt") && any((one) => lots(one).some((lot) => lot.at))) {
-    lost.push("acquiredAt");
   }
   return lost;
 }

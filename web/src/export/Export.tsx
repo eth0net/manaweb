@@ -18,12 +18,15 @@ const KEEP = 60_000;
 // What a column the format lacks would have carried, in the app's own words.
 const WORDS: Partial<Record<Field, string>> = {
   container: "where cards are filed",
+  condition: "what condition they are in",
+  createdAt: "when they were added",
   updatedAt: "when a stack last changed",
+  acquiredAt: "when you got the cards",
   note: "notes",
   proxy: "which cards are proxies",
   tags: "tags",
   price: "what you paid",
-  acquiredAt: "when you came by cards",
+  marketValue: "what a copy was worth",
 };
 
 // Which file to ask for, since the choice is what reads it rather than what

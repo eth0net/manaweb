@@ -176,6 +176,29 @@ test("what the format has no column for is named before the file is", () => {
   expect(dropped).toEqual(["container", "note", "price"]);
 });
 
+// ManaBox has a column for what a copy was worth and none for the day it was
+// bought, so the lot goes out dated by nothing at all.
+test("a date no column carries is a loss like any other", () => {
+  const one: Owned = {
+    scryfallId: "d40c73de-7a5f-46f2-a70b-449bc8ecfe24",
+    finish: "nonfoil",
+    quantity: 1,
+    createdAt: NOW,
+    acquisitions: [
+      {
+        quantity: 1,
+        at: "2025-01-01T00:00:00.000Z",
+        marketValue: "3.00",
+        marketCurrency: "USD",
+      },
+    ],
+    updatedAt: "2026-02-02T00:00:00.000Z",
+  };
+  const { dropped } = rows(stacks([one]), MANABOX, () => new Map());
+
+  expect(dropped).toEqual(["acquiredAt", "updatedAt"]);
+});
+
 test("a collection carrying only what fits loses nothing", () => {
   const one: Owned = {
     scryfallId: "d40c73de-7a5f-46f2-a70b-449bc8ecfe24",
