@@ -66,6 +66,14 @@ chooses no key in advance, and the lock it takes is a Web Lock between this
 browser's own tabs rather than anything the PDS knows about — what the paced
 writer it replaces had to do, it no longer does.
 
+**A drain batch has to reach a render whole.** Its cards leave the waiting
+list and arrive in the collection as two separate stores, and a view holding
+one without the other is short or long by up to 199 — a total on screen that
+reads wrong for a moment, a file exported in that moment that is wrong for
+good. The two go together in one step, with the job written down after them
+rather than between them, so a save that fails costs the resume point it
+always did and never a count.
+
 **Let the server pick record keys.** A TID is a millisecond clock plus five
 random bits of clock id, kept monotonic only within the process that mints it,
 and the reference implementation says of those bits that they are "not
@@ -439,14 +447,6 @@ collection in v0. Just don't build anything that *depends* on collection
 records being publicly readable.
 
 ## Open questions
-
-**A drain batch is briefly in neither place.** The part leaves the waiting
-list before the records it became are handed to the collection, and an
-IndexedDB write sits between the two, so a render in that gap is short by up
-to 199 cards. Harmless while it only moved a total on screen; a file written
-in that gap is wrong and says nothing. Putting the two together closes it, at
-the cost of counting a batch twice if the write that separates them fails —
-which is the choice to make, not an oversight to correct blind.
 
 **Backfill has an upstream answer.** Handled for a user's own data by reading
 their own PDS, and a real problem only at Phase 3, where the index needs
