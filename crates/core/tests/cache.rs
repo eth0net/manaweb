@@ -567,6 +567,30 @@ async fn a_sync_that_lands_is_a_row_of_what_it_wrote() {
     assert_eq!(held[0].held, None, "nothing was in the cache before it");
 }
 
+/// The case the row exists for: the replace rolls back, so a row written
+/// inside it would roll back with the catalog and leave the refusal unseen.
+#[tokio::test]
+async fn a_refused_sync_leaves_the_row_the_rollback_would_have_taken() {
+    let pool = seeded_with(many(1200)).await;
+
+    cards::replace(&pool, &bulk("y"), &mut stream(many(1000)))
+        .await
+        .expect_err("a catalog this much smaller should be refused");
+
+    let held = history(&pool).await;
+    assert_eq!(held.len(), 2, "got {held:?}");
+    assert_eq!(held[1].outcome, "shrunk");
+    assert_eq!(held[1].updated_at, "y");
+    assert_eq!(held[1].written, 1001);
+    assert_eq!(held[1].cards, 1, "the count it read, not a zero");
+    assert_eq!(held[1].held, Some(1201), "what it was weighed against");
+    assert_eq!(
+        cards::count(&pool).await.unwrap(),
+        1201,
+        "cache was replaced"
+    );
+}
+
 /// Which guard stopped it is the column a history is grouped by, so each of
 /// them has to answer differently.
 #[tokio::test]
@@ -601,43 +625,21 @@ async fn every_refusal_names_which_guard_it_was() {
     }
 }
 
-/// The case the row exists for: the replace rolls back, so a row written
-/// inside it would roll back with the catalog and leave the refusal unseen.
+/// An empty file over a cache holding something is the dangerous one, and what
+/// it would have thrown away is on the row.
 #[tokio::test]
-async fn a_refused_sync_leaves_the_row_the_rollback_would_have_taken() {
-    let pool = seeded_with(many(1200)).await;
+async fn an_empty_stream_is_a_row_naming_what_it_would_have_replaced() {
+    let (pool, _) = seeded().await;
 
-    cards::replace(&pool, &bulk("y"), &mut stream(many(1000)))
-        .await
-        .expect_err("a catalog this much smaller should be refused");
-
-    let held = history(&pool).await;
-    assert_eq!(held.len(), 2, "got {held:?}");
-    assert_eq!(held[1].outcome, "shrunk");
-    assert_eq!(held[1].updated_at, "y");
-    assert_eq!(held[1].written, 1001);
-    assert_eq!(held[1].cards, 1, "the count it read, not a zero");
-    assert_eq!(held[1].held, Some(1201), "what it was weighed against");
-    assert_eq!(
-        cards::count(&pool).await.unwrap(),
-        1201,
-        "cache was replaced"
-    );
-}
-
-/// A file read out of a stream that carried nothing is the other rollback.
-#[tokio::test]
-async fn an_empty_stream_is_a_row_too() {
-    let pool = open_memory().await.unwrap();
-
-    cards::replace(&pool, &bulk("x"), &mut stream(""))
+    cards::replace(&pool, &bulk("y"), &mut stream(""))
         .await
         .expect_err("an empty stream should be refused");
 
     let held = history(&pool).await;
-    assert_eq!(held.len(), 1, "got {held:?}");
-    assert_eq!(held[0].outcome, "empty");
-    assert_eq!(held[0].written, 0);
+    assert_eq!(held.len(), 2, "got {held:?}");
+    assert_eq!(held[1].outcome, "empty");
+    assert_eq!(held[1].written, 0);
+    assert_eq!(held[1].held, Some(4), "the catalog it did not replace");
 }
 
 /// What the backoff costs: the same file downloaded again on every refusal,
@@ -645,11 +647,20 @@ async fn an_empty_stream_is_a_row_too() {
 #[tokio::test]
 async fn retries_of_one_file_count_up() {
     let pool = seeded_with(many(1200)).await;
+    // A wrong answer for the count to reach if it stopped reading either
+    // column it filters on.
+    sqlx::query(
+        "INSERT INTO sync_history (kind, updated_at, outcome, written, cards, skipped)
+         VALUES ('all_cards', 'y', 'synced', 1, 1, 0)",
+    )
+    .execute(&pool)
+    .await
+    .expect("another kind should insert");
+
     assert_eq!(
         cards::attempts(&pool, "default_cards", "y").await.unwrap(),
         0
     );
-
     for _ in 0..3 {
         cards::replace(&pool, &bulk("y"), &mut stream(many(1000)))
             .await
@@ -661,9 +672,10 @@ async fn retries_of_one_file_count_up() {
         3
     );
     assert_eq!(
-        cards::attempts(&pool, "default_cards", "z").await.unwrap(),
-        0
+        cards::attempts(&pool, "default_cards", "x").await.unwrap(),
+        1
     );
+    assert_eq!(cards::attempts(&pool, "all_cards", "y").await.unwrap(), 1);
 }
 
 /// A file that stopped arriving is the failure this table is here to count,
