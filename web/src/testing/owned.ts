@@ -85,12 +85,12 @@ function history(lots: Acquisition[]): Acquisition[] {
   });
 }
 
+// A record key is its own alphabet, and `.` and `..` name a directory rather
+// than a record.
 export const container = fc
-  .string({ unit: "grapheme-ascii", minLength: 1, maxLength: 8 })
-  .map((key) => `at://did:plc:x/app.manaweb.container/${key.trim()}`)
-  .filter(
-    (uri) => uri.length > "at://did:plc:x/app.manaweb.container/".length,
-  );
+  .stringMatching(/^[a-zA-Z0-9.:_~-]{1,16}$/)
+  .filter((key) => key !== "." && key !== "..")
+  .map((key) => `at://did:plc:x/app.manaweb.container/${key}`);
 
 // `false` is a record no client writes: a flag column reads back as absent,
 // and `stack` already treats the two as one thing.
@@ -107,8 +107,8 @@ export function owned(
       proxy: fc.constant(true),
       note,
       tags: fc
-        .uniqueArray(tag, { minLength: 1, maxLength: 4 })
-        .map((all) => all.slice(0, TAGS).sort()),
+        .uniqueArray(tag, { minLength: 1, maxLength: TAGS })
+        .map((all) => [...all].sort()),
       acquisitions: fc
         .array(lots, { minLength: 1, maxLength: LOTS })
         .map(history),
