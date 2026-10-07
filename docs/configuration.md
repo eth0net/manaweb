@@ -60,7 +60,7 @@ checksums every migration it applies and refuses a database whose record
 disagrees, so a migration edited after it shipped — `0003` was, in a commit
 that only retargeted a comment — stops the process before it binds, with
 `applying migrations failed: migration 3 was previously applied but has been
-modified` and nothing else. A test holds the four checksums now, so it cannot
+modified` and nothing else. A test holds every checksum now, so it cannot
 happen again; a volume it already happened to is unstuck either by deleting
 the database, the cache being derived from Scryfall and disposable, or by
 writing the file's own sha384 over the recorded one:

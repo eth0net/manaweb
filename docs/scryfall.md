@@ -629,12 +629,16 @@ and 0 skipped. So the hundredth is three orders of magnitude of headroom
 rather than a guess near the line, which is the right side to be wrong on
 for a guard nobody is watching.
 
-**It is still one measurement**, and `bulk_sync` keeps the count written
-rather than the count lost, so there is no history to read a trend off.
-Tightening either bound wants the skipped count stored first; until then
-they sit where a false alarm is implausible, and the cost of being wrong is
-that the refresh retries on its own backoff — four downloads a day, shouting
-in the log, against a catalog nobody looked at.
+**It is still one measurement**, and one is not a trend. `sync_history` now
+takes a row per attempt — what landed, what was skipped, what the cache held
+going in, and which guard turned it away where one did — so these bounds can
+eventually be set from a year of weeks rather than from the week somebody
+looked. Until that history is long enough to say otherwise they sit where a
+false alarm is implausible, which no single new row changes.
+
+The cost of being wrong is unchanged: the refresh retries on its own backoff —
+four downloads a day, shouting in the log, against a catalog nobody looked at.
+It is countable now, and the line the sync logs says which attempt it is.
 
 **Not every printing has one.** Measured over a full sync on 2026-09-22:
 117,860 of 118,609 carry an illustration, across some 52,400 distinct

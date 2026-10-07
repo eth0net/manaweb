@@ -321,8 +321,15 @@ The last of those reads as expensive on a 950MB host and is not. Measured the
 same day: the container idles at 8MB, the host has 600MB free, and the sync an
 export follows peaks higher anyway, at 109MB. It lasts as long as an export.
 
-**Phase 3's non-derivable state gets a file of its own.** Everything in the
-cache derives from Scryfall, which is what makes it disposable; one thing
+**The first table that is not derived is already here.** `sync_history` keeps
+a row per Scryfall sync attempt, and a refusal is observed once: re-running
+the sync asks about this week's file, never about the one turned away in
+September. It stays in the cache rather than taking the second file below,
+because what that split buys is durability, and an empty history costs a
+measurement rather than anything a user or the AppView reads.
+
+**Phase 3's non-derivable state gets a file of its own.** Almost everything in
+the cache derives from Scryfall, which is what makes it disposable; one thing
 arriving with Explore won't, being activity we only ever saw go past. A record
 written and deleted between two of our reads leaves nothing behind to re-read,
 and the replay window bounds how far a reconnect recovers. Put that in a second

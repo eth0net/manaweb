@@ -80,11 +80,13 @@ backend:
   costs 84 round trips to settle — see `docs/architecture.md`.
   Indexing only earns its place when we need what the client can't do locally —
   Explore, cross-user aggregates.
-- **Our database is disposable.** Everything in it derives from Scryfall or
-  from records we can re-read from PDSes; tokens live in the browser. One
-  exception arrives with Phase 3: activity history only ever seen over the
-  firehose, a record written and deleted between two reads leaving nothing in
-  the repo to find.
+- **Our database is disposable, with two exceptions.** Everything else derives
+  from Scryfall or from records we can re-read from PDSes; tokens live in the
+  browser. `sync_history` is a row per Scryfall sync attempt, and nothing can
+  recreate a week that has already gone — losing it costs the measurements the
+  sync's own bounds want, not anything running. The second arrives with Phase
+  3: activity only ever seen over the firehose, a record written and deleted
+  between two reads leaving nothing in the repo to find.
 - Bias toward flexibility in the DB/AppView layer; be conservative about
   lexicon NSIDs and required fields, since those are costly to change once real
   records exist in other people's repos.
