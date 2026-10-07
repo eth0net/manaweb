@@ -132,7 +132,9 @@ export const TAG = 64;
 export const NOTE = 300;
 export const NOTE_BYTES = 3000;
 
-const CLUSTERS = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+// Pinned as the export's collator is, in `web/src/export/rows.ts`: a tailored
+// boundary would move the cut, and the cut decides what bytes land.
+const CLUSTERS = new Intl.Segmenter("en", { granularity: "grapheme" });
 const ENCODER = new TextEncoder();
 
 // A lexicon counts bytes, and a grapheme ceiling where it names one; either

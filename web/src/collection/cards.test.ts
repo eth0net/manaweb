@@ -373,7 +373,7 @@ test("a merge with a timestamp is changed at that timestamp", () => {
   expect(merge(one, other, NOW).updatedAt).toBe(NOW);
 });
 
-const CLUSTERS = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+const CLUSTERS = new Intl.Segmenter("en", { granularity: "grapheme" });
 const ENCODER = new TextEncoder();
 
 // Two code points to the cluster and eight bytes, so the tag ceiling is

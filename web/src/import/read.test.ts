@@ -245,7 +245,7 @@ const NOTED: Format = {
   binding: { ...MANABOX.binding, note: "Name" },
 };
 
-const CLUSTERS = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+const CLUSTERS = new Intl.Segmenter("en", { granularity: "grapheme" });
 
 function noted(text: string): string {
   const { stacks } = read([HEAD, row({ name: text })].join("\n"), NOTED, NOW);
