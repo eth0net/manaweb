@@ -159,6 +159,15 @@ other thing the file cannot carry is. Selling part of a stack is how a
 collection comes to hold more history than copies, and that is where what was
 paid is worth keeping, so the cap going unsaid would read as a clean export.
 
+Counted, though, only where there was a loss and the cap caused it. A lot
+stating no amount and no day said nothing for a row to lose, and where the
+format binds no column for what it does state, every lot went the same way
+whether the copies reached it or not — which is the dropped column's to
+report, since naming the cap there would point at the wrong cause. A lot
+counting no copies is neither, wherever it sits in a history: `minimum: 1`
+keeps it out of a valid record, and what a PDS hands back is unvalidated, so
+the same record read twice must not count two ways.
+
 Rows go out in set and collector number order rather than the repo's, which is
 whatever order the records happened to be written in. Two exports of an
 unchanged collection are then the same file, which is what makes one worth
@@ -171,22 +180,23 @@ for the whole copies it covers and no more.
 
 Columns the format cannot fill are named before the file is written rather
 than noticed afterwards. A ManaBox file has nowhere to put a container, a
-note, a proxy flag or what you paid, and dropping those quietly is the same
-defect as mangling an import. A printing the catalog cannot name is counted
-the same way and still written: the print id is on the record, so we can read
-the row back even with the name beside it blank. A finish the vendor has no
-word for is counted too, and that row really is lost on the way back in — the
-record says what it says, and guessing at `foil` would be the silent mangling
-the whole arrangement exists to avoid.
+note, a proxy flag, what you paid or the day you came by it, and dropping
+those quietly is the same defect as mangling an import. A printing the catalog
+cannot name is counted the same way and still written: the print id is on the
+record, so we can read the row back even with the name beside it blank. A
+finish the vendor has no word for is counted too, and that row really is lost
+on the way back in — the record says what it says, and guessing at `foil`
+would be the silent mangling the whole arrangement exists to avoid.
 
 ### A file of our own, for everything a vendor has no room for
 
 Every supported format is somebody else's shape, and each drops something: a
-ManaBox file has nowhere to put a container, a note, a proxy or what you paid.
-So one format is ours, carrying a column per field a record can hold, named
-the way the record names them. It states no header, because what it writes is
-what it binds — which is also what a mapping built from a file's own columns
-would do, and keeping one path for both means the uncommon one is exercised.
+ManaBox file has nowhere to put a container, a note, a proxy, what you paid or
+when. So one format is ours, carrying a column per field a record can hold,
+named the way the record names them. It states no header, because what it
+writes is what it binds — which is also what a mapping built from a file's own
+columns would do, and keeping one path for both means the uncommon one is
+exercised.
 
 **One thing it writes and cannot read back.** A container is a record of its
 own, and a file carries the name rather than the key, so putting one back

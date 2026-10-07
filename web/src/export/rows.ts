@@ -100,7 +100,7 @@ export function rows(
     if (turned) refused += count;
     const lang = turned && english ? "en" : said;
 
-    const spent = split(count, one.value.acquisitions ?? []);
+    const spent = split(count, one.value.acquisitions ?? [], format);
     unspent += spent.unspent;
 
     for (const lot of spent.lots) {
@@ -148,24 +148,51 @@ function sorted(stacks: Stack[], held: Map<string, Printing>): Stack[] {
 
 // One row per lot, capped at the copies held, and a lot counting none of them
 // spends none — `docs/scryfall.md`.
-function split(count: number, acquisitions: Acquisition[]): Spent {
+function split(
+  count: number,
+  acquisitions: Acquisition[],
+  format: Format,
+): Spent {
   const lots: Lot[] = [];
   let left = count;
   let unspent = 0;
 
   for (const lot of acquisitions) {
+    // Before the copies are weighed, or the same record would count one way
+    // written in one order and another in the other.
+    const whole = Math.trunc(lot.quantity);
+    if (whole < 1) continue;
+
     if (left < 1) {
-      unspent += 1;
+      if (carried(lot, format)) unspent += 1;
       continue;
     }
-    const quantity = Math.min(Math.trunc(lot.quantity), left);
-    if (quantity < 1) continue;
+
+    const quantity = Math.min(whole, left);
     lots.push({ quantity, lot });
     left -= quantity;
   }
 
   if (left > 0) lots.push({ quantity: left });
   return { lots, unspent };
+}
+
+// What a lot says and the column a row would say it in. A currency is not
+// one of them: an amount is what makes a lot — `docs/scryfall.md`.
+const SAID: [Field, (lot: Acquisition) => string | undefined][] = [
+  ["price", (lot) => lot.price],
+  ["marketValue", (lot) => lot.marketValue],
+  ["acquiredAt", (lot) => lot.at],
+];
+
+// A lot worth counting as lost: this file had both something to say about it
+// and a column to say it in. Where the format binds neither, every lot went
+// the same way and `dropped` is what names it.
+function carried(lot: Acquisition, format: Format): boolean {
+  return SAID.some(
+    ([field, said]) =>
+      format.binding[field] !== undefined && (said(lot) ?? "").trim() !== "",
+  );
 }
 
 function cell(
@@ -269,6 +296,9 @@ function dropped(stacks: Stack[], format: Format): Field[] {
   }
   if (!held("price") && any((one) => lots(one).some((lot) => lot.price))) {
     lost.push("price");
+  }
+  if (!held("acquiredAt") && any((one) => lots(one).some((lot) => lot.at))) {
+    lost.push("acquiredAt");
   }
   return lost;
 }

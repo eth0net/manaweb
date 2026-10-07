@@ -23,6 +23,7 @@ const WORDS: Partial<Record<Field, string>> = {
   proxy: "which cards are proxies",
   tags: "tags",
   price: "what you paid",
+  acquiredAt: "when you came by cards",
 };
 
 // Which file to ask for, since the choice is what reads it rather than what
@@ -227,9 +228,8 @@ function Losses({ written, format }: { written: Written; format: string }) {
       {written.unspent > 0 && (
         <p className="warn">
           {written.unspent.toLocaleString()} purchase
-          {written.unspent === 1 ? "" : "s"} of copies you no longer hold, so
-          no row says what you paid for {written.unspent === 1 ? "it" : "them"}{" "}
-          or when.
+          {written.unspent === 1 ? "" : "s"} the copies ran out before, so no
+          row says what {written.unspent === 1 ? "it" : "they"} cost or when.
         </p>
       )}
       {written.unspelled > 0 && (

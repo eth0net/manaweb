@@ -516,3 +516,73 @@ test("a lot the copies only part cover is not counted against the file", () => {
   };
   expect(rows(stacks([most]), MANAWEB, () => new Map()).unspent).toBe(0);
 });
+
+// Nothing is lost by a lot that said nothing, and a panel claiming otherwise
+// is worse than one saying nothing at all.
+test("a lot that only ever counted copies is not a loss", () => {
+  const bare: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    acquisitions: [{ quantity: 1 }, { quantity: 1 }],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+
+  for (const format of [MANAWEB, MANABOX]) {
+    expect(rows(stacks([bare]), format, () => new Map()).unspent).toBe(0);
+  }
+});
+
+const SOLD: Owned = {
+  scryfallId: ID,
+  finish: "nonfoil",
+  quantity: 1,
+  acquisitions: [
+    { quantity: 1, price: "120.00", currency: "GBP", at: "2019-04-01" },
+    { quantity: 2, price: "250.00", currency: "GBP", at: "2021-06-01" },
+  ],
+  createdAt: "2024-01-01T00:00:00.000Z",
+};
+
+// ManaBox binds neither column, so both lots went the same way and the cap
+// had nothing to do with it.
+test("a lot the format has no column for is the format's loss", () => {
+  const { unspent, dropped } = rows(stacks([SOLD]), MANABOX, () => new Map());
+
+  expect(unspent).toBe(0);
+  expect(dropped).toEqual(["price", "acquiredAt"]);
+});
+
+test("a lot the format does bind a column for is the cap's", () => {
+  const worth: Owned = {
+    ...SOLD,
+    acquisitions: [
+      { quantity: 1, marketValue: "1.00", marketCurrency: "GBP" },
+      { quantity: 2, marketValue: "2.00", marketCurrency: "GBP" },
+    ],
+  };
+  const { unspent, dropped } = rows(stacks([worth]), MANABOX, () => new Map());
+
+  expect(unspent).toBe(1);
+  expect(dropped).toEqual([]);
+});
+
+// `minimum: 1` keeps this out of a valid record, and nothing validates what a
+// PDS hands back.
+test("a lot counting no copies counts the same wherever it sits", () => {
+  const empty = { quantity: 0, price: "9.99", currency: "GBP" };
+  const counted = { quantity: 1 };
+  const first: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    acquisitions: [empty, counted],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const last: Owned = { ...first, acquisitions: [counted, empty] };
+
+  expect(rows(stacks([first]), MANAWEB, () => new Map()).unspent).toBe(
+    rows(stacks([last]), MANAWEB, () => new Map()).unspent,
+  );
+  expect(rows(stacks([last]), MANAWEB, () => new Map()).unspent).toBe(0);
+});
