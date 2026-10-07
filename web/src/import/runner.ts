@@ -359,16 +359,12 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
   }
 
   const wrote = landed(writes, applied.results);
-  // todo: a render between this and `report` sees neither the part nor the
-  // records it became — `docs/atproto.md`.
-  holding(pending.slice(1));
   for (const made of wrote) recent.set(made.uri, made);
+  moved(pending.slice(1), wrote);
   job.misses = 0;
   job.total = total;
   job.dueAt = Date.now() + spacing(applied.budget, cost(writes));
   if (!(await keep(job, mine))) return;
-
-  report?.(wrote);
 
   if (stopping) {
     ticks(false);
@@ -382,6 +378,17 @@ async function sink(now: OAuthSession, job: Job, mine: number): Promise<void> {
     due: job.dueAt,
     quiet: false,
   });
+}
+
+// A part off the waiting list as the records it became reach the collection,
+// nothing awaited between: a render catching one alone counts the batch twice
+// or not at all.
+function moved(left: Held<Receipt>[], wrote: Stack[]): void {
+  try {
+    report?.(wrote);
+  } finally {
+    holding(left);
+  }
 }
 
 // What the repo still holds of every import, which is the only thing that says
@@ -677,7 +684,8 @@ export async function drop(): Promise<void> {
   });
 }
 
-function listen(watcher: () => void): () => void {
+// Every change this module publishes, for a reader that is not a render.
+export function listen(watcher: () => void): () => void {
   watching.add(watcher);
   return () => void watching.delete(watcher);
 }
@@ -712,8 +720,12 @@ export function useImport(): State {
 }
 
 // Cards the repo holds inside an import rather than as records of their own.
+export function awaiting(): Owned[] {
+  return waiting;
+}
+
 export function useWaiting(): Owned[] {
-  return useSyncExternalStore(listen, () => waiting);
+  return useSyncExternalStore(listen, awaiting);
 }
 
 // Whether [`useWaiting`] is an answer yet. False until a listing comes back,
