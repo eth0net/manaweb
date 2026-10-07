@@ -176,6 +176,21 @@ test("what the format has no column for is named before the file is", () => {
   expect(dropped).toEqual(["container", "note", "price"]);
 });
 
+// The lexicon sets no minimum on a price, so an empty one is a record a PDS
+// takes, and it is the one a truthy test would read as no price at all.
+test("a price is a field a lot has, not a figure that reads as true", () => {
+  const one: Owned = {
+    scryfallId: "d40c73de-7a5f-46f2-a70b-449bc8ecfe24",
+    finish: "nonfoil",
+    quantity: 1,
+    createdAt: NOW,
+    acquisitions: [{ quantity: 1, price: "", currency: "GBP" }],
+  };
+  expect(rows(stacks([one]), MANABOX, () => new Map()).dropped).toEqual([
+    "price",
+  ]);
+});
+
 // ManaBox has a column for what a copy was worth and none for the day it was
 // bought, so the lot goes out dated by nothing at all.
 test("a date no column carries is a loss like any other", () => {
