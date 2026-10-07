@@ -4,6 +4,7 @@ import {
   joins,
   merge,
   NOTE,
+  NOTE_BYTES,
   type Owned,
   stack,
   TAG,
@@ -34,6 +35,9 @@ export type Read = { stacks: Owned[]; skipped: Skipped[] };
 // A row named by set and number, held for one pass of the catalog rather than
 // a lookup each.
 type Waiting = { one: Owned; line: number; key: string; said: string };
+
+const CLUSTERS = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+const ENCODER = new TextEncoder();
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MONEY = /^\d+(\.\d+)?$/;
@@ -118,8 +122,7 @@ export function read(
     const labels = tags(cell);
     if (labels.length > 0) one.tags = labels;
 
-    // By code point rather than by unit, so a cut never leaves half a pair.
-    const note = [...cell("note")].slice(0, NOTE).join("");
+    const note = clip(cell("note"), NOTE, NOTE_BYTES);
     if (note) one.note = note;
 
     if (flag(cell("proxy"))) one.proxy = true;
@@ -251,13 +254,30 @@ function money(amount: string, currency: string): boolean {
 // A lexicon counts bytes, so a tag of emoji is four times what `length` says
 // and the record is refused on arrival — `docs/scryfall.md`.
 function fits(text: string, bytes: number): string {
-  const encoded = new TextEncoder().encode(text);
+  const encoded = ENCODER.encode(text);
   if (encoded.length <= bytes) return text;
   // Decoding a cut sequence ends in a replacement character, which is the
   // half character to drop.
   return new TextDecoder()
     .decode(encoded.subarray(0, bytes))
     .replace(/\ufffd$/, "");
+}
+
+// A lexicon counts a note's graphemes and its bytes both, and either ceiling
+// refuses the record. Whole clusters, so a flag is never left half written.
+function clip(text: string, graphemes: number, bytes: number): string {
+  let kept = "";
+  let count = 0;
+  let size = 0;
+
+  for (const { segment } of CLUSTERS.segment(text)) {
+    const width = ENCODER.encode(segment).length;
+    if (count >= graphemes || size + width > bytes) break;
+    kept += segment;
+    count += 1;
+    size += width;
+  }
+  return kept;
 }
 
 // A date a lexicon will take, or nothing.

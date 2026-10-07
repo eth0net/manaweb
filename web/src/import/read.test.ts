@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Locate } from "../catalog";
+import { NOTE, NOTE_BYTES } from "../collection/cards";
 import { BATCH, BYTES } from "../oauth/repo";
 import { type Format, MANABOX } from "./formats";
 import { read } from "./read";
@@ -15,6 +16,7 @@ const ONE = "d40c73de-7a5f-46f2-a70b-449bc8ecfe24";
 
 // One row, with only the columns a test varies spelled out.
 function row({
+  name = "Infestation Sage",
   id = ONE,
   foil = "normal",
   quantity = "1",
@@ -26,7 +28,7 @@ function row({
   added = "2025-11-22T13:20:10.577Z",
 } = {}): string {
   return [
-    "Infestation Sage,FDN,Foundations,64",
+    `${name},FDN,Foundations,64`,
     foil,
     "common",
     quantity,
@@ -234,6 +236,58 @@ test("a tags column joins the flags that have their own", () => {
     NOW,
   );
   expect(stacks[0]?.tags).toEqual(["altered", "Infestation Sage"]);
+});
+
+// A note carried in a column every row already has, so the cell under test is
+// the whole of it.
+const NOTED: Format = {
+  name: "Noted",
+  binding: { ...MANABOX.binding, note: "Name" },
+};
+
+const CLUSTERS = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+function noted(text: string): string {
+  const { stacks } = read([HEAD, row({ name: text })].join("\n"), NOTED, NOW);
+  return stacks[0]?.note ?? "";
+}
+
+function graphemes(text: string): number {
+  return [...CLUSTERS.segment(text)].length;
+}
+
+// Two code points to the cluster.
+const FLAG = "🇯🇵";
+// Seven, joined, and 25 bytes: 120 of them are the byte ceiling exactly.
+const FAMILY = "👨‍👩‍👧‍👦";
+
+test("a note past the cluster ceiling is cut to it", () => {
+  expect(noted("x".repeat(400))).toBe("x".repeat(NOTE));
+});
+
+test("a note is measured in clusters, not the code points under them", () => {
+  expect(graphemes(noted(FLAG.repeat(300)))).toBe(300);
+});
+
+test("a note that fits is kept whole, cluster and byte ceiling both", () => {
+  const flags = noted(`a${FLAG.repeat(299)}`);
+  expect(graphemes(flags)).toBe(300);
+  expect(flags.endsWith(FLAG)).toBe(true);
+
+  const families = noted(FAMILY.repeat(120));
+  expect(graphemes(families)).toBe(120);
+  expect(families.endsWith(FAMILY)).toBe(true);
+});
+
+// Well under the cluster ceiling, over the byte one, and the byte ceiling
+// falls inside the last cluster rather than between two.
+test("a note over the byte ceiling is cut there, on a cluster", () => {
+  const note = noted(`${FAMILY.repeat(119)}ab${FAMILY}`);
+  expect(new TextEncoder().encode(note).length).toBeLessThanOrEqual(
+    NOTE_BYTES,
+  );
+  expect(graphemes(note)).toBe(121);
+  expect(note.endsWith("ab")).toBe(true);
 });
 
 // A binding with no id column, which is what leaves the set and number the
