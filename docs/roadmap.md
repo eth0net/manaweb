@@ -15,7 +15,8 @@ None of it is a spec to build against literally. Update as things change.
   ceiling.
 - Design carefully where mistakes are expensive (lexicon NSIDs, required
   fields — permanent once records exist in other people's PDSes); move fast
-  where they're cheap (our DB is a disposable index).
+  where they're cheap (our DB is a disposable index; what in it is not
+  derived is in [`architecture.md`](architecture.md)).
 
 ## Running costs
 
@@ -101,10 +102,10 @@ valuation exists to make either question worth asking.
   bigger artifact: the base is Default Cards and the packs are opt-in, so
   broadening either to cover a deck somebody else built would charge every
   user for it. See [`scryfall.md`](scryfall.md).
-- **The index stops being disposable here.** Activity seen only over the
-  firehose can't be re-derived from Scryfall or from anyone's PDS, so it wants
-  a SQLite file of its own and a backup story — R2 snapshots, or something
-  else. Reasoning in [`architecture.md`](architecture.md).
+- **Losing the index starts to cost something here.** Activity seen only over
+  the firehose can't be re-derived from Scryfall or from anyone's PDS, so it
+  wants a SQLite file of its own and a backup story — R2 snapshots, or
+  something else. Reasoning in [`architecture.md`](architecture.md).
 - Deck records live in the owner's PDS, same single-owner model as collection
   entries.
 - A deck's container reference is **optional**, created the first time it is

@@ -325,8 +325,14 @@ export follows peaks higher anyway, at 109MB. It lasts as long as an export.
 a row per Scryfall sync attempt, and a refusal is observed once: re-running
 the sync asks about this week's file, never about the one turned away in
 September. It stays in the cache rather than taking the second file below,
-because what that split buys is durability, and an empty history costs a
-measurement rather than anything a user or the AppView reads.
+because what that split buys is durability against a loss somebody notices,
+and an empty history costs a measurement instead.
+
+Whether that makes it an exception to disposability at all is open. Nothing a
+user or the AppView reads comes out of it, so the file is still safe to
+delete; the word has been carrying two claims at once — that losing it costs
+nothing, and that everything in it can be rebuilt. Only the first is still
+true, and the gap between them is where the decision below lives.
 
 **Phase 3's non-derivable state gets a file of its own.** Almost everything in
 the cache derives from Scryfall, which is what makes it disposable; one thing

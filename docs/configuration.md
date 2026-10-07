@@ -62,15 +62,17 @@ that only retargeted a comment — stops the process before it binds, with
 `applying migrations failed: migration 3 was previously applied but has been
 modified` and nothing else. A test holds every checksum now, so it cannot
 happen again; a volume it already happened to is unstuck either by deleting
-the database, the cache being derived from Scryfall and disposable, or by
-writing the file's own sha384 over the recorded one:
+the database, the cache being derived from Scryfall, or by writing the file's
+own sha384 over the recorded one:
 
 ```sql
 UPDATE _sqlx_migrations SET checksum = x'<sha384 of the file>' WHERE version = <n>;
 ```
 
 Deleting it is the one to reach for. It costs a download that happens weekly
-anyway, and it leaves a cache nobody has edited by hand.
+anyway, and it leaves a cache nobody has edited by hand. It also takes
+`sync_history` with it, which is measurement rather than anything served —
+worth dumping that one table first if a bound is being read off it.
 
 The catalog directory does not hold every export ever made. Each one keeps
 what the manifest before it named, and keeps anything written in the last six
