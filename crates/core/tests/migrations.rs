@@ -30,7 +30,7 @@ const SHIPPED: [(i64, &str, &str); 5] = [
     (
         5,
         "0005_reversible_order.sql",
-        "472aab52f457a117834a04eb12eb61aee726fba4b8d8f20a6ed37a68d96f94999d8674351d649105217740328d74e8b7",
+        "195ddbdd24bc64b830a131f05d2078f60ba9477003e92ba60b5fa662cc3164b4294f34d93f471de9e7baacc9b31819af",
     ),
 ];
 

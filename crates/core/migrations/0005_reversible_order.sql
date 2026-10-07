@@ -12,7 +12,8 @@ WITH ordered AS (
                  c.booster DESC,
                  c.layout = 'reversible_card',
                  c.released_at DESC,
-                 instr(c.finishes, 'nonfoil') = 0,
+                 NOT EXISTS (SELECT 1 FROM json_each(c.finishes)
+                             WHERE value = 'nonfoil'),
                  c.collector_number, c.id
     ) AS n
     FROM cards c JOIN oracle o ON o.id = c.oracle_id
