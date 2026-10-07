@@ -25,6 +25,14 @@ pub struct SyncReport {
     pub skipped: i64,
 }
 
+/// One attempt, success or refusal, as `sync_history` records it.
+#[derive(Debug, Default)]
+struct Attempt {
+    report: SyncReport,
+    /// Printings the cache held going in, read before the deletes.
+    held: Option<i64>,
+}
+
 /// The `updated_at` of the last file ingested for `kind`, if any.
 ///
 /// A cache left behind by a migration answers `None`, which is what makes a
@@ -129,11 +137,76 @@ pub async fn replace(
     bulk: &BulkData,
     cards: &mut CardStream,
 ) -> Result<SyncReport> {
+    let mut attempt = Attempt::default();
+    let synced = ingest(pool, bulk, cards, &mut attempt).await;
+    // On the pool rather than in the transaction `ingest` rolls back, because a
+    // refused sync leaving no trace is the one worth being able to read.
+    let noted = note(pool, bulk, &attempt, synced.as_ref().err()).await;
+    synced.and(noted).map(|()| attempt.report)
+}
+
+/// Which guard refused, short enough to count a history by.
+fn outcome(error: &Error) -> &'static str {
+    match error {
+        Error::EmptySync => "empty",
+        Error::SkippedSync { .. } => "skipped",
+        Error::ShrunkSync { .. } => "shrunk",
+        Error::ShapeSync { .. } => "shape",
+        _ => "error",
+    }
+}
+
+async fn note(
+    pool: &SqlitePool,
+    bulk: &BulkData,
+    attempt: &Attempt,
+    refused: Option<&Error>,
+) -> Result<()> {
+    sqlx::query(
+        "INSERT INTO sync_history
+             (kind, updated_at, outcome, written, cards, skipped, held)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&bulk.kind)
+    .bind(&bulk.updated_at)
+    .bind(refused.map_or("synced", outcome))
+    .bind(attempt.report.written)
+    .bind(attempt.report.cards)
+    .bind(attempt.report.skipped)
+    .bind(attempt.held)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// How many attempts this file has already cost, whatever each came to.
+///
+/// # Errors
+///
+/// Fails on a database error.
+pub async fn attempts(pool: &SqlitePool, kind: &str, updated_at: &str) -> Result<i64> {
+    let (count,): (i64,) =
+        sqlx::query_as("SELECT count(*) FROM sync_history WHERE kind = ? AND updated_at = ?")
+            .bind(kind)
+            .bind(updated_at)
+            .fetch_one(pool)
+            .await?;
+    Ok(count)
+}
+
+/// The replace itself, leaving its caller to record what it came to.
+async fn ingest(
+    pool: &SqlitePool,
+    bulk: &BulkData,
+    cards: &mut CardStream,
+    attempt: &mut Attempt,
+) -> Result<()> {
     // Before the deletes, which is the last moment the previous catalog's own
     // size can be read.
     let before = synced_count(pool, &bulk.kind).await?;
+    attempt.held = before;
     let mut tx = pool.begin().await?;
-    let mut report = SyncReport::default();
+    let report = &mut attempt.report;
     let mut shape = Shape::default();
     let mut legalities = HashMap::new();
     let mut oracles: HashMap<String, Oracle> = HashMap::new();
@@ -244,7 +317,7 @@ pub async fn replace(
         .execute(pool)
         .await?;
 
-    Ok(report)
+    Ok(())
 }
 
 /// A card under construction, accumulated across its printings.

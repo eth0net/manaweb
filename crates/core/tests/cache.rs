@@ -525,6 +525,103 @@ async fn a_first_sync_has_nothing_to_have_shrunk_from() {
     assert_eq!(report.written, 1201);
 }
 
+/// Every row `sync_history` holds for one kind, oldest first.
+#[derive(Debug, sqlx::FromRow)]
+struct Attempt {
+    updated_at: String,
+    outcome: String,
+    written: i64,
+    cards: i64,
+    skipped: i64,
+    held: Option<i64>,
+}
+
+async fn history(pool: &SqlitePool) -> Vec<Attempt> {
+    sqlx::query_as(
+        "SELECT updated_at, outcome, written, cards, skipped, held
+         FROM sync_history WHERE kind = 'default_cards' ORDER BY id",
+    )
+    .fetch_all(pool)
+    .await
+    .expect("history should be readable")
+}
+
+#[tokio::test]
+async fn a_sync_that_lands_is_a_row_of_what_it_wrote() {
+    let (pool, _) = seeded().await;
+
+    let held = history(&pool).await;
+    assert_eq!(held.len(), 1, "got {held:?}");
+    assert_eq!(held[0].updated_at, "2026-09-06T21:05:43.673+00:00");
+    assert_eq!(held[0].outcome, "synced");
+    assert_eq!((held[0].written, held[0].cards, held[0].skipped), (4, 4, 0));
+    assert_eq!(held[0].held, None, "nothing was in the cache before it");
+}
+
+/// The case the row exists for: the replace rolls back, so a row written
+/// inside it would roll back with the catalog and leave the refusal unseen.
+#[tokio::test]
+async fn a_refused_sync_leaves_the_row_the_rollback_would_have_taken() {
+    let pool = seeded_with(many(1200)).await;
+
+    cards::replace(&pool, &bulk("y"), &mut stream(many(1000)))
+        .await
+        .expect_err("a catalog this much smaller should be refused");
+
+    let held = history(&pool).await;
+    assert_eq!(held.len(), 2, "got {held:?}");
+    assert_eq!(held[1].outcome, "shrunk");
+    assert_eq!(held[1].updated_at, "y");
+    assert_eq!(held[1].written, 1001);
+    assert_eq!(held[1].held, Some(1201), "what it was weighed against");
+    assert_eq!(
+        cards::count(&pool).await.unwrap(),
+        1201,
+        "cache was replaced"
+    );
+}
+
+/// A file read out of a stream that carried nothing is the other rollback.
+#[tokio::test]
+async fn an_empty_stream_is_a_row_too() {
+    let pool = open_memory().await.unwrap();
+
+    cards::replace(&pool, &bulk("x"), &mut stream(""))
+        .await
+        .expect_err("an empty stream should be refused");
+
+    let held = history(&pool).await;
+    assert_eq!(held.len(), 1, "got {held:?}");
+    assert_eq!(held[0].outcome, "empty");
+    assert_eq!(held[0].written, 0);
+}
+
+/// What the backoff costs: the same file downloaded again on every refusal,
+/// which nothing could count before the history existed.
+#[tokio::test]
+async fn retries_of_one_file_count_up() {
+    let pool = seeded_with(many(1200)).await;
+    assert_eq!(
+        cards::attempts(&pool, "default_cards", "y").await.unwrap(),
+        0
+    );
+
+    for _ in 0..3 {
+        cards::replace(&pool, &bulk("y"), &mut stream(many(1000)))
+            .await
+            .expect_err("still a catalog too much smaller");
+    }
+
+    assert_eq!(
+        cards::attempts(&pool, "default_cards", "y").await.unwrap(),
+        3
+    );
+    assert_eq!(
+        cards::attempts(&pool, "default_cards", "z").await.unwrap(),
+        0
+    );
+}
+
 /// Builds a stream from the fixture's first card plus mutated copies of it, so
 /// ranking and grouping can be exercised without a second fixture.
 fn variants(mutations: &[&[(&str, serde_json::Value)]]) -> String {
