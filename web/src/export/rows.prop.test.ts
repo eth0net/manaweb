@@ -51,9 +51,8 @@ function trip(all: Owned[], format: Format) {
   return { written, back };
 }
 
-// Lots a file has room for. A file is rows of copies, so `split` caps history
-// at the copies held and a stack whose lots over-run its count loses the
-// overrun — which is a loss about the stack, not about the format.
+// todo(unspent): widen to `collection(kept)` once the lots a file has no
+// copies left for are counted — until then this hides that loss.
 const fitting = collection(kept).map((all) =>
   all.map((one) => {
     const lots: Acquisition[] = [];
