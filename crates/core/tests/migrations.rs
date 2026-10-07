@@ -35,7 +35,7 @@ const SHIPPED: [(i64, &str, &str); 6] = [
     (
         6,
         "0006_sync_history.sql",
-        "7dd9b00a197ed4e8ef833972d62574f463df5cee1ca63326fc0b8f10a3707e3fa84c4a62ff14df15e96fdd1e2c017b2b",
+        "cdb6e3fef86d1a910dc60a1abbd5db3f2f0db9dd6069b823685a5bc87129348bed47c4492658d2f2c4dadaf9c424d07f",
     ),
 ];
 

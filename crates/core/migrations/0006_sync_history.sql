@@ -6,8 +6,9 @@
 CREATE TABLE sync_history (
     id         INTEGER NOT NULL PRIMARY KEY,
     kind       TEXT    NOT NULL,
-    -- The bulk file's own updated_at. Repeated rows under one version are a
-    -- refusal being retried, each having cost the download again.
+    -- The bulk file's own updated_at. More than one row under a version is
+    -- that file downloaded more than once, which `outcome` tells apart: a
+    -- refusal retried, or a migration re-syncing a file already ingested.
     updated_at TEXT    NOT NULL,
     -- 'synced', or which guard refused: empty, skipped, shrunk, shape, error.
     outcome    TEXT    NOT NULL,
