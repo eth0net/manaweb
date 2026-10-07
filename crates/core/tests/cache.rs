@@ -666,6 +666,42 @@ async fn retries_of_one_file_count_up() {
     );
 }
 
+/// A file that stopped arriving is the failure this table is here to count,
+/// and it reads nothing like the database being broken.
+#[tokio::test]
+async fn a_stream_that_gives_up_is_its_own_outcome() {
+    let pool = open_memory().await.unwrap();
+    // Past the reader's ceiling, which is what a truncated download looks
+    // like by the time it reaches here.
+    let runaway = format!("{{\"id\":\"{}\"", "x".repeat(2 << 20));
+
+    cards::replace(&pool, &bulk("x"), &mut stream(runaway))
+        .await
+        .expect_err("a line this long should not be read");
+
+    let held = history(&pool).await;
+    assert_eq!(held.len(), 1, "got {held:?}");
+    assert_eq!(held[0].outcome, "stream");
+}
+
+/// The other half of that: nowhere to put a printing is ours, not Scryfall's.
+#[tokio::test]
+async fn a_database_that_will_not_take_the_writes_is_its_own_outcome() {
+    let pool = open_memory().await.unwrap();
+    sqlx::query("DROP TABLE cards")
+        .execute(&pool)
+        .await
+        .expect("the table should drop");
+
+    cards::replace(&pool, &bulk("x"), &mut stream(CARDS))
+        .await
+        .expect_err("nowhere to write a printing");
+
+    let held = history(&pool).await;
+    assert_eq!(held.len(), 1, "got {held:?}");
+    assert_eq!(held[0].outcome, "database");
+}
+
 /// The row is bookkeeping about the sync rather than part of it, so a sync
 /// that committed has landed whatever became of its row.
 #[tokio::test]

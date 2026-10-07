@@ -10,7 +10,8 @@ CREATE TABLE sync_history (
     -- that file downloaded more than once, which `outcome` tells apart: a
     -- refusal retried, or a migration re-syncing a file already ingested.
     updated_at TEXT    NOT NULL,
-    -- 'synced', or which guard refused: empty, skipped, shrunk, shape, error.
+    -- 'synced', or what stopped it: empty, skipped, shrunk, shape, stream,
+    -- database, error.
     outcome    TEXT    NOT NULL,
     written    INTEGER NOT NULL,
     cards      INTEGER NOT NULL,

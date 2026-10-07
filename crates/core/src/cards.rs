@@ -157,6 +157,8 @@ fn outcome(error: &Error) -> &'static str {
         Error::SkippedSync { .. } => "skipped",
         Error::ShrunkSync { .. } => "shrunk",
         Error::ShapeSync { .. } => "shape",
+        Error::Scryfall(_) => "stream",
+        Error::Sqlx(_) => "database",
         _ => "error",
     }
 }
