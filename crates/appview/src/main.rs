@@ -271,7 +271,15 @@ async fn refresh(
     if cards::last_synced(pool, &bulk.kind).await?.as_deref() == Some(&bulk.updated_at) {
         tracing::info!(version = %bulk.updated_at, "cache is current");
     } else {
-        tracing::info!(version = %bulk.updated_at, size = bulk.compressed_size, "syncing");
+        // A refused sync leaves `last_synced` where it was, so the backoff
+        // downloads this same file again on every attempt.
+        let tries = cards::attempts(pool, &bulk.kind, &bulk.updated_at).await?;
+        tracing::info!(
+            version = %bulk.updated_at,
+            size = bulk.compressed_size,
+            tries,
+            "syncing"
+        );
         let mut stream = client.download(&bulk).await?;
         let report = cards::replace(pool, &bulk, &mut stream).await?;
         tracing::info!(
