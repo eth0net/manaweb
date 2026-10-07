@@ -12,6 +12,7 @@ import {
   shown,
   stack,
   TAG,
+  TAGS,
   then,
   unwritten,
 } from "./cards";
@@ -417,6 +418,32 @@ test("a tag is cut on a cluster, never through one", () => {
   const flags = tagged(`a${FLAG.repeat(10)}`);
   expect(flags).toBe(`a${FLAG.repeat(7)}`);
   expect(graphemes(flags)).toBe(8);
+});
+
+test("a tag list is held to the count the lexicon takes", () => {
+  const typed = Array.from({ length: TAGS + 8 }, (_, at) => `t${at}`);
+
+  expect(labels(typed.join(","))).toHaveLength(TAGS);
+  expect(labels(typed.join(","))?.at(-1)).toBe(`t${TAGS - 1}`);
+});
+
+test("the spaces around a tag are not part of it, and a blank one is not one", () => {
+  expect(labels("  foil ,, playset ,   ")).toEqual(["foil", "playset"]);
+});
+
+test("a field typed empty comes to nothing, not to no tags", () => {
+  expect(labels("")).toBeUndefined();
+  expect(labels(" , , ")).toBeUndefined();
+});
+
+// `amend` clears the field by writing undefined over it, where an empty array
+// would survive `clean` as a record saying it has no tags.
+test("clearing the field takes tags off the record", () => {
+  const [held] = stacks({ ...copy, tags: ["foil"] });
+  if (!held) throw new Error("no stack");
+
+  const { writes } = apply([held], held.uri, { tags: labels("") }, NOW);
+  expect(writes[0]?.value).not.toHaveProperty("tags");
 });
 
 // The ceiling an import keeps a file name under, which is a byte count like
