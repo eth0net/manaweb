@@ -154,6 +154,11 @@ to what is held, so lots are spent in order until the copies run out and
 whatever is left over is written with no figure beside it. A file says what
 you own now, never what you once did.
 
+Where the copies run out first, the lots past that point are counted, as every
+other thing the file cannot carry is. Selling part of a stack is how a
+collection comes to hold more history than copies, and that is where what was
+paid is worth keeping, so the cap going unsaid would read as a clean export.
+
 Rows go out in set and collector number order rather than the repo's, which is
 whatever order the records happened to be written in. Two exports of an
 unchanged collection are then the same file, which is what makes one worth

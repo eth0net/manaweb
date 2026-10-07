@@ -224,6 +224,14 @@ function Losses({ written, format }: { written: Written; format: string }) {
           currency beside it.
         </p>
       )}
+      {written.unspent > 0 && (
+        <p className="warn">
+          {written.unspent.toLocaleString()} purchase
+          {written.unspent === 1 ? "" : "s"} of copies you no longer hold, so
+          no row says what you paid for {written.unspent === 1 ? "it" : "them"}{" "}
+          or when.
+        </p>
+      )}
       {written.unspelled > 0 && (
         <p className="warn">
           {written.unspelled.toLocaleString()} card

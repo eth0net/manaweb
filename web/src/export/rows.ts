@@ -39,6 +39,8 @@ export type Written = {
   // Copies saying something a row carries but a read cannot put back:
   // `docs/scryfall.md` names each.
   unkept: number;
+  // Lots the copies ran out before, so no row says what they cost or when.
+  unspent: number;
   // What this file says that reading it back would not restore.
   unread: Field[];
   // Copies in a language this format's own importer turns down.
@@ -65,6 +67,9 @@ const ORDER = new Intl.Collator("en", { numeric: true });
 // One lot of copies and the row carrying them.
 type Lot = { quantity: number; lot?: Acquisition };
 
+// The copies a stack puts in the file, and the lots none were left for.
+type Spent = { lots: Lot[]; unspent: number };
+
 export function rows(
   stacks: Stack[],
   format: Format,
@@ -78,6 +83,7 @@ export function rows(
   let unnamed = 0;
   let unspelled = 0;
   let unkept = 0;
+  let unspent = 0;
   let refused = 0;
 
   for (const one of sorted(stacks, held)) {
@@ -94,7 +100,10 @@ export function rows(
     if (turned) refused += count;
     const lang = turned && english ? "en" : said;
 
-    for (const lot of split(count, one.value.acquisitions ?? [])) {
+    const spent = split(count, one.value.acquisitions ?? []);
+    unspent += spent.unspent;
+
+    for (const lot of spent.lots) {
       const row = new Array<string>(head.length).fill("");
       for (const [field, column] of Object.entries(format.binding)) {
         const index = at.get(key(column));
@@ -114,6 +123,7 @@ export function rows(
     unnamed,
     unspelled,
     unkept,
+    unspent,
     refused,
     dropped: dropped(stacks, format),
     unread: unread(stacks, format),
@@ -138,12 +148,16 @@ function sorted(stacks: Stack[], held: Map<string, Printing>): Stack[] {
 
 // One row per lot, capped at the copies held, and a lot counting none of them
 // spends none — `docs/scryfall.md`.
-function split(count: number, acquisitions: Acquisition[]): Lot[] {
+function split(count: number, acquisitions: Acquisition[]): Spent {
   const lots: Lot[] = [];
   let left = count;
+  let unspent = 0;
 
   for (const lot of acquisitions) {
-    if (left < 1) break;
+    if (left < 1) {
+      unspent += 1;
+      continue;
+    }
     const quantity = Math.min(Math.trunc(lot.quantity), left);
     if (quantity < 1) continue;
     lots.push({ quantity, lot });
@@ -151,7 +165,7 @@ function split(count: number, acquisitions: Acquisition[]): Lot[] {
   }
 
   if (left > 0) lots.push({ quantity: left });
-  return lots;
+  return { lots, unspent };
 }
 
 function cell(

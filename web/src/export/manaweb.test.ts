@@ -424,3 +424,53 @@ test("a format that refuses nothing is never asked to substitute", () => {
   expect(written.refused).toBe(0);
   expect(written.rows[1]?.[at]).toBe("ph");
 });
+
+// A stack holding fewer copies than its history bought, which is what selling
+// or trading part of one looks like.
+test("a lot with no copies left to spend on is counted as lost", () => {
+  const sold: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    acquisitions: [
+      {
+        quantity: 1,
+        price: "120.00",
+        currency: "GBP",
+        at: "2019-04-01T00:00:00.000Z",
+      },
+      {
+        quantity: 2,
+        price: "250.00",
+        currency: "GBP",
+        at: "2021-06-01T00:00:00.000Z",
+      },
+    ],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const written = rows(stacks([sold]), MANAWEB, () => new Map());
+  const { stacks: back } = read(write(written.rows), MANAWEB, NOW);
+
+  expect(written.unspent).toBe(1);
+  expect(written.rows).toHaveLength(2);
+  expect(back[0]?.acquisitions).toHaveLength(1);
+});
+
+test("a history the copies cover is counted as nothing", () => {
+  expect(
+    rows(stacks(WHOLE), MANAWEB, () => new Map(), { places: PLACES }).unspent,
+  ).toBe(0);
+});
+
+// The cap shortens this lot rather than dropping it, and what it cost is in
+// the row either way.
+test("a lot the copies only part cover is not counted against the file", () => {
+  const most: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    acquisitions: [{ quantity: 4, price: "1.00", currency: "GBP" }],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  expect(rows(stacks([most]), MANAWEB, () => new Map()).unspent).toBe(0);
+});
