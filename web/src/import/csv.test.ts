@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { parse } from "./csv";
+import { lined, parse } from "./csv";
 
 test("a quoted field keeps its commas", () => {
   expect(parse('a,"Baba Lysaga, Night Witch",c')).toEqual([
@@ -37,4 +37,12 @@ test("a byte order mark is not part of the first name", () => {
 
 test("an empty field is a field", () => {
   expect(parse('a,,""')).toEqual([["a", "", ""]]);
+});
+
+test("a row is numbered by the line it starts on", () => {
+  const at = (text: string) => lined(text).map((row) => row.line);
+
+  expect(at('a,b\n"one\ntwo",c\nd,e')).toEqual([1, 2, 4]);
+  expect(at('a,b\r\n"one\r\ntwo",c\r\nd,e')).toEqual([1, 2, 4]);
+  expect(at('a,b\r"one\rtwo",c\rd,e')).toEqual([1, 2, 4]);
 });

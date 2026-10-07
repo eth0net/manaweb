@@ -21,15 +21,17 @@ test("the file is read as our own format", () => {
   expect(detect(header(file))?.name).toBe("Manaweb");
 });
 
+// The first row carries a note across two of the file's lines, so every
+// number below is one past the row it names.
 test("every row a read can make nothing of says which and why", () => {
   expect(skipped).toEqual([
-    { line: 6, reason: "0 is not a count" },
-    { line: 7, reason: "-1 is not a count" },
-    { line: 8, reason: "1.5 is not a count" },
-    { line: 9, reason: "10001 is not a count" },
-    { line: 10, reason: "unknown finish gilded" },
-    { line: 13, reason: "no such print not-a-uuid" },
-    { line: 14, reason: "no print" },
+    { line: 7, reason: "0 is not a count" },
+    { line: 8, reason: "-1 is not a count" },
+    { line: 9, reason: "1.5 is not a count" },
+    { line: 10, reason: "10001 is not a count" },
+    { line: 11, reason: "unknown finish gilded" },
+    { line: 14, reason: "no such print not-a-uuid" },
+    { line: 15, reason: "no print" },
   ]);
 });
 

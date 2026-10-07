@@ -12,7 +12,7 @@ import {
   TAGS,
 } from "../collection/cards";
 import type { Acquisition } from "../lexicons/app/manaweb/card";
-import { parse } from "./csv";
+import { lined, parse } from "./csv";
 import {
   type Binding,
   type Field,
@@ -55,12 +55,12 @@ export function read(
   now = new Date().toISOString(),
   locate?: Locate,
 ): Read {
-  const rows = parse(text);
+  const rows = lined(text);
   const head = rows.shift();
   if (!head) return { stacks: [], skipped: [] };
 
   const wanted = needed(format.binding);
-  const found = columns(head, format.binding);
+  const found = columns(head.fields, format.binding);
   // Named as the file would have spelled them, which is what anyone looking
   // at the file can act on.
   const missing = wanted
@@ -70,7 +70,7 @@ export function read(
   if (missing) {
     return {
       stacks: [],
-      skipped: [{ line: 1, reason: `no ${missing} column` }],
+      skipped: [{ line: head.line, reason: `no ${missing} column` }],
     };
   }
 
@@ -78,12 +78,12 @@ export function read(
   const skipped: Skipped[] = [];
   const waiting: Waiting[] = [];
 
-  rows.forEach((row, at) => {
-    const line = at + 2;
-    const cell = (field: Field) => (row[found.get(field) ?? -1] ?? "").trim();
+  rows.forEach(({ fields, line }) => {
+    const cell = (field: Field) =>
+      (fields[found.get(field) ?? -1] ?? "").trim();
 
     // A blank line arrives as one empty field rather than as nothing.
-    if (row.length < wanted.length) return;
+    if (fields.length < wanted.length) return;
 
     const named = naming(cell, format.binding);
     if (!named) {

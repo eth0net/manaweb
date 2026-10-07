@@ -155,6 +155,15 @@ test("a row naming no printing is skipped by line", () => {
   ]);
 });
 
+// A name can hold the line ending a row is split on, and what the reader
+// is told has to be what the file shows them.
+test("a row after a field spanning two lines is named by the later one", () => {
+  const spanning = row().replace("Infestation Sage", '"Infestation\nSage"');
+  expect(one(spanning, row({ quantity: "0" })).skipped).toEqual([
+    { line: 4, reason: "0 is not a count" },
+  ]);
+});
+
 test("a count nothing can own is skipped", () => {
   expect(one(row({ quantity: "0" })).skipped).toHaveLength(1);
   expect(one(row({ quantity: "1.5" })).skipped).toHaveLength(1);
