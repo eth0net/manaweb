@@ -1,0 +1,7 @@
+{
+  "$type": "app.manaweb.container",
+  "name": "Edge shelf",
+  "kind": "shelf",
+  "note": "Everything with something odd about it.",
+  "createdAt": "2026-09-26T09:00:00.000Z"
+}

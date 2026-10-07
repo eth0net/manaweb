@@ -1,0 +1,8 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "4c2abf39-90f5-46c2-b52c-49f2f43fce22",
+  "finish": "nonfoil",
+  "quantity": 1,
+  "note": "Arena only, so no client can name it.",
+  "createdAt": "2026-09-30T10:00:00.000Z"
+}

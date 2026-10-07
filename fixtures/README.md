@@ -41,6 +41,13 @@ An at-uri carries the account, and a container is referenced by one, so the
 files write the DID of the primary author below and `just seed` rewrites it to
 whichever account it is given. Seeding that account therefore rewrites nothing.
 
+`just seed <handle> fixtures/edges` writes a second set instead: one record
+per card-shape edge the cache holds — every layout, every collector-number
+shape, the languages, the digital-only printing no client can name — carrying
+the record-side extremes between them. It is a separate directory because the
+two totals would otherwise add up, and a collection whose size is known is
+what an export test asserts on.
+
 ## What a handle may be
 
 Three to eighteen characters before the service domain, no dot inside it, and

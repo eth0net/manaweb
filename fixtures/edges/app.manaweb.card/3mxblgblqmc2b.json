@@ -1,0 +1,10 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "be898edb-35dd-4896-96d9-323aca64a2ce",
+  "finish": "etched",
+  "quantity": 1,
+  "condition": "nearMint",
+  "container": "at://did:plc:rk2rhs4yvucutbrd2aoi5gci/app.manaweb.container/3mxblfkpd222b",
+  "createdAt": "2026-10-03T10:00:00.000Z",
+  "updatedAt": "2026-10-06T08:00:00.000Z"
+}

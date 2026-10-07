@@ -1,0 +1,10 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "0b61d772-2d8b-4acf-9dd2-b2e8b03538c8",
+  "finish": "nonfoil",
+  "quantity": 1,
+  "condition": "poor",
+  "note": "=1+1 is penciled on the sleeve, not the card",
+  "createdAt": "2026-09-28T10:00:00.000Z",
+  "updatedAt": "2026-10-03T08:00:00.000Z"
+}

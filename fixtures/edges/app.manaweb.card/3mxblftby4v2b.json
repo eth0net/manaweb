@@ -1,0 +1,17 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "f1e5cafb-b0e6-4ee5-8c58-6f8e5ef2b9da",
+  "finish": "foil",
+  "quantity": 1,
+  "condition": "excellent",
+  "container": "at://did:plc:rk2rhs4yvucutbrd2aoi5gci/app.manaweb.container/3mxblflntm52b",
+  "acquisitions": [
+    {
+      "quantity": 1,
+      "at": "2025-03-01T00:00:00.000Z",
+      "price": "4.25"
+    }
+  ],
+  "createdAt": "2026-09-28T10:00:00.000Z",
+  "updatedAt": "2026-10-03T08:00:00.000Z"
+}

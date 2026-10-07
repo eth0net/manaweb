@@ -1,0 +1,15 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "00320106-ce51-46a9-b0f9-79b3baf4e505",
+  "finish": "nonfoil",
+  "quantity": 3,
+  "condition": "good",
+  "acquisitions": [
+    {
+      "quantity": 3,
+      "at": "2025-04-01T00:00:00.000Z",
+      "marketValue": "0.60"
+    }
+  ],
+  "createdAt": "2026-09-28T10:00:00.000Z"
+}

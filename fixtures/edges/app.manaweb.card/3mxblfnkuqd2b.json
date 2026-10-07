@@ -1,0 +1,19 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "28d37803-d3f9-4806-9a0b-79362a517a7a",
+  "finish": "nonfoil",
+  "quantity": 1,
+  "condition": "nearMint",
+  "container": "at://did:plc:rk2rhs4yvucutbrd2aoi5gci/app.manaweb.container/3mxblfkpd222b",
+  "acquisitions": [
+    {
+      "quantity": 1,
+      "at": "2026-09-26T00:00:00.000Z",
+      "price": "14.00",
+      "currency": "GBP",
+      "marketValue": "17.50",
+      "marketCurrency": "USD"
+    }
+  ],
+  "createdAt": "2026-09-26T10:00:00.000Z"
+}
