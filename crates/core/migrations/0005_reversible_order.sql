@@ -1,9 +1,10 @@
--- A printing folded back on itself no longer leads its card's run, so the
--- order written at sync gained a clause and the rows already numbered are
--- renumbered here.
+-- A printing folded back on itself no longer leads its card's run.
 --
--- The version alone is what moves the representative printings with it: a
--- cache synced under an earlier schema is re-synced before anything exports.
+-- The version is what delivers that: a cache synced under an earlier schema
+-- re-syncs before it exports, which is the only thing that can move a
+-- representative printing, since the order that picks one is in Rust. The
+-- statements below leave a cache consistent in the meantime, and are the one
+-- written form of the clause that a test holds `catalog::ORDER` to.
 
 WITH ordered AS (
     SELECT c.id AS id, row_number() OVER (
@@ -20,3 +21,10 @@ WITH ordered AS (
     WHERE NOT c.digital
 )
 UPDATE cards SET seq = ordered.n FROM ordered WHERE ordered.id = cards.id;
+
+-- Read back off `seq` rather than ordered again, so the two cannot disagree.
+UPDATE oracle SET default_print = (
+    SELECT c.id FROM cards c
+    WHERE c.oracle_id = oracle.id AND c.seq IS NOT NULL
+    ORDER BY c.seq LIMIT 1
+) WHERE paper;

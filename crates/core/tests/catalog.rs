@@ -247,6 +247,39 @@ async fn printings_group_into_the_runs_the_cards_claim() {
     assert_eq!(offset, prints.len(), "every printing belongs to a run");
 }
 
+/// Run against rows rather than the empty table it meets in a fresh database,
+/// where every statement in it is a no-op.
+#[tokio::test]
+async fn the_migration_repairs_a_cache_it_finds() {
+    const FILLED: &str = include_str!("../migrations/0005_reversible_order.sql");
+
+    let (rungs, expected) = ladder();
+    let pool = seeded_with(&rungs).await;
+    for scramble in [
+        "UPDATE cards SET seq = -seq WHERE seq IS NOT NULL",
+        "UPDATE oracle SET default_print =
+             (SELECT id FROM cards WHERE oracle_id = oracle.id ORDER BY id DESC)",
+    ] {
+        sqlx::query(scramble).execute(&pool).await.unwrap();
+    }
+
+    sqlx::raw_sql(FILLED).execute(&pool).await.unwrap();
+
+    let ordered: Vec<(String,)> =
+        sqlx::query_as("SELECT id FROM cards WHERE seq IS NOT NULL ORDER BY seq")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    let (representative,): (String,) = sqlx::query_as("SELECT default_print FROM oracle")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    let ids: Vec<String> = ordered.into_iter().map(|(id,)| id).collect();
+    assert_eq!(ids, expected);
+    assert_eq!(representative, expected[0]);
+}
+
 /// The whole run rather than what leads it, which is the half of the order the
 /// cards can agree on and still both have wrong.
 #[tokio::test]
