@@ -6,6 +6,6 @@
     "check": "bun run check.ts"
   },
   "devDependencies": {
-    "@atproto/api": "^0.20.0"
+    "@atproto/api": "^0.23.0"
   }
 }
