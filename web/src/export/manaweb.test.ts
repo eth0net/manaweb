@@ -451,6 +451,22 @@ test("a figure the record fills is not counted against it", () => {
   expect(rows(stacks([paid]), MANAWEB, () => new Map()).unkept).toBe(0);
 });
 
+// Three characters of space satisfy the lexicon's length and nothing else:
+// the reader wants a currency beside an amount, and drops the lot without one.
+test("a currency a read will not take is counted as lost", () => {
+  const spaces: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    acquisitions: [{ quantity: 1, price: "2.50", currency: "   " }],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const { stacks: back } = read(exported([spaces]), MANAWEB, NOW);
+
+  expect(rows(stacks([spaces]), MANAWEB, () => new Map()).unkept).toBe(1);
+  expect(back[0]?.acquisitions).toBeUndefined();
+});
+
 // A stack holding fewer copies than its history bought, which is what selling
 // or trading part of one looks like.
 test("a lot with no copies left to spend on is counted as lost", () => {

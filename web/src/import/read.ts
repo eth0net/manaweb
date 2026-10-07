@@ -249,6 +249,23 @@ function money(amount: string, currency: string): boolean {
   return MONEY.test(amount) && CURRENCY.test(currency);
 }
 
+// Whether reading a row back gives the lot the record holds: every figure it
+// states rebuilt, its date parsed, and one of the three there at all. An
+// export asks before writing a column it cannot read — `docs/scryfall.md`.
+export function legible(lot: Acquisition): boolean {
+  const paid = lot.price !== undefined || lot.currency !== undefined;
+  const worth =
+    lot.marketValue !== undefined || lot.marketCurrency !== undefined;
+
+  if (paid && !money(lot.price ?? "", lot.currency ?? "")) return false;
+  if (worth && !money(lot.marketValue ?? "", lot.marketCurrency ?? "")) {
+    return false;
+  }
+  if (lot.at !== undefined && !WHEN.test(lot.at)) return false;
+
+  return paid || worth || lot.at !== undefined;
+}
+
 // A date a lexicon will take, or nothing.
 function when(text: string): string | undefined {
   if (!WHEN.test(text)) return undefined;

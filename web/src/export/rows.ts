@@ -8,7 +8,7 @@ import {
   graded,
   key,
 } from "../import/formats";
-import { UNREAD } from "../import/read";
+import { legible, UNREAD } from "../import/read";
 import type { Acquisition } from "../lexicons/app/manaweb/card";
 
 // What a printing says about itself, which is everything a row carries that
@@ -234,25 +234,7 @@ function vague(one: Owned, format: Format): boolean {
     format.binding.tags !== undefined &&
     (one.tags ?? []).some((label) => label.includes(","));
 
-  return (
-    tagged ||
-    (one.acquisitions ?? []).some(
-      (lot) =>
-        blank(lot.price) ||
-        blank(lot.marketValue) ||
-        (lot.price !== undefined && lot.currency === undefined) ||
-        (lot.marketValue !== undefined && lot.marketCurrency === undefined) ||
-        (lot.price === undefined &&
-          lot.marketValue === undefined &&
-          lot.at === undefined),
-    )
-  );
-}
-
-// A figure the record holds as nothing, which the column it goes in cannot
-// tell from a lot that named no figure.
-function blank(figure: string | undefined): boolean {
-  return figure !== undefined && figure.trim() === "";
+  return tagged || (one.acquisitions ?? []).some((lot) => !legible(lot));
 }
 
 // A column written and not read is only a loss where a card fills it.
