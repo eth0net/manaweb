@@ -278,12 +278,11 @@ struct Oracle {
 
 /// Orders printings so the one a person means comes first: paper over digital,
 /// a set someone drafted over a boutique release, a card over the novelty
-/// printed back to back with itself, then newest.
-///
-/// Total, ending in the id, and the order `catalog::ORDER` repeats in SQL.
+/// printed back to back with itself, newest, one that can be had unfoiled,
+/// lowest number, then the id so nothing is left to the file's order.
 ///
 /// Compared field by field in the order declared, so the declaration is the
-/// order.
+/// order, and `catalog::ORDER` repeats it in SQL.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[expect(
     clippy::struct_excessive_bools,
