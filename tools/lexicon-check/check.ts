@@ -8,7 +8,7 @@
 // validity check on its own.
 
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { lexicons } from "@atproto/api";
 
 const DIR = join(dirname(dirname(import.meta.dir)), "lexicons");
@@ -367,23 +367,31 @@ for (const [label, record] of refused) {
 }
 
 // A seed stops halfway through on a broken record, having written some.
-const FIXTURES = join(dirname(dirname(import.meta.dir)), "fixtures/records");
+const FIXTURES = join(dirname(dirname(import.meta.dir)), "fixtures");
 const TID = /^[234567abcdefghij][234567abcdefghijklmnopqrstuvwxyz]{12}$/;
+const NSID = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$/;
+
+// A collection is a directory named for its NSID, so anything else is a
+// record set holding more of them, or something the filesystem left.
+function collections(at: string): string[] {
+  return readdirSync(at, { withFileTypes: true })
+    .filter((held) => held.isDirectory())
+    .flatMap((held) =>
+      NSID.test(held.name)
+        ? [join(at, held.name)]
+        : collections(join(at, held.name)),
+    )
+    .sort();
+}
 
 console.log("\nfixture records:");
-// A collection is a directory named for its NSID, so anything else here is
-// something the filesystem left rather than a record to check.
-const collections = readdirSync(FIXTURES, { withFileTypes: true })
-  .filter((held) => held.isDirectory())
-  .map((held) => held.name)
-  .sort();
+for (const dir of collections(FIXTURES)) {
+  const collection = basename(dir);
+  const set = relative(FIXTURES, dirname(dir));
 
-for (const collection of collections) {
-  for (const file of readdirSync(join(FIXTURES, collection)).sort()) {
-    const at = `${collection}/${file}`;
-    const record = JSON.parse(
-      readFileSync(join(FIXTURES, collection, file), "utf8"),
-    );
+  for (const file of readdirSync(dir).sort()) {
+    const at = `${set}/${collection}/${file}`;
+    const record = JSON.parse(readFileSync(join(dir, file), "utf8"));
     if (record.$type !== collection) {
       fail(`${at}: $type is "${record.$type}", so the directory misnames it`);
       continue;
