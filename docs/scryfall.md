@@ -420,9 +420,16 @@ index read against the wrong ordering is wrong quietly.
 to number the rows — and had drifted for 1,907 of 37,852 cards, whose run led
 with a promo or a foil-only variant where search named the ordinary printing.
 The Rust half stopped at the release date and left the rest to the file's
-order; it now ends in the printing id as the SQL half does, which in turn
-gained the clause that demotes a reversible printing. Printings that tie are
-what holds the two together, since a card with one printing cannot.
+order; it now ends in the printing id, which is also what keeps a tie off
+SQLite, since a file addressed by its own bytes would be renamed for nothing.
+The SQL half in turn gained the clause demoting a reversible printing.
+
+**What holds them together is one card per key, read back whole.** A card of a
+single printing leads its run under any order at all, and a pair of them pins
+only the key it turns on and nothing about what that key outranks — so the
+fixture is a card whose printings separate on one key each, in sequence, and
+the test reads the run rather than what leads it. Two implementations agreeing
+is not the same as either being right.
 
 **Names are per card. Printed names are per printing** — the few paper printings
 carry one, 32KB in total, so a Japanese card is found by the name on its own

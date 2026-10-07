@@ -15,12 +15,9 @@ searching and finding nothing is a worse failure than a noisy result.
 
 The noise was mostly a grouping problem. Paper alone runs to six figures of
 printings across tens of thousands of cards, so "Forest" returned hundreds of
-rows. One row per card, with a count, and a representative printing chosen by
-preferring booster printings from expansions and core sets, then nonfoil over
-a foil-only twin sharing its
-collector number. The order is total, ending in the printing id — the files
-are named after their own bytes, so a tie left to SQLite would rename them for
-nothing.
+rows. One row per card, with a count, and a representative printing — which
+one that is, and what decides it, lives with the order itself in
+[`scryfall.md`](scryfall.md).
 
 | | cards | printings | rank |
 |---|---|---|---|
