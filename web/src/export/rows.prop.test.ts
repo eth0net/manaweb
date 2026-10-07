@@ -207,6 +207,47 @@ test("a format with no proxy column says so of a card that is one", () => {
   );
 });
 
+// What a record filling each field looks like, written from the record's
+// side rather than the export's, so the two have to agree about it.
+const FILLS: [Field, (one: Owned) => boolean][] = [
+  ["container", (one) => one.container !== undefined],
+  ["note", (one) => one.note !== undefined],
+  ["proxy", (one) => one.proxy === true],
+  ["condition", (one) => one.condition !== undefined],
+  ["price", (one) => (one.acquisitions ?? []).some((lot) => "price" in lot)],
+  [
+    "currency",
+    (one) => (one.acquisitions ?? []).some((lot) => "currency" in lot),
+  ],
+  [
+    "marketValue",
+    (one) => (one.acquisitions ?? []).some((lot) => "marketValue" in lot),
+  ],
+  [
+    "marketCurrency",
+    (one) => (one.acquisitions ?? []).some((lot) => "marketCurrency" in lot),
+  ],
+  ["acquiredAt", (one) => (one.acquisitions ?? []).some((lot) => "at" in lot)],
+  ["createdAt", () => true],
+  ["updatedAt", (one) => one.updatedAt !== undefined],
+];
+
+// Both shipped formats bind all of these, so a binding built in the browser
+// is the only thing that reaches most of them.
+test("a format names every field it has no column for", () => {
+  fc.assert(
+    fc.property(owned(kept), narrowed, (one, format) => {
+      const named = new Set(rows(shelf([one]), format, names).dropped);
+
+      for (const [field, fills] of FILLS) {
+        if (!fills(one) || format.binding[field] !== undefined) continue;
+        expect([field, named.has(field)]).toEqual([field, true]);
+      }
+    }),
+    RUNS,
+  );
+});
+
 // A lexicon refuses it, so no record carries one and only a generator gets
 // here — `split` must still spend none of the copies on it.
 test("a lot counting no copies spends none of them", () => {
