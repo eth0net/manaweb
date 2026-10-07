@@ -13,6 +13,10 @@ use sqlx::SqlitePool;
 
 const CARDS: &str = include_str!("fixtures/cards.jsonl");
 
+/// One card, two printings separating only on the finish, the foil-only one
+/// ahead of the other in the file.
+const FOIL_TWIN: &str = include_str!("fixtures/foil-twin.jsonl");
+
 /// Deserialized rather than constructed, so the test doesn't need `uuid`.
 fn bulk(updated_at: &str) -> BulkData {
     serde_json::from_value(serde_json::json!({
@@ -954,4 +958,28 @@ async fn a_newer_reversible_printing_still_does_not_name_the_card() {
         .expect("one card across the two printings");
 
     assert_eq!(held.0, kept);
+}
+
+/// Ungrouped, a card's printings come back as the artifact runs them, so the
+/// first row is the one grouping would have shown.
+#[tokio::test]
+async fn ungrouped_printings_follow_the_artifact() {
+    let pool = seeded_with(FOIL_TWIN.to_owned()).await;
+
+    let hits = cards::search(
+        &pool,
+        "tower",
+        Search {
+            group_printings: false,
+            ..Search::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let numbers: Vec<&str> = hits
+        .iter()
+        .map(|hit| hit.collector_number.as_str())
+        .collect();
+    assert_eq!(numbers, ["329", "329\u{2605}"]);
 }

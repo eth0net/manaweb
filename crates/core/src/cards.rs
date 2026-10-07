@@ -674,8 +674,8 @@ const GROUPED: &str = "\
              o.kind, bm25(card_search)
     LIMIT ?5";
 
-/// Every printing, ordered within its card the way the representative is
-/// chosen: paper first, then a set someone drafted, then newest.
+/// Every printing, in the order `seq` holds, which is the one that picked the
+/// representative.
 const UNGROUPED: &str = "\
     SELECT o.id AS oracle_id, o.name, o.type_line, o.printings,
            c.id AS print_id, c.set_code, c.collector_number, c.lang,
@@ -686,9 +686,7 @@ const UNGROUPED: &str = "\
     WHERE card_search MATCH ?1 AND o.paper AND NOT c.digital
       AND (o.kind <> 1 OR ?3) AND (o.kind <> 2 OR ?4)
     ORDER BY CASE WHEN lower(o.name) = lower(?2) THEN 0 ELSE 1 END,
-             o.kind, bm25(card_search),
-             CASE WHEN c.set_type IN ('expansion', 'core') THEN 0 ELSE 1 END,
-             c.booster DESC, c.released_at DESC
+             o.kind, bm25(card_search), c.seq
     LIMIT ?5";
 
 /// Name search, for a client that hasn't cached the catalog yet.
