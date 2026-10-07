@@ -3,12 +3,14 @@ import {
   apply,
   type Change,
   fold,
+  labels,
   landing,
   merge,
   type Owned,
   type Stack,
   shown,
   stack,
+  TAG,
   then,
   unwritten,
 } from "./cards";
@@ -367,4 +369,51 @@ test("a merge with a timestamp is changed at that timestamp", () => {
   const other = { ...copy, quantity: 2, updatedAt: JUN };
 
   expect(merge(one, other, NOW).updatedAt).toBe(NOW);
+});
+
+const CLUSTERS = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+const ENCODER = new TextEncoder();
+
+// Two code points to the cluster and eight bytes, so the tag ceiling is
+// exactly eight of them.
+const FLAG = "🇯🇵";
+// Seven code points, joined, and 25 bytes, which puts the ceiling on a joiner
+// inside the third.
+const FAMILY = "👨‍👩‍👧‍👦";
+
+function tagged(text: string): string {
+  return labels(text)?.[0] ?? "";
+}
+
+function bytes(text: string): number {
+  return ENCODER.encode(text).length;
+}
+
+function graphemes(text: string): number {
+  return [...CLUSTERS.segment(text)].length;
+}
+
+test("a tag past the byte ceiling is cut to it, not to its code units", () => {
+  const japanese = tagged("趣".repeat(64));
+  expect(bytes(japanese)).toBeLessThanOrEqual(TAG);
+  expect(japanese).toBe("趣".repeat(21));
+
+  const flags = tagged(FLAG.repeat(20));
+  expect(bytes(flags)).toBeLessThanOrEqual(TAG);
+  expect(flags).toBe(FLAG.repeat(8));
+});
+
+test("a tag that fits is kept whole", () => {
+  expect(tagged("foil playset")).toBe("foil playset");
+  expect(tagged(FLAG.repeat(8))).toBe(FLAG.repeat(8));
+});
+
+// Where the ceiling falls inside a cluster rather than between two, which is
+// the cut that leaves a bare joiner or a lone regional indicator.
+test("a tag is cut on a cluster, never through one", () => {
+  expect(tagged(FAMILY.repeat(3))).toBe(FAMILY.repeat(2));
+
+  const flags = tagged(`a${FLAG.repeat(10)}`);
+  expect(flags).toBe(`a${FLAG.repeat(7)}`);
+  expect(graphemes(flags)).toBe(8);
 });

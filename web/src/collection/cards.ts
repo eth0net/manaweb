@@ -132,11 +132,35 @@ export const TAG = 64;
 export const NOTE = 300;
 export const NOTE_BYTES = 3000;
 
+const CLUSTERS = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+const ENCODER = new TextEncoder();
+
+// A lexicon counts bytes, and a grapheme ceiling where it names one; either
+// refuses the record. Whole clusters, so a flag is never left half written.
+export function clip(
+  text: string,
+  bytes: number,
+  graphemes = Number.POSITIVE_INFINITY,
+): string {
+  let kept = "";
+  let count = 0;
+  let size = 0;
+
+  for (const { segment } of CLUSTERS.segment(text)) {
+    const width = ENCODER.encode(segment).length;
+    if (count >= graphemes || size + width > bytes) break;
+    kept += segment;
+    count += 1;
+    size += width;
+  }
+  return kept;
+}
+
 // Comma-separated in the field, a list in the record.
 export function labels(text: string): string[] | undefined {
   const tags = text
     .split(",")
-    .map((one) => one.trim().slice(0, TAG))
+    .map((one) => clip(one.trim(), TAG))
     .filter(Boolean)
     .slice(0, TAGS);
   return tags.length > 0 ? tags : undefined;
