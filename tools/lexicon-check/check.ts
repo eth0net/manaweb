@@ -372,37 +372,54 @@ const TID = /^[234567abcdefghij][234567abcdefghijklmnopqrstuvwxyz]{12}$/;
 const NSID = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$/;
 
 // A collection is a directory named for its NSID, so anything else is a
-// record set holding more of them, or something the filesystem left.
+// record set holding more of them. A directory holding neither is a
+// misspelled collection whose records would go unchecked, so it is a failure
+// rather than something to walk past.
 function collections(at: string): string[] {
-  return readdirSync(at, { withFileTypes: true })
+  const found = readdirSync(at, { withFileTypes: true })
     .filter((held) => held.isDirectory())
-    .flatMap((held) =>
-      NSID.test(held.name)
-        ? [join(at, held.name)]
-        : collections(join(at, held.name)),
-    )
-    .sort();
+    .flatMap((held) => {
+      const here = join(at, held.name);
+      if (NSID.test(held.name)) return [here];
+      const under = collections(here);
+      const holds = readdirSync(here, { withFileTypes: true });
+      if (under.length === 0 && holds.some((one) => !one.isDirectory())) {
+        fail(
+          `${relative(FIXTURES, here)}: files, but no collection naming it`,
+        );
+      }
+      return under;
+    });
+  return found.sort();
 }
 
 console.log("\nfixture records:");
 for (const dir of collections(FIXTURES)) {
   const collection = basename(dir);
   const set = relative(FIXTURES, dirname(dir));
+  const files = readdirSync(dir)
+    .filter((file) => file.endsWith(".json"))
+    .sort();
 
-  for (const file of readdirSync(dir).sort()) {
+  // An empty one passes every record it holds, which is none of them.
+  if (files.length === 0) fail(`${set}/${collection}: no records in it`);
+
+  for (const file of files) {
     const at = `${set}/${collection}/${file}`;
-    const record = JSON.parse(readFileSync(join(dir, file), "utf8"));
-    if (record.$type !== collection) {
-      fail(`${at}: $type is "${record.$type}", so the directory misnames it`);
-      continue;
-    }
-    if (!TID.test(file.replace(/\.json$/, ""))) {
-      fail(
-        `${at}: the filename is the record key, which this schema wants as a tid`,
-      );
-      continue;
-    }
     try {
+      const record = JSON.parse(readFileSync(join(dir, file), "utf8"));
+      if (record.$type !== collection) {
+        fail(
+          `${at}: $type is "${record.$type}", so the directory misnames it`,
+        );
+        continue;
+      }
+      if (!TID.test(file.replace(/\.json$/, ""))) {
+        fail(
+          `${at}: the filename is the record key, which this schema wants as a tid`,
+        );
+        continue;
+      }
       lex.assertValidRecord(collection, record);
       ok(at);
     } catch (error) {
