@@ -15,6 +15,18 @@ const CARDS: &str = include_str!("fixtures/cards.jsonl");
 /// release date, foil-only first as the file has it.
 const FOIL_TWIN: &str = include_str!("fixtures/foil-twin.jsonl");
 
+/// Jinnie Fay printed reversibly and normally in one Secret Lair on one day,
+/// the reversible one carrying the lower collector number.
+const REVERSIBLE_TWIN: &str = include_str!("fixtures/reversible-twin.jsonl");
+
+/// Sokka in Avatar Eternal, where the foil-only printing is numbered below the
+/// other — 2,156 pairs in the cache are this way round.
+const FINISH_TWIN: &str = include_str!("fixtures/finish-twin.jsonl");
+
+/// Cadric in Dominaria United Commander, two printings alike down to the
+/// finish, the higher number first as the file has it.
+const NUMBER_TWIN: &str = include_str!("fixtures/number-twin.jsonl");
+
 /// The fields most cards don't carry: Jace Beleren has loyalty and no power,
 /// and Gaea's Cradle is on the reserved list and a game changer.
 const SPARSE: &str = include_str!("fixtures/sparse.jsonl");
@@ -104,9 +116,15 @@ async fn each_file_names_its_own_columns() {
 }
 
 /// The run each card's printings sit in, which the client walks by position.
+///
+/// Each fixture ties until one of the last counts the order asks, since a card
+/// of one printing leads its run however the two orders are written.
 #[tokio::test]
 async fn printings_group_into_the_runs_the_cards_claim() {
-    let pool = seeded_with(CARDS).await;
+    let pool = seeded_with(&format!(
+        "{FOIL_TWIN}{REVERSIBLE_TWIN}{FINISH_TWIN}{NUMBER_TWIN}"
+    ))
+    .await;
     let built = catalog::build(&pool, None).await.unwrap();
     let cards = rows(&read(&built.cards.bytes), "cards");
     let prints = rows(&read(&built.prints.bytes), "prints");
