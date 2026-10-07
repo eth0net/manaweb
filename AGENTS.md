@@ -112,8 +112,9 @@ backend:
   fills in reversible printings, which carry no top-level gameplay data.
 - **Card objects aren't uniformly shaped.** `layout: reversible_card` has no
   top-level `oracle_id`, `cmc`, `mana_cost`, `type_line`, `oracle_text`,
-  `colors` or `image_uris` — those live on `card_faces`. So `oracle_id` can't
-  be `NOT NULL`, and the cache needs `layout` and `card_faces`.
+  `colors` or `image_uris` — those live on `card_faces`. The column stays
+  `NOT NULL` because the sync takes that id off a face, and the cache needs
+  `layout` and `card_faces`.
 - **Scryfall taxonomies stay strings** everywhere, not only in
   `crates/scryfall`: the catalog's header carries a table per taxonomy built
   from the rows themselves, so a value nobody wrote down reaches a client
