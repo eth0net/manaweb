@@ -751,13 +751,18 @@ fn build_artwork(
 /// and to a total order — see `docs/search.md`. The finish clause keeps 9ed
 /// #329 ahead of the foil-only #329★.
 ///
-/// `0002_export_order.sql` fills a cache synced before the column existed, and
-/// a test holds its clause to this one.
+/// Within a card this is `cards::rank`, so a run leads with the printing
+/// search shows; a test holds the two together.
+///
+/// `0005_reversible_order.sql` refills a cache carrying the clause this
+/// replaced, and a test holds that one to this.
 const ORDER: &str = "WITH ordered AS (
          SELECT c.id AS id, row_number() OVER (
              ORDER BY o.name, o.id,
                       CASE WHEN c.set_type IN ('expansion', 'core') THEN 0 ELSE 1 END,
-                      c.booster DESC, c.released_at DESC,
+                      c.booster DESC,
+                      c.layout = 'reversible_card',
+                      c.released_at DESC,
                       instr(c.finishes, 'nonfoil') = 0,
                       c.collector_number, c.id
          ) AS n
@@ -1004,7 +1009,7 @@ mod tests {
     /// cards file claims in the other.
     #[test]
     fn the_migration_orders_by_what_a_sync_does() {
-        const FILLED: &str = include_str!("../migrations/0002_export_order.sql");
+        const FILLED: &str = include_str!("../migrations/0005_reversible_order.sql");
 
         assert_eq!(clause(super::ORDER), clause(FILLED));
     }

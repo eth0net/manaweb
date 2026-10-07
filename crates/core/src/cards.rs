@@ -279,16 +279,38 @@ struct Oracle {
 /// Orders printings so the one a person means comes first: paper over digital,
 /// a set someone drafted over a boutique release, a card over the novelty
 /// printed back to back with itself, then newest.
-type Rank = (bool, bool, bool, bool, Reverse<String>);
+///
+/// Total, ending in the id, and the order `catalog::ORDER` repeats in SQL.
+///
+/// Compared field by field in the order declared, so the declaration is the
+/// order.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "sort keys read off one card, not state carried between calls"
+)]
+struct Rank {
+    digital: bool,
+    boutique: bool,
+    unboostered: bool,
+    folded: bool,
+    age: Reverse<String>,
+    foil_only: bool,
+    collector_number: String,
+    id: String,
+}
 
 fn rank(card: &Card) -> Rank {
-    (
-        card.digital,
-        !matches!(card.set_type.as_str(), "expansion" | "core"),
-        !card.booster,
-        card.layout == "reversible_card",
-        Reverse(card.released_at.clone()),
-    )
+    Rank {
+        digital: card.digital,
+        boutique: !matches!(card.set_type.as_str(), "expansion" | "core"),
+        unboostered: !card.booster,
+        folded: card.layout == "reversible_card",
+        age: Reverse(card.released_at.clone()),
+        foil_only: !card.finishes.iter().any(|finish| finish == "nonfoil"),
+        collector_number: card.collector_number.clone(),
+        id: card.id.to_string(),
+    }
 }
 
 /// 0 card, 1 token or emblem, 2 art series. Search ranks in that order.
@@ -342,8 +364,7 @@ impl Oracle {
                 slot.insert(incoming);
             }
             // Whichever ranks better keeps its own fields and folds the
-            // other in. Printings alike to the last of those are alike in
-            // what they would contribute, so the first of them stands.
+            // other in.
             Entry::Occupied(slot) => {
                 let entry = slot.into_mut();
                 if incoming.rank < entry.rank {
