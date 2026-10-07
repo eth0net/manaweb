@@ -416,6 +416,14 @@ the leading row is the printing search would show. That is why the pair carries
 one version and why the build refuses to publish runs that don't add up: an
 index read against the wrong ordering is wrong quietly.
 
+**That order is written twice** — in Rust to pick the representative, in SQL
+to number the rows — and had drifted for 1,907 of 37,852 cards, whose run led
+with a promo or a foil-only variant where search named the ordinary printing.
+The Rust half stopped at the release date and left the rest to the file's
+order; it now ends in the printing id as the SQL half does, which in turn
+gained the clause that demotes a reversible printing. Printings that tie are
+what holds the two together, since a card with one printing cannot.
+
 **Names are per card. Printed names are per printing** — the few paper printings
 carry one, 32KB in total, so a Japanese card is found by the name on its own
 printing and no per-language index is needed.
