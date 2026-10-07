@@ -138,7 +138,8 @@ const CLUSTERS = new Intl.Segmenter("en", { granularity: "grapheme" });
 const ENCODER = new TextEncoder();
 
 // A lexicon counts bytes, and a grapheme ceiling where it names one; either
-// refuses the record. Whole clusters, so a flag is never left half written.
+// refuses the record. Whole clusters, so a flag is never left half written,
+// and a cluster wider than the ceiling leaves nothing to keep.
 export function clip(
   text: string,
   bytes: number,

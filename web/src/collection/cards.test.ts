@@ -446,6 +446,17 @@ test("clearing the field takes tags off the record", () => {
   expect(writes[0]?.value).not.toHaveProperty("tags");
 });
 
+// No prefix of one cluster is a cluster, so the choice is this or a record
+// the PDS refuses. Takes a pile of combining marks to reach.
+test("a cluster wider than the whole ceiling leaves nothing", () => {
+  const piled = `a${"́".repeat(32)}`;
+
+  expect(bytes(piled)).toBeGreaterThan(TAG);
+  expect(graphemes(piled)).toBe(1);
+  expect(clip(piled, TAG)).toBe("");
+  expect(labels(piled)).toBeUndefined();
+});
+
 // The ceiling an import keeps a file name under, which is a byte count like
 // every other and the one a surrogate pair straddles.
 const FILE = 255;
