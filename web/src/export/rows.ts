@@ -285,9 +285,16 @@ const FILLED: [Field, (one: Owned) => boolean][] = [
   ["proxy", (one) => one.proxy === true],
   ["condition", (one) => one.condition !== undefined],
   ["price", (one) => lots(one).some((lot) => lot.price !== undefined)],
+  // A reader wants an amount and a currency together, so a column for one
+  // and not the other carries neither.
+  ["currency", (one) => lots(one).some((lot) => lot.currency !== undefined)],
   [
     "marketValue",
     (one) => lots(one).some((lot) => lot.marketValue !== undefined),
+  ],
+  [
+    "marketCurrency",
+    (one) => lots(one).some((lot) => lot.marketCurrency !== undefined),
   ],
   ["acquiredAt", (one) => lots(one).some((lot) => lot.at !== undefined)],
   ["createdAt", () => true],

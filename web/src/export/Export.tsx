@@ -26,7 +26,9 @@ const WORDS: Partial<Record<Field, string>> = {
   proxy: "which cards are proxies",
   tags: "tags",
   price: "what you paid",
+  currency: "what you paid it in",
   marketValue: "what a copy was worth",
+  marketCurrency: "what that was worth in",
 };
 
 // Which file to ask for, since the choice is what reads it rather than what

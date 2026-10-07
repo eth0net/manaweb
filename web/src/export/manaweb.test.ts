@@ -550,7 +550,7 @@ test("a lot the format has no column for is the format's loss", () => {
   const { unspent, dropped } = rows(stacks([SOLD]), MANABOX, () => new Map());
 
   expect(unspent).toBe(0);
-  expect(dropped).toEqual(["price", "acquiredAt"]);
+  expect(dropped).toEqual(["price", "currency", "acquiredAt"]);
 });
 
 test("a lot the format does bind a column for is the cap's", () => {

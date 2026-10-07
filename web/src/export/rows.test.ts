@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Owned, Stack } from "../collection/cards";
 import { parse } from "../import/csv";
-import { columns, MANABOX } from "../import/formats";
+import { columns, type Format, MANABOX } from "../import/formats";
 import { read } from "../import/read";
 import { write } from "./csv";
 import { type Describe, type Printing, rows } from "./rows";
@@ -173,7 +173,47 @@ test("what the format has no column for is named before the file is", () => {
   };
   const { dropped } = rows(stacks([one]), MANABOX, () => new Map());
 
-  expect(dropped).toEqual(["container", "note", "price"]);
+  expect(dropped).toEqual(["container", "note", "price", "currency"]);
+});
+
+// Both shipped formats bind these, so a binding of our own is what reaches
+// the rest of the table.
+const BARE: Format = {
+  name: "Bare",
+  binding: {
+    scryfallId: "Scryfall ID",
+    finish: "Finish",
+    quantity: "Quantity",
+  },
+};
+
+test("what a copy was worth is a field too, empty or not", () => {
+  const one: Owned = {
+    scryfallId: "d40c73de-7a5f-46f2-a70b-449bc8ecfe24",
+    finish: "nonfoil",
+    quantity: 1,
+    createdAt: NOW,
+    acquisitions: [{ quantity: 1, marketValue: "", marketCurrency: "USD" }],
+  };
+  const { dropped } = rows(stacks([one]), BARE, () => new Map());
+
+  expect(dropped).toContain("marketValue");
+  expect(dropped).toContain("marketCurrency");
+});
+
+// `stack` reads an absent proxy and a false one as the same card, so a format
+// with no column for it loses nothing by saying nothing.
+test("a card that is not a proxy loses nothing to a format without one", () => {
+  const one: Owned = {
+    scryfallId: "d40c73de-7a5f-46f2-a70b-449bc8ecfe24",
+    finish: "nonfoil",
+    quantity: 1,
+    createdAt: NOW,
+    proxy: false,
+  };
+  expect(rows(stacks([one]), BARE, () => new Map()).dropped).not.toContain(
+    "proxy",
+  );
 });
 
 // The lexicon sets no minimum on a price, so an empty one is a record a PDS
@@ -188,6 +228,7 @@ test("a price is a field a lot has, not a figure that reads as true", () => {
   };
   expect(rows(stacks([one]), MANABOX, () => new Map()).dropped).toEqual([
     "price",
+    "currency",
   ]);
 });
 
