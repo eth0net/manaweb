@@ -31,6 +31,103 @@ const NUMBER_TWIN: &str = include_str!("fixtures/number-twin.jsonl");
 /// and Gaea's Cradle is on the reserved list and a game changer.
 const SPARSE: &str = include_str!("fixtures/sparse.jsonl");
 
+/// A printing of the base card with `fields` written over it, otherwise paper,
+/// from a booster of an expansion, one-faced, nonfoil and 2025.
+fn rung(tail: &str, number: &str, fields: &[(&str, Value)]) -> Value {
+    let mut card: Value = serde_json::from_str(CARDS.lines().next().expect("a base printing"))
+        .expect("the base printing parses");
+    card["id"] = serde_json::json!(format!("00000000-0000-4000-8000-{tail}"));
+    card["set"] = serde_json::json!("lad");
+    card["set_type"] = serde_json::json!("expansion");
+    card["collector_number"] = serde_json::json!(number);
+    card["lang"] = serde_json::json!("en");
+    card["released_at"] = serde_json::json!("2025-01-01");
+    card["layout"] = serde_json::json!("normal");
+    card["booster"] = serde_json::json!(true);
+    card["digital"] = serde_json::json!(false);
+    card["finishes"] = serde_json::json!(["nonfoil"]);
+    for (key, value) in fields {
+        card[*key] = value.clone();
+    }
+    card
+}
+
+fn ndjson(cards: &[Value]) -> String {
+    cards.iter().fold(String::new(), |mut out, card| {
+        out.push_str(&card.to_string());
+        out.push('\n');
+        out
+    })
+}
+
+/// One card whose printings each separate from the one above on a single key
+/// and agree on every key above that, so the run they come out in is the order
+/// read back. Listed worst first, which no key may fall back on.
+///
+/// The digital rung belongs to no run at all, so either half that stops asking
+/// about it answers with a printing the other cannot see.
+fn ladder() -> (String, Vec<String>) {
+    let newer = ("released_at", serde_json::json!("2026-01-01"));
+    let foil = ("finishes", serde_json::json!(["foil"]));
+    let expected = [
+        rung("00000000aa01", "90", &[newer.clone(), foil.clone()]),
+        rung("00000000bb01", "10", &[]),
+        rung("00000000cc01", "20", &[]),
+        rung("00000000cc02", "20", &[("lang", serde_json::json!("ja"))]),
+        rung("00000000ee01", "05", &[foil]),
+        rung(
+            "00000000ff01",
+            "01",
+            &[
+                newer.clone(),
+                ("layout", serde_json::json!("reversible_card")),
+            ],
+        ),
+        rung(
+            "000000009901",
+            "02",
+            &[newer.clone(), ("booster", serde_json::json!(false))],
+        ),
+        rung(
+            "000000008801",
+            "03",
+            &[newer.clone(), ("set_type", serde_json::json!("masters"))],
+        ),
+    ];
+    let unseen = rung(
+        "00000000dd01",
+        "04",
+        &[newer, ("digital", serde_json::json!(true))],
+    );
+
+    let mut file = vec![unseen];
+    file.extend(expected.iter().rev().cloned());
+    (
+        ndjson(&file),
+        expected
+            .iter()
+            .map(|card| card["id"].as_str().expect("an id").to_owned())
+            .collect(),
+    )
+}
+
+/// Two printings of one card alike down to the key that cannot tie: one number
+/// in two languages, the id that wins listed second.
+fn lang_twin() -> String {
+    let oracle = (
+        "oracle_id",
+        serde_json::json!("55555555-5555-4555-8555-555555555555"),
+    );
+    ndjson(&[
+        rung(
+            "ffffffffff01",
+            "7",
+            &[oracle.clone(), ("lang", serde_json::json!("ja"))],
+        ),
+        rung("000000000001", "7", &[oracle]),
+    ])
+}
+
 fn bulk(updated_at: &str) -> BulkData {
     serde_json::from_value(serde_json::json!({
         "id": "e2ef41e3-5778-4bc2-af3f-78eca4dd9c23",
@@ -117,12 +214,14 @@ async fn each_file_names_its_own_columns() {
 
 /// The run each card's printings sit in, which the client walks by position.
 ///
-/// Each fixture ties until one of the last counts the order asks, since a card
-/// of one printing leads its run however the two orders are written.
+/// Each card here is led by a different key, since one that ties nowhere leads
+/// its run however either half is written.
 #[tokio::test]
 async fn printings_group_into_the_runs_the_cards_claim() {
+    let (rungs, _) = ladder();
     let pool = seeded_with(&format!(
-        "{FOIL_TWIN}{REVERSIBLE_TWIN}{FINISH_TWIN}{NUMBER_TWIN}"
+        "{REVERSIBLE_TWIN}{FINISH_TWIN}{NUMBER_TWIN}{rungs}{}",
+        lang_twin()
     ))
     .await;
     let built = catalog::build(&pool, None).await.unwrap();
@@ -146,6 +245,23 @@ async fn printings_group_into_the_runs_the_cards_claim() {
         offset += usize::try_from(count).unwrap();
     }
     assert_eq!(offset, prints.len(), "every printing belongs to a run");
+}
+
+/// The whole run rather than what leads it, which is the half of the order the
+/// cards can agree on and still both have wrong.
+#[tokio::test]
+async fn a_run_asks_every_key_in_the_order_they_are_written() {
+    let (rungs, expected) = ladder();
+    let built = catalog::build(&seeded_with(&rungs).await, None)
+        .await
+        .unwrap();
+
+    let ids: Vec<String> = rows(&read(&built.prints.bytes), "prints")
+        .iter()
+        .map(|row| row[0].as_str().expect("a print id").to_owned())
+        .collect();
+
+    assert_eq!(ids, expected);
 }
 
 #[tokio::test]
