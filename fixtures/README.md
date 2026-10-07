@@ -42,11 +42,22 @@ files write the DID of the primary author below and `just seed` rewrites it to
 whichever account it is given. Seeding that account therefore rewrites nothing.
 
 `just seed <handle> fixtures/edges` writes a second set instead: one record
-per card-shape edge the cache holds — every layout, every collector-number
+per card shape the cache holds — the faced layouts, each collector-number
 shape, the languages, the digital-only printing no client can name — carrying
 the record-side extremes between them. It is a separate directory because the
 two totals would otherwise add up, and a collection whose size is known is
 what an export test asserts on.
+
+Card shapes, not every layout: the cache has 25 and these cover 14, among
+them every layout that carries `card_faces`. The eleven left out keep their
+gameplay data at the top level, so each is another row of a shape already
+here. A layout that shows up later earns a row when it puts a field
+somewhere new.
+
+Two records are there to be refused rather than read. `3mxblg3un7q2b` carries
+a tag holding the comma the column is joined on, which this app cannot write
+and an export has to count; `3mxblggedgr2b` has been come by more often than
+it is held, which is a history a file of rows cannot carry whole.
 
 ## What a handle may be
 

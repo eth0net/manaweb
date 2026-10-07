@@ -1,0 +1,8 @@
+{
+  "$type": "app.manaweb.card",
+  "scryfallId": "b05b371c-e66b-4219-863e-95e3ddca4a71",
+  "finish": "nonfoil",
+  "quantity": 6,
+  "container": "at://did:plc:rk2rhs4yvucutbrd2aoi5gci/app.manaweb.container/3mxblflntm52b",
+  "createdAt": "2026-10-05T10:00:00.000Z"
+}
