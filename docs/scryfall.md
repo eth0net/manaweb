@@ -217,14 +217,16 @@ Reading a lot's date arrives with it: a date on its own is a lot, where
 before a lot needed a figure. When copies were come by is the fact Dragon
 Shield exports and a drift-since-acquisition figure needs.
 
-**Writing a column is not the same as being able to read it.** Three things a
+**Writing a column is not the same as being able to read it.** Four things a
 row carries come back as less than they went out, and the export counts the
 copies rather than letting the file imply a round trip: a tag holding the
 comma the column is joined on, which comes back as two tags; a figure with no
 currency beside it, which is a legal record and no figure at all to a reader
-that wants both; and a lot that is only a count, which leaves nothing in the
-row to rebuild it from. None of the three is something this app writes, and
-all three are records another client may.
+that wants both; a figure the record holds as an empty string, which the
+lexicon takes for want of a `minLength` and the column cannot tell from a
+figure nobody named; and a lot that is only a count, which leaves nothing in
+the row to rebuild it from. None of the four is something this app writes, and
+all four are records another client may.
 
 **A date is gated on its shape before it is parsed.** `Date.parse` reads `12`
 as a December, `Mar 3` as this year, and anything past the year 9999 as an

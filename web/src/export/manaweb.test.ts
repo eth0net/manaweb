@@ -425,6 +425,32 @@ test("a format that refuses nothing is never asked to substitute", () => {
   expect(written.rows[1]?.[at]).toBe("ph");
 });
 
+// A lexicon setting no `minLength` takes this, so a PDS holds it.
+test("a figure the record leaves empty is counted as lost", () => {
+  const blank: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    acquisitions: [{ quantity: 1, price: "", currency: "GBP" }],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const { stacks: back } = read(exported([blank]), MANAWEB, NOW);
+
+  expect(rows(stacks([blank]), MANAWEB, () => new Map()).unkept).toBe(1);
+  expect(back[0]?.acquisitions).toBeUndefined();
+});
+
+test("a figure the record fills is not counted against it", () => {
+  const paid: Owned = {
+    scryfallId: ID,
+    finish: "nonfoil",
+    quantity: 1,
+    acquisitions: [{ quantity: 1, price: "2.50", currency: "GBP" }],
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  expect(rows(stacks([paid]), MANAWEB, () => new Map()).unkept).toBe(0);
+});
+
 // A stack holding fewer copies than its history bought, which is what selling
 // or trading part of one looks like.
 test("a lot with no copies left to spend on is counted as lost", () => {

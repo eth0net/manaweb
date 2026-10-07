@@ -228,7 +228,7 @@ function cell(
 }
 
 // What a row carries that a read makes less of — `docs/scryfall.md` names
-// the three.
+// each.
 function vague(one: Owned, format: Format): boolean {
   const tagged =
     format.binding.tags !== undefined &&
@@ -238,6 +238,8 @@ function vague(one: Owned, format: Format): boolean {
     tagged ||
     (one.acquisitions ?? []).some(
       (lot) =>
+        blank(lot.price) ||
+        blank(lot.marketValue) ||
         (lot.price !== undefined && lot.currency === undefined) ||
         (lot.marketValue !== undefined && lot.marketCurrency === undefined) ||
         (lot.price === undefined &&
@@ -245,6 +247,12 @@ function vague(one: Owned, format: Format): boolean {
           lot.at === undefined),
     )
   );
+}
+
+// A figure the record holds as nothing, which the column it goes in cannot
+// tell from a lot that named no figure.
+function blank(figure: string | undefined): boolean {
+  return figure !== undefined && figure.trim() === "";
 }
 
 // A column written and not read is only a loss where a card fills it.
