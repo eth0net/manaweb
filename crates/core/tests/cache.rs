@@ -546,6 +546,15 @@ async fn history(pool: &SqlitePool) -> Vec<Attempt> {
     .expect("history should be readable")
 }
 
+async fn without_history() -> SqlitePool {
+    let pool = open_memory().await.unwrap();
+    sqlx::query("DROP TABLE sync_history")
+        .execute(&pool)
+        .await
+        .expect("the table should drop");
+    pool
+}
+
 #[tokio::test]
 async fn a_sync_that_lands_is_a_row_of_what_it_wrote() {
     let (pool, _) = seeded().await;
@@ -620,6 +629,40 @@ async fn retries_of_one_file_count_up() {
         cards::attempts(&pool, "default_cards", "z").await.unwrap(),
         0
     );
+}
+
+/// The row is bookkeeping about the sync rather than part of it, so a sync
+/// that committed has landed whatever became of its row.
+#[tokio::test]
+async fn a_sync_lands_even_where_no_row_can_be_written() {
+    let pool = without_history().await;
+
+    let report = cards::replace(&pool, &bulk("x"), &mut stream(CARDS))
+        .await
+        .expect("a sync that committed is a sync that landed");
+
+    assert_eq!(report.written, 4);
+    assert_eq!(cards::count(&pool).await.unwrap(), 4);
+    assert_eq!(
+        cards::last_synced(&pool, "default_cards")
+            .await
+            .unwrap()
+            .as_deref(),
+        Some("x"),
+    );
+}
+
+/// And a refusal still names what refused it, rather than what became of the
+/// row recording that it did.
+#[tokio::test]
+async fn a_refusal_keeps_its_own_error_where_no_row_can_be_written() {
+    let pool = without_history().await;
+
+    let error = cards::replace(&pool, &bulk("x"), &mut stream(""))
+        .await
+        .expect_err("an empty stream should still be refused");
+
+    assert!(matches!(error, Error::EmptySync), "got {error:?}");
 }
 
 /// Builds a stream from the fixture's first card plus mutated copies of it, so

@@ -131,7 +131,8 @@ impl Shape {
 /// of which carried a field the cache reads, or one holding far fewer
 /// printings than the last. Each of those would otherwise publish a
 /// catalog nobody looked at. A single row the schema refuses is counted, not
-/// raised.
+/// raised, and a history row that would not write is logged rather than
+/// raised: it is bookkeeping about the sync, not part of it.
 pub async fn replace(
     pool: &SqlitePool,
     bulk: &BulkData,
@@ -141,8 +142,12 @@ pub async fn replace(
     let synced = ingest(pool, bulk, cards, &mut attempt).await;
     // On the pool rather than in the transaction `ingest` rolls back, because a
     // refused sync leaving no trace is the one worth being able to read.
-    let noted = note(pool, bulk, &attempt, synced.as_ref().err()).await;
-    synced.and(noted).map(|()| attempt.report)
+    if let Err(error) = note(pool, bulk, &attempt, synced.as_ref().err()).await {
+        // Bookkeeping about the work, so it cannot fail the work. Logged
+        // because nothing else would ever say the row went missing.
+        tracing::warn!("no sync history row: {error}");
+    }
+    synced.map(|()| attempt.report)
 }
 
 /// Which guard refused, short enough to count a history by.
