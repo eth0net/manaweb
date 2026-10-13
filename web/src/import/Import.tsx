@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { Catalog } from "../catalog";
 import { clip, type Holdings } from "../collection/cards";
 import { Link } from "../router";
-import { detect, FORMATS, type Format } from "./formats";
+import { asPaid, detect, FORMATS, type Format } from "./formats";
 import { plan, type Weight, weigh } from "./plan";
 import { header, type Read, read } from "./read";
 import { digest, type Receipt, useReceipts } from "./receipt";
@@ -23,7 +23,15 @@ export const IMPORT = "/collection/import";
 const FILE = 255;
 
 // A file read and identified, which is everything the receipt for it needs.
-type Taken = { format: Format; got: Read; file: string; digest: string };
+// The text stays so that reading it the other way costs no second trip.
+type Taken = {
+  format: Format;
+  paid: boolean;
+  got: Read;
+  file: string;
+  digest: string;
+  text: string;
+};
 
 const NAMES = FORMATS.map((one) => one.name).join(", ");
 
@@ -105,18 +113,22 @@ export function Import({
       return;
     }
 
+    setFound(await reading(text, format, false, clip(file.name, FILE)));
+  }
+
+  async function reading(
+    text: string,
+    format: Format,
+    paid: boolean,
+    file: string,
+  ): Promise<Taken> {
     const got = read(
       text,
-      format,
+      (paid ? asPaid(format) : null) ?? format,
       new Date().toISOString(),
       catalog ? (keys) => catalog.locate(keys) : undefined,
     );
-    setFound({
-      format,
-      got,
-      file: clip(file.name, FILE),
-      digest: await digest(got.stacks),
-    });
+    return { format, paid, got, file, text, digest: await digest(got.stacks) };
   }
 
   // The file goes to the repo as the file, not as the plan: what each of its
@@ -175,6 +187,28 @@ export function Import({
             {about(found.got.stacks.length)} of write budget, and carries on
             whenever the app is open.
           </p>
+
+          {asPaid(found.format) && (
+            <p className="quiet">
+              <label>
+                {found.format.binding.marketValue} is{" "}
+                <select
+                  value={found.paid ? "paid" : "worth"}
+                  onChange={(event) =>
+                    void reading(
+                      found.text,
+                      found.format,
+                      event.target.value === "paid",
+                      found.file,
+                    ).then(setFound)
+                  }
+                >
+                  <option value="worth">what a copy was worth</option>
+                  <option value="paid">what you paid</option>
+                </select>
+              </label>
+            </p>
+          )}
 
           {already && <p className="warn">{recalled(already.value)}</p>}
 

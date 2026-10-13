@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
 import { CONDITIONS } from "../collection/cards";
 import {
+  asPaid,
   columns,
   detect,
   FORMATS,
+  type Format,
   finish,
   flag,
   flagged,
@@ -12,6 +14,7 @@ import {
   graded,
   key,
   MANABOX,
+  MANAWEB,
 } from "./formats";
 
 test("a header carrying every bound column names its format", () => {
@@ -81,4 +84,34 @@ test("every column a format binds is one its export writes", () => {
       expect(written).toContain(key(column));
     }
   }
+});
+
+test("reading a price as paid moves the column, not the file", () => {
+  const paid = asPaid(MANABOX);
+
+  expect(paid?.binding.price).toBe(MANABOX.binding.marketValue);
+  expect(paid?.binding.currency).toBe(MANABOX.binding.marketCurrency);
+  expect(paid?.binding.marketValue).toBeUndefined();
+  expect(paid?.binding.marketCurrency).toBeUndefined();
+  expect(columns(paid as Format)).toEqual(columns(MANABOX));
+});
+
+test("a format already saying what you paid has nothing to offer", () => {
+  expect(asPaid(MANAWEB)).toBeNull();
+});
+
+// A currency already bound belongs to a price column this one is not, so
+// rebinding would pair an amount with a code meant for another.
+test("a currency already spoken for leaves the price column alone", () => {
+  const odd: Format = {
+    name: "Odd",
+    binding: {
+      scryfallId: "Scryfall ID",
+      finish: "Foil",
+      quantity: "Quantity",
+      currency: "Paid in",
+      marketValue: "Worth",
+    },
+  };
+  expect(asPaid(odd)).toBeNull();
 });

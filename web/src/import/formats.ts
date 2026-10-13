@@ -58,6 +58,23 @@ export function columns(format: Format): string[] {
   return format.header ?? Object.values(format.binding).filter((one) => !!one);
 }
 
+// The same file read as figures its owner typed. Rebinding one column is the
+// whole opt-in, so no setting carries it — `docs/scryfall.md`.
+export function asPaid(format: Format): Format | null {
+  const { marketValue, marketCurrency } = format.binding;
+  if (!marketValue || format.binding.price || format.binding.currency) {
+    return null;
+  }
+
+  const binding: Binding = { ...format.binding, price: marketValue };
+  delete binding.marketValue;
+  if (marketCurrency) {
+    binding.currency = marketCurrency;
+    delete binding.marketCurrency;
+  }
+  return { ...format, binding };
+}
+
 // A row with no finish or count behind it is not a card.
 const NEEDED: Field[] = ["finish", "quantity"];
 

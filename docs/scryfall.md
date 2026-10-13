@@ -347,7 +347,7 @@ purchase date, which only Dragon Shield exports.
 edited row from an auto-filled one, and the costs are not symmetrical: putting
 an unpaid amount in `price` produces a confident lie in every comparison
 afterwards, where the reverse produces a gap. People who diligently edited
-theirs get an opt-in.
+theirs say so on the import, and the column is read as `price` instead.
 
 ManaBox's `Added` seeds `createdAt`. It records when a row entered ManaBox
 rather than when the cards were bought, so a collection catalogued in bulk

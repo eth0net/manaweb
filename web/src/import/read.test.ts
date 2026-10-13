@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import type { Locate } from "../catalog";
 import { NOTE, NOTE_BYTES } from "../collection/cards";
 import { BATCH, BYTES } from "../oauth/repo";
-import { type Format, MANABOX } from "./formats";
+import { asPaid, type Format, MANABOX } from "./formats";
 import { read } from "./read";
 
 const NOW = "2026-09-13T00:00:00.000Z";
@@ -100,6 +100,18 @@ test("a grade nothing recognizes leaves the stack ungraded", () => {
 test("the price column is what a copy was worth, not what was paid", () => {
   expect(one(row()).stack?.acquisitions).toEqual([
     { quantity: 1, marketValue: "0.18", marketCurrency: "GBP" },
+  ]);
+});
+
+test("the same column read as paid is a figure, not a snapshot", () => {
+  const { stacks } = read(
+    [HEAD, row()].join("\n"),
+    asPaid(MANABOX) as Format,
+    NOW,
+  );
+
+  expect(stacks[0]?.acquisitions).toEqual([
+    { quantity: 1, price: "0.18", currency: "GBP" },
   ]);
 });
 
