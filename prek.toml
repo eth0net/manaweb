@@ -44,8 +44,10 @@ hooks = [
   # Formats in place and fails if anything moved, so the fix is `git add`.
   { id = "cargo-fmt", name = "cargo fmt", entry = "cargo fmt --all", language = "system", files = '\.rs$', pass_filenames = false, require_serial = true },
   { id = "cargo-clippy", name = "cargo clippy", entry = "cargo clippy --all-targets -- -D warnings", language = "system", files = '\.rs$|(^|/)Cargo\.(toml|lock)$', pass_filenames = false, require_serial = true },
-  # Matches CI, so a red push costs no CI round trip.
-  { id = "cargo-test", name = "cargo test", entry = "cargo test --all-targets", language = "system", files = '\.rs$|(^|/)Cargo\.(toml|lock)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
+  # Matches CI, so a red push costs no CI round trip. Migrations are listed
+  # because they are .sql: the tests pinning their checksums are the ones a
+  # push adding one most needs, and no other pattern here reaches them.
+  { id = "cargo-test", name = "cargo test", entry = "cargo test --all-targets", language = "system", files = '\.rs$|(^|/)Cargo\.(toml|lock)$|^crates/core/migrations/', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
 ]
 
 # Scoped to `web/`, and `system` for the same reason the cargo hooks are: bun
