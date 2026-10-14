@@ -555,6 +555,41 @@ async fn without_history() -> SqlitePool {
     pool
 }
 
+/// A migration meets rows once: on the one database that ran the schema before
+/// it. Every test here opens an empty one, where `0006` creates its table
+/// beside nothing and the cache it has to survive is never there.
+#[tokio::test]
+async fn the_history_table_arrives_on_a_cache_that_already_holds_cards() {
+    let (pool, _) = seeded().await;
+    // What a cache synced under `0005_reversible_order.sql` is holding.
+    for back in [
+        "DROP TABLE sync_history",
+        "DELETE FROM _sqlx_migrations WHERE version = 6",
+    ] {
+        sqlx::query(back)
+            .execute(&pool)
+            .await
+            .expect("the history should come back off");
+    }
+
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("a cache holding cards should migrate");
+
+    cards::replace(
+        &pool,
+        &bulk("2026-09-13T21:05:43.673+00:00"),
+        &mut stream(CARDS),
+    )
+    .await
+    .expect("the migrated cache should sync");
+
+    let held = history(&pool).await;
+    assert_eq!(held.len(), 1, "got {held:?}");
+    assert_eq!(held[0].held, Some(4), "the printings the migration kept");
+}
+
 #[tokio::test]
 async fn a_sync_that_lands_is_a_row_of_what_it_wrote() {
     let (pool, _) = seeded().await;
