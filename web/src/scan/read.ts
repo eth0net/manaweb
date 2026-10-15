@@ -20,6 +20,12 @@ export interface Picture {
 // Bytes a canvas gives per pixel.
 const RGBA = 4;
 
+// The pieces a read is spent in, and where a millisecond of it went. Taken
+// as a callback so that what a measurement times is this path rather than a
+// copy of it.
+export type Stage = "luma" | "query" | "retrieve";
+export type Clock = (stage: Stage, ms: number) => void;
+
 export interface Read extends Retrieved {
   // Whether a card was found in the frame rather than the framing guessed at.
   // A guess is worth saying out loud: it means the card was not where the
@@ -36,16 +42,27 @@ export function read(
   catalog: Catalog,
   index: Artworks,
   picture: Picture,
+  clock?: Clock,
 ): Read | null {
   const { data, width, height } = picture;
+  let at = performance.now();
+  const spent = (stage: Stage) => {
+    const now = performance.now();
+    clock?.(stage, now - at);
+    at = now;
+  };
+
   const levels = engine.luma(
     new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
     RGBA,
   );
+  spent("luma");
   const asked = engine.query(levels, width, height);
+  spent("query");
   if (asked.hashes.length === 0) return null;
 
   const found = retrieve(catalog, index, asked.hashes);
+  spent("retrieve");
   if (!found) return null;
   return {
     ...found,

@@ -38,6 +38,12 @@ const Told = import.meta.env.DEV
   ? lazy(() => import("./Report").then((held) => ({ default: held.Report })))
   : null;
 
+// Development only, the same way, and what `bun run sealed` reads the build
+// back for.
+const Timed = import.meta.env.DEV
+  ? lazy(() => import("./Readout").then((held) => ({ default: held.Readout })))
+  : null;
+
 export const SCAN = "/scan";
 export const REVIEW = `${SCAN}/review`;
 
@@ -86,6 +92,8 @@ export function Scan({
   // what to say once one has gone.
   const [telling, setTelling] = useState<string | null>(null);
   const [told, setTold] = useState(false);
+  // Development only: whether the stage timings are up.
+  const [timing, setTiming] = useState(false);
 
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
@@ -292,6 +300,12 @@ export function Scan({
 
       {camera === "on" && (
         <div className="scan-foot">
+          {Timed && timing && manifest && (
+            <Suspense fallback={<p className="quiet">Opening…</p>}>
+              <Timed video={video} catalog={catalog} manifest={manifest} />
+            </Suspense>
+          )}
+
           {Told && telling && (
             <div className={solid ? "scan-said solid" : "scan-said"}>
               <div className="scan-panel">
@@ -404,6 +418,15 @@ export function Scan({
                   ? "Scan"
                   : "Scan again"}
             </button>
+            {Timed && manifest && (
+              <button
+                type="button"
+                onClick={() => setTiming(!timing)}
+                aria-pressed={timing}
+              >
+                {timing ? "Timing" : "Time"}
+              </button>
+            )}
             <button type="button" onClick={stop}>
               Close
             </button>

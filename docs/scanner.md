@@ -556,6 +556,16 @@ most frames of a search are ones no card is found in, which is the slower of
 the two. Against a budget of 33 that is close enough to want measuring on a
 phone rather than on a laptop.
 
+**That measurement has an instrument.** A development readout over the
+viewfinder times one read by its parts — the canvas grab, the luma plane,
+the wasm call, the lookup — and a continuous run reports the rate it
+achieved with the p50, p90 and worst of them, frames a card was found in
+kept apart from frames where the framing was guessed. It also reads the
+first of five frames and the sharpest of them by gradient energy, which is
+what decides whether picking a frame to read is worth wiring into the loop
+at all. Nothing in it accepts a card, and `bun run sealed` reads the build
+back for it the same way it does the capture route.
+
 **A failed read can be sent back.** Every photograph in the corpus was taken
 deliberately and copied over by hand, so the reads that go wrong in a hand
 were exactly the ones nothing kept. A development build now puts every frame
