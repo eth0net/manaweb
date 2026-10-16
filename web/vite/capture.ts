@@ -1,6 +1,6 @@
-// Keeping what a phone's camera saw. `apply: "serve"` is the whole of why
-// this exists at all: there is no build hook here, so nothing that deploys
-// can carry it.
+// Keeping what a phone's camera saw, and what a read cost it.
+// `apply: "serve"` is the whole of why this exists at all: there is no build
+// hook here, so nothing that deploys can carry it.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -28,26 +28,35 @@ export function stamped(at: Date, nth: number): string {
   return `${when}-${String(nth).padStart(3, "0")}`;
 }
 
-// The frame and the note as two files sharing a stem. Throws rather than
+// The frame and the note as two files sharing a stem, or the note by itself
+// where there is no frame — a timing has no picture. Throws rather than
 // writing anything where the body is not a capture.
 export function keep(dir: string, body: Buffer, stem: string): void {
   const held: unknown = JSON.parse(body.toString("utf8"));
-  if (typeof held !== "object" || held === null) {
+  if (typeof held !== "object" || held === null || Array.isArray(held)) {
     throw new Error("A capture is an object");
   }
   const { note, png } = held as { note?: unknown; png?: unknown };
+  if (note === undefined && png === undefined) {
+    throw new Error("A capture carries a frame, a note, or both");
+  }
+  const bytes = png === undefined ? null : framed(png);
+
+  mkdirSync(dir, { recursive: true });
+  if (bytes) writeFileSync(join(dir, `${stem}.png`), bytes);
+  writeFileSync(
+    join(dir, `${stem}.json`),
+    `${JSON.stringify(note ?? {}, null, 2)}\n`,
+  );
+}
+
+function framed(png: unknown): Buffer {
   if (typeof png !== "string") throw new Error("A capture carries a frame");
   const bytes = Buffer.from(png, "base64");
   if (!bytes.subarray(0, PNG.length).equals(PNG)) {
     throw new Error("That frame is not a PNG");
   }
-
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, `${stem}.png`), bytes);
-  writeFileSync(
-    join(dir, `${stem}.json`),
-    `${JSON.stringify(note ?? {}, null, 2)}\n`,
-  );
+  return bytes;
 }
 
 export function captures(dir = KEPT): Plugin {

@@ -44,10 +44,20 @@ describe("what reaches the disk", () => {
     expect(readFileSync(join(dir, "one.png"))).toEqual(PNG);
   });
 
+  test("writes the note alone where there is no frame", () => {
+    const dir = scratch();
+    keep(dir, Buffer.from(JSON.stringify({ note: { p50: 31.4 } })), "one");
+    expect(JSON.parse(readFileSync(join(dir, "one.json"), "utf8"))).toEqual({
+      p50: 31.4,
+    });
+    expect(() => readFileSync(join(dir, "one.png"))).toThrow();
+  });
+
   test("refuses a body that is not a capture", () => {
     const dir = scratch();
     expect(() => keep(dir, Buffer.from("[]"), "one")).toThrow();
     expect(() => keep(dir, Buffer.from("null"), "one")).toThrow();
+    expect(() => keep(dir, Buffer.from("{}"), "one")).toThrow();
     expect(() => keep(dir, posted(""), "one")).toThrow();
   });
 

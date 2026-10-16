@@ -11,7 +11,10 @@ import {
 import type { Catalog, Manifest } from "../catalog";
 import {
   energy,
+  type Kept,
   MEASURING,
+  type Sharpest,
+  send,
   summarize,
   type Tally,
   type Timing,
@@ -32,13 +35,6 @@ const SHOTS = 5;
 // inside the thing being measured.
 const EVERY = 10;
 
-interface Sharpest {
-  energies: number[];
-  which: number;
-  first: Read | null;
-  best: Read | null;
-}
-
 export function Readout({
   video,
   catalog,
@@ -50,11 +46,15 @@ export function Readout({
 }) {
   const paper = useRef<HTMLCanvasElement | null>(null);
   const run = useRef(0);
+  // What the numbers were measured against, which is what makes two runs
+  // comparable.
+  const about = useRef<Kept["index"]>(null);
   const [one, setOne] = useState<Timing | null>(null);
   const [tally, setTally] = useState<Tally | null>(null);
   const [running, setRunning] = useState(false);
   const [sharp, setSharp] = useState<Sharpest | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [kept, setKept] = useState(false);
 
   const take = useCallback((): Picture | null => {
     if (!video.current) return null;
@@ -65,6 +65,11 @@ export function Readout({
   const ready = useCallback(async () => {
     const [held, artworks] = await Promise.all([engine(), index(manifest)]);
     if (!artworks) throw new Error("No artwork index to scan against");
+    about.current = {
+      version: artworks.version,
+      rows: artworks.rows,
+      hashes: artworks.hashes,
+    };
     return { held, artworks };
   }, [manifest]);
 
@@ -78,6 +83,7 @@ export function Readout({
   const once = useCallback(() => {
     stop();
     setProblem(null);
+    setKept(false);
     ready()
       .then(({ held, artworks }) => {
         const got = timed(held, catalog, artworks, take);
@@ -92,6 +98,7 @@ export function Readout({
     const mine = run.current;
     setRunning(true);
     setProblem(null);
+    setKept(false);
     ready()
       .then(({ held, artworks }) => {
         const frames: Timing[] = [];
@@ -118,6 +125,7 @@ export function Readout({
   const pick = useCallback(() => {
     stop();
     setProblem(null);
+    setKept(false);
     ready()
       .then(async ({ held, artworks }) => {
         const mine = run.current;
@@ -158,6 +166,12 @@ export function Readout({
       })
       .catch((failed: unknown) => setProblem(said(failed)));
   }, [catalog, ready, stop, take, video]);
+
+  const put = useCallback(() => {
+    send({ index: about.current, one, run: tally, sharpest: sharp })
+      .then(() => setKept(true))
+      .catch((failed: unknown) => setProblem(said(failed)));
+  }, [one, sharp, tally]);
 
   return (
     <div className="scan-said solid">
@@ -217,6 +231,13 @@ export function Readout({
         </button>
         <button type="button" onClick={pick} disabled={running}>
           Sharpest
+        </button>
+        <button
+          type="button"
+          onClick={put}
+          disabled={running || !(one || tally || sharp)}
+        >
+          {kept ? "Kept" : "Keep"}
         </button>
       </div>
     </div>

@@ -564,7 +564,10 @@ kept apart from frames where the framing was guessed. It also reads the
 first of five frames and the sharpest of them by gradient energy, which is
 what decides whether picking a frame to read is worth wiring into the loop
 at all. Nothing in it accepts a card, and `bun run sealed` reads the build
-back for it the same way it does the capture route.
+back for it the same way it does the capture route. **Keep** posts what the
+panel is showing to that same route, which lands it as a note with no frame
+beside it — a figure read off a phone and typed out again is a figure that
+can arrive wrong.
 
 **A failed read can be sent back.** Every photograph in the corpus was taken
 deliberately and copied over by hand, so the reads that go wrong in a hand

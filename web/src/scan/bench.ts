@@ -7,6 +7,7 @@
 
 import type { Catalog } from "../catalog";
 import type { Artworks } from "../catalog/artwork";
+import { CAPTURE } from "./capture";
 import type { Engine } from "./engine";
 import { type Picture, type Read, read, type Stage } from "./read";
 
@@ -148,4 +149,40 @@ export function energy(
     }
   }
   return count === 0 ? 0 : sum / count;
+}
+
+// Which of a handful of frames carried the most detail, and what a read of
+// the first and of that one each came back with.
+export interface Sharpest {
+  energies: number[];
+  which: number;
+  first: Read | null;
+  best: Read | null;
+}
+
+// Everything the panel is showing, which is what a press keeps.
+export interface Kept {
+  index: { version: string; rows: number; hashes: number } | null;
+  one: Timing | null;
+  run: Tally | null;
+  sharpest: Sharpest | null;
+}
+
+// To the route a reported frame goes to, as a note with no picture: a phone
+// reading these off its own screen is how they get copied wrong.
+export async function send(held: Kept): Promise<void> {
+  const answered = await fetch(CAPTURE, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      note: {
+        at: new Date().toISOString(),
+        agent: navigator.userAgent,
+        ...held,
+      },
+    }),
+  });
+  if (!answered.ok) {
+    throw new Error(`The timings were refused: ${answered.status}`);
+  }
 }
