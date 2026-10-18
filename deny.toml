@@ -43,9 +43,6 @@ skip = [
   { crate = "syn@2" },
   # sqlx's hashlink is a minor behind indexmap's. Gone when hashlink bumps.
   { crate = "hashbrown@0.16" },
-  # tokio reaches windows-sys twice: mio is on 0.61, signal-hook-registry's
-  # errno still on 0.52. Gone when errno bumps.
-  { crate = "windows-sys@0.52" },
   # object_store is on the newer RustCrypto line for its md-5 and sha2, where
   # sqlx is still on the older one. One migration, four entries. Gone when sqlx
   # takes sha2 0.11.
