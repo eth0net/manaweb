@@ -556,6 +556,19 @@ anyone's time. Neither is measured against anything — a lens that focuses
 closer and a light that kills a foil's glare are both guesses until a shot
 taken with them is scored.
 
+**The quad is found and then dropped.** `read()` takes the corners only to
+answer whether a card was detected and keeps nothing else, so the one thing
+a viewfinder could say about a read — where the card is — never leaves the
+engine. Returning them and drawing a box, colored by whether the margin
+would accept it, is what turns a still picture and a verdict into something
+a person can aim. Two things make it less trivial than it sounds: the
+corners are in the frame's own pixels against a video shown `object-fit:
+cover`, so the overlay has to repeat the scale and crop the browser is
+doing and a corner outside that crop cannot be drawn at all; and a box is
+as old as the read that made it, a tenth of a second at today's cost, so it
+belongs on its own clock drawing the last corners rather than inside the
+read.
+
 **Scanning is still a button.** A camera gives thirty frames a second and
 the margin already says which to believe, so reading frames until one clears
 the floor is the shape this wants — the button being the fallback for a card

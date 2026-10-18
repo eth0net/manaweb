@@ -66,6 +66,8 @@ export function read(
   if (!found) return null;
   return {
     ...found,
+    // todo(viewfinder): the corners are answered with and not kept, so there
+    // is nothing to draw a box from — `docs/scanner.md`.
     detected: asked.quad !== null,
     sure: found.margin >= FLOOR,
   };
