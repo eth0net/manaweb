@@ -77,11 +77,14 @@ export function frame(
   if (videoWidth === 0 || videoHeight === 0) return null;
 
   const { width, height } = sized(videoWidth, videoHeight);
-  onto.width = width;
-  onto.height = height;
+  // Either assignment reallocates the backing store and clears it, whatever
+  // it was set to, so a camera whose size has not moved is left alone.
+  if (onto.width !== width) onto.width = width;
+  if (onto.height !== height) onto.height = height;
 
   const paper = onto.getContext("2d", { willReadFrequently: true });
   if (!paper) return null;
+
   paper.drawImage(from, 0, 0, width, height);
   return paper.getImageData(0, 0, width, height);
 }
