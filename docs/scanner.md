@@ -484,6 +484,14 @@ answer to blur and glare — the glare moves between frames and the card does
 not. The other thing that was missing here, a floor read off the margin, is
 built and is what the accept turns on above.
 
+**Taking the sharpest of five has been tried twice.** Five frames a camera
+frame apart, scored by gradient energy, against simply reading the first:
+over a card held still both read it and the margin went from 8 to 10, and
+over one deliberately shaken the first frame missed the card and guessed the
+framing for a margin of 4 where the sharpest found it and scored 8. Two
+trials is a reason to run ten rather than a result, but the one case it
+exists for is the one where it told them apart.
+
 **The engine is reached over a C ABI, not a bindings generator.** Every call
 is pointers and lengths, so the same signatures serve a browser's
 `WebAssembly.Instance` and later Swift and Kotlin. It builds with `cargo
@@ -551,10 +559,9 @@ taken with them is scored.
 **Scanning is still a button.** A camera gives thirty frames a second and
 the margin already says which to believe, so reading frames until one clears
 the floor is the shape this wants — the button being the fallback for a card
-it never gets sure about. What that costs is 27ms a frame rather than 13:
-most frames of a search are ones no card is found in, which is the slower of
-the two. Against a budget of 33 that is close enough to want measuring on a
-phone rather than on a laptop.
+it never gets sure about. Most frames of a search are ones no card is found
+in, which is the dearer of the two, and a budget of 33ms is what reading
+every one of them would have to fit inside.
 
 **That measurement has an instrument.** A development readout over the
 viewfinder times one read by its parts — the canvas grab, the luma plane,
@@ -568,6 +575,20 @@ back for it the same way it does the capture route. **Keep** posts what the
 panel is showing to that same route, which lands it as a note with no frame
 beside it — a figure read off a phone and typed out again is a figure that
 can arrive wrong.
+
+**A frame costs an iPhone 111ms, and 141 where it finds no card.** Medians
+over 180 frames and over 50, iOS 18.7 against the 54,708-row index. The
+lookup is where a laptop said it would be — 14ms and 33 — and the wasm 13
+and 23, so the arithmetic transfers. What no laptop figure here ever
+included is the canvas grab in front of it, and that is 84ms of both:
+`getImageData` over 1280x720 reads back through the GPU, which is the one
+thing a phone is far worse at than the machine this was written on. So
+reading every frame is 9 a second and 7, not 30, and nothing in the lookup
+is worth cutting before the grab is — with the other three stages at zero a
+frame still costs 84ms and still misses the budget by two and a half times.
+A smaller capture, `createImageBitmap` into an `OffscreenCanvas`, or a WebGL
+readback are the three ways out, and each is a measurement away from being
+worth doing.
 
 **A failed read can be sent back.** Every photograph in the corpus was taken
 deliberately and copied over by hand, so the reads that go wrong in a hand
