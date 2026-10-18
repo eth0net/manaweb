@@ -688,3 +688,40 @@ says so.
 The order, then: a scan landing somewhere it can be reviewed rather than in
 a collection. Color, a second hash, or anything read off the
 card itself, only where a measurement asks for it.
+
+## Open questions
+
+Everything here is about the 84ms the grab costs a phone, except the last
+two, and they are all two questions rather than one: what every device gets,
+and what a device that can do better gets on top of it. A scan has to work
+on a phone that has none of this.
+
+- **Which half of the grab is the draw and which the read back.** `frame()`
+  times as one thing. `willReadFrequently` makes a canvas CPU-backed, which
+  is cheap to read out of and dear to draw a GPU's video frame into, so the
+  answer is either one word or a different capture path entirely. It comes
+  before the rest of this.
+- **What the camera actually handed over.** The constraint asks 1280 as an
+  ideal and nothing records what the track settled on, so every frame may be
+  being scaled during the draw. `getSettings()` says, and the readout's note
+  is where it belongs.
+- **What a smaller frame costs.** Fewer pixels is cheaper at every stage at
+  once, and what pays for it is the crop the hash is taken from — the same
+  thing the sample cards measure, so the two want running together.
+- **Whether a `VideoFrame` can replace the canvas.** `copyTo` in I420 hands
+  over the luma plane: a quarter of the bytes, and one stage fewer, since
+  `luma` exists only to make one. Safari 17 has it, so the phone can answer.
+- **Whether the read belongs on a worker.** It would not make a read
+  shorter. It would keep it off the thread drawing the viewfinder, and let
+  the next frame be grabbed while the last one is still being read.
+- **What a camera will allow.** Nothing here has asked a real device for
+  `getCapabilities()`. Whether focus, zoom or exposure can be set at all
+  decides whether tap-to-focus is a feature or a wish, and fifteen
+  centimeters is exactly where continuous autofocus hunts.
+- **Whether an accept should take a vote.** The margin reads one frame, and
+  a search has already read thirty — glare and a phantom both move between
+  frames where a card does not. Cheap, because the frames are already there.
+- **What belongs behind a build flag rather than a setting.** The readout is
+  development-only because it began as an instrument, which also means a
+  tester holding their own phone cannot reach it. Some of it may be worth a
+  preference instead. Open until there is a tester who is not the author.
