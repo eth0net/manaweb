@@ -622,6 +622,21 @@ capture whose shape no viewfinder matches, and most of the frame spent on
 the table around a card that ends up small in the middle of it. The
 constraint now names one side.
 
+**A held frame needs an exit that is not the next capture.** Pressing scan
+again would thaw and read in the same instant, which reads whatever is in
+front of the camera before anybody has aimed it — the card just scanned.
+So the frame itself is the control: pressing it goes back to the camera
+with the answer still up, and scanning again from there reads something
+that was aimed at. It costs a press only where one is wanted, a pile fed
+through a guide needing no viewfinder between cards.
+
+**Holding the frame at all is a manual-mode question.** Reading until a
+card clears the floor rather than when a button is pressed would dissolve
+it: a press means start looking, the camera stays live while it does, and
+nothing is ever read before it was aimed. The hold is then what debugging
+turns on and what a person scanning by hand may want, rather than the shape
+the tab has.
+
 **What is aimed is still not what is read.** The video is shown
 `object-fit: cover` in a tall element, so it is cropped to its middle and
 reads as zoomed in, while the capture keeps the whole frame. A card made to

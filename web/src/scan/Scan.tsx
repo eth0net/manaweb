@@ -107,6 +107,9 @@ export function Scan({
   // camera is stopped behind the frame anyway, so what is wanted most of the
   // time is the name and the next press.
   const [expanded, setExpanded] = useState(false);
+  // Back to the camera with the read still up. A frame is held so it can be
+  // looked at, and aiming the next card is what ends that.
+  const [live, setLive] = useState(false);
 
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
@@ -172,6 +175,7 @@ export function Scan({
     setAnswer({ at: "reading" });
     setProblem(null);
     setExpanded(false);
+    setLive(false);
     try {
       paper.current ??= document.createElement("canvas");
       const picture = frame(video.current, paper.current);
@@ -326,9 +330,16 @@ export function Scan({
         </div>
       )}
 
-      {camera === "on" && seen && !telling && (
+      {camera === "on" && seen && !live && !telling && (
         <div className="scan-frozen">
           <Shot {...seen} />
+          <button
+            type="button"
+            className="scan-live"
+            onClick={() => setLive(true)}
+          >
+            <span>Back to the camera</span>
+          </button>
         </div>
       )}
 
