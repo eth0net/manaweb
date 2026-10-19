@@ -599,10 +599,7 @@ can arrive wrong.
 the 54,978-row index: the grab 5, the luma plane 1, the wasm 9, the lookup
 13, for 35 reads a second. That fits inside the 33ms a thirty-a-second
 camera allows, so reading every frame is something the budget now affords
-rather than something to design around. Where the framing was guessed at
-instead it is 57, which does not fit — but five of those 280 frames were one, so that figure
-is a direction and not a measurement, and a run over an empty table is what
-would settle it.
+rather than something to design around.
 
 **What it used to cost was a square.** The constraint asked 1280 of both
 sides, an iPhone obliged, and every frame read 1.6M pixels back: 71ms of
@@ -616,6 +613,21 @@ change to do it.
 **So the lookup is the frame now.** The wasm and the retrieve are 22ms of
 the 28, and the grab that was 84 is 5. Anything spent on the capture path
 from here buys a fifth of what the same effort spent on the index would.
+
+**Hunting costs twice what reading a card does.** Over 380 frames pointed at
+a bare table the median is 59ms and the rate 18 a second: 32ms where an
+outline was found, 64 where the framing was guessed at, which is 80 query
+hashes against 32. So a card put down is noticed inside a tenth of a second
+and reading continuously is affordable — at eighteen frames a second rather
+than the camera's thirty, and over the budget in the case a search spends
+most of its time in.
+
+**The lookup is the whole of that difference.** On a guessed frame the wasm
+is 19ms and the retrieve 34, against 6 for the capture. That retrieve is
+plain JavaScript over all 54,978 artworks, which was a fair place to leave
+it while it measured 1.3ms on a laptop beside a grab costing 84 on a phone.
+It is now the largest stage in the case that matters most, so where the
+nearest entry is looked for is worth asking again rather than settled.
 
 **The readback is the grab, and the grab was reading a square.** Of 74ms
 taken over 90 frames, the draw is 3 and `getImageData` is 71 — so the fix is
@@ -756,10 +768,11 @@ These are all two questions rather than one: what every device gets, and
 what a device that can do better gets on top of it. A scan has to work on a
 phone that has none of this.
 
-- **What a frame costs when no card is in it.** The budget turns on this
-  one and five frames have answered it. Most of a hunting loop is frames
-  like these, and 57ms against 28 would halve the rate the moment the
-  camera is pointed at a table rather than a card.
+- **How often an outline is found where no card is.** 104 of those 380
+  frames over a bare table found one. The floor is what stops those
+  becoming accepts and it holds — a blank bank card reads at a margin of 2
+  — but it is the only thing standing there, and an accept nobody presses
+  wants a second.
 - **What a smaller frame costs.** Fewer pixels is cheaper at every stage at
   once, and what pays for it is the crop the hash is taken from — the same
   thing the sample cards measure, so the two want running together.
