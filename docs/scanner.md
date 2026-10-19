@@ -611,6 +611,25 @@ A smaller capture, `createImageBitmap` into an `OffscreenCanvas`, or a WebGL
 readback are the three ways out, and each is a measurement away from being
 worth doing.
 
+**The readback is the grab, and the grab was reading a square.** Of 74ms
+taken over 90 frames, the draw is 3 and `getImageData` is 71 — so the fix is
+in what is read back rather than in how the frame is drawn. The track had
+settled at 1280x1280, because the constraint asked 1280 of both sides and an
+iPhone obliged: 1.6M pixels where 16:9 is 0.9M, read back every frame. It
+cost three things at once, none of them visible without asking the track
+what it had done — a readback almost twice the size it needed to be, a
+capture whose shape no viewfinder matches, and most of the frame spent on
+the table around a card that ends up small in the middle of it. The
+constraint now names one side.
+
+**What is aimed is still not what is read.** The video is shown
+`object-fit: cover` in a tall element, so it is cropped to its middle and
+reads as zoomed in, while the capture keeps the whole frame. A card made to
+fill the viewfinder is therefore smaller in the picture the engine sees,
+with fewer pixels on it than the person framing it believes. Cropping the
+draw to the region the viewfinder shows would settle both at once — fewer
+pixels to read back, and a capture that matches what was aimed.
+
 **A failed read can be sent back.** Every photograph in the corpus was taken
 deliberately and copied over by hand, so the reads that go wrong in a hand
 were exactly the ones nothing kept. A development build now puts every frame
@@ -717,15 +736,11 @@ two, and they are all two questions rather than one: what every device gets,
 and what a device that can do better gets on top of it. A scan has to work
 on a phone that has none of this.
 
-- **Which half of the grab is the draw and which the read back.** The readout
-  reports the two apart and no phone has been asked yet. `willReadFrequently`
-  makes a canvas CPU-backed, which is cheap to read out of and dear to draw a
-  GPU's video frame into, so the answer is either one word or a different
-  capture path entirely. It comes before the rest of this.
-- **What the camera actually handed over.** The constraint asks 1280 as an
-  ideal and nothing records what the track settled on, so every frame may be
-  being scaled during the draw. `getSettings()` says, and the readout now
-  carries it; what it answers on a phone is still unknown.
+- **What a readback costs that a draw does not.** `willReadFrequently` is
+  meant to make a canvas CPU-backed, cheap to read out of and dear to draw
+  into, and the phone reports the opposite split. Either the hint is not
+  taking effect or the cost is somewhere else; turning it off and measuring
+  again is the one-word experiment that separates them.
 - **What a smaller frame costs.** Fewer pixels is cheaper at every stage at
   once, and what pays for it is the crop the hash is taken from — the same
   thing the sample cards measure, so the two want running together.

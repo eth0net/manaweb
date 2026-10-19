@@ -10,11 +10,13 @@ export const LONGEST = 1280;
 
 // The back camera, because a card is being pointed at rather than held up to
 // a laptop. A device with one camera gives it whatever this says.
+//
+// One side only: asking both is asking for a square, and an iPhone obliges
+// with one — `docs/scanner.md`.
 const WANTED: MediaStreamConstraints = {
   video: {
     facingMode: { ideal: "environment" },
     width: { ideal: LONGEST },
-    height: { ideal: LONGEST },
   },
 };
 
