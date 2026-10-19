@@ -608,7 +608,10 @@ gives 720x1280 and takes the readback to 3ms — twenty times quicker for
 half the pixels, so the old size was crossing a threshold rather than
 costing by the pixel. Which threshold is Safari's business; what matters
 here is that the capture stopped being the budget and nothing else had to
-change to do it.
+change to do it. The two halves are where the cost is billed rather than
+where it is spent — `drawImage` queues work that the readback then waits
+on — so what the split says is that the pixels are the price, not that
+drawing is free.
 
 **So the lookup is the frame now.** The wasm and the retrieve are 22ms of
 the 28, and the grab that was 84 is 5. Anything spent on the capture path
@@ -628,17 +631,6 @@ plain JavaScript over all 54,978 artworks, which was a fair place to leave
 it while it measured 1.3ms on a laptop beside a grab costing 84 on a phone.
 It is now the largest stage in the case that matters most, so where the
 nearest entry is looked for is worth asking again rather than settled.
-
-**The readback is the grab, and the grab was reading a square.** Of 74ms
-taken over 90 frames, the draw is 3 and `getImageData` is 71 — so the fix is
-in what is read back rather than in how the frame is drawn. The track had
-settled at 1280x1280, because the constraint asked 1280 of both sides and an
-iPhone obliged: 1.6M pixels where 16:9 is 0.9M, read back every frame. It
-cost three things at once, none of them visible without asking the track
-what it had done — a readback almost twice the size it needed to be, a
-capture whose shape no viewfinder matches, and most of the frame spent on
-the table around a card that ends up small in the middle of it. The
-constraint now names one side.
 
 **A held frame needs an exit that is not the next capture.** Pressing scan
 again would thaw and read in the same instant, which reads whatever is in
