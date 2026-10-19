@@ -595,21 +595,27 @@ panel is showing to that same route, which lands it as a note with no frame
 beside it — a figure read off a phone and typed out again is a figure that
 can arrive wrong.
 
-**A frame costs an iPhone 111ms, and 141 where it finds no card.** Medians
-over 180 frames and over 50, iOS 18.7 against the 54,708-row index. The
-lookup is where a laptop said it would be — 14ms and 33 — and the wasm 13
-and 23, so the arithmetic transfers. What no laptop figure here ever
-included is the canvas grab in front of it, and that is 84ms of both:
-`getImageData` over 1280x720 reads back through the GPU, which is the one
-thing a phone is far worse at than the machine this was written on. It was
-measured before the grab stopped resizing its canvas every frame, so it is a
-ceiling rather than a reading of what is there now. So reading every frame is
-9 a second and 7, not 30, and nothing in the lookup is worth cutting before
-the grab is — with the other three stages at zero a frame still costs 84ms
-and still misses the budget by two and a half times.
-A smaller capture, `createImageBitmap` into an `OffscreenCanvas`, or a WebGL
-readback are the three ways out, and each is a measurement away from being
-worth doing.
+**A frame costs an iPhone 28ms.** Medians over 280 frames, iOS 18.7 against
+the 54,978-row index: the grab 5, the luma plane 1, the wasm 9, the lookup
+13, for 35 reads a second. That fits inside the 33ms a thirty-a-second
+camera allows, so reading every frame is something the budget now affords
+rather than something to design around. Where the framing was guessed at
+instead it is 57, which does not fit — but five of those 280 frames were one, so that figure
+is a direction and not a measurement, and a run over an empty table is what
+would settle it.
+
+**What it used to cost was a square.** The constraint asked 1280 of both
+sides, an iPhone obliged, and every frame read 1.6M pixels back: 71ms of
+`getImageData` against 3ms of drawing, and 101ms a frame. Asking one side
+gives 720x1280 and takes the readback to 3ms — twenty times quicker for
+half the pixels, so the old size was crossing a threshold rather than
+costing by the pixel. Which threshold is Safari's business; what matters
+here is that the capture stopped being the budget and nothing else had to
+change to do it.
+
+**So the lookup is the frame now.** The wasm and the retrieve are 22ms of
+the 28, and the grab that was 84 is 5. Anything spent on the capture path
+from here buys a fifth of what the same effort spent on the index would.
 
 **The readback is the grab, and the grab was reading a square.** Of 74ms
 taken over 90 frames, the draw is 3 and `getImageData` is 71 — so the fix is
@@ -746,16 +752,14 @@ card itself, only where a measurement asks for it.
 
 ## Open questions
 
-Everything here is about the 84ms the grab costs a phone, except the last
-two, and they are all two questions rather than one: what every device gets,
-and what a device that can do better gets on top of it. A scan has to work
-on a phone that has none of this.
+These are all two questions rather than one: what every device gets, and
+what a device that can do better gets on top of it. A scan has to work on a
+phone that has none of this.
 
-- **What a readback costs that a draw does not.** `willReadFrequently` is
-  meant to make a canvas CPU-backed, cheap to read out of and dear to draw
-  into, and the phone reports the opposite split. Either the hint is not
-  taking effect or the cost is somewhere else; turning it off and measuring
-  again is the one-word experiment that separates them.
+- **What a frame costs when no card is in it.** The budget turns on this
+  one and five frames have answered it. Most of a hunting loop is frames
+  like these, and 57ms against 28 would halve the rate the moment the
+  camera is pointed at a table rather than a card.
 - **What a smaller frame costs.** Fewer pixels is cheaper at every stage at
   once, and what pays for it is the crop the hash is taken from — the same
   thing the sample cards measure, so the two want running together.
