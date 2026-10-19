@@ -441,7 +441,7 @@ export function Scan({
                   </span>
                 </p>
               )}
-              {answer.at === "found" && (
+              {seen && (
                 <p className="scan-count">
                   <button
                     type="button"
