@@ -6,7 +6,7 @@
     "gen": "bun run gen.ts"
   },
   "dependencies": {
-    "@atproto/api": "^0.24.3",
+    "@atproto/api": "^0.27.0",
     "@atproto/lex-cli": "^0.10.13"
   }
 }
