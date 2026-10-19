@@ -472,10 +472,34 @@ they sit in.
 
 That last is the gap in what exists: the hash reads luma and throws color
 away, so two artworks of similar composition and different palette are the
-confusion it cannot see. A four-by-four grid of mean color is forty-eight
-bytes an artwork. Not added speculatively — the margin a photograph scores
-by is the diagnostic, and adding it before that says which artworks are
-being confused would be answering a question nobody has asked.
+confusion it cannot see. What it waited on was knowing which artworks those
+are, and the 123 misses over the render corpus answer it. On a four-by-four
+grid of mean color the true artwork and the one that beat it sit a median of
+50 levels apart; two artworks drawn at random sit 49. The pairs this hash
+confuses are no more alike in color than any two pictures are, so
+forty-eight bytes an artwork would break most of these ties, and the dark
+harbor that came back as a red demon is typical rather than lucky.
+
+What that does not test is the thing that could still kill it. Both sides of
+it are Scryfall's own files, where a query is a photograph carrying whatever
+light it was taken under. Only three of those 123 misses are a modern or an
+older frame, so on a clean render this is a thin population — and the one
+that turned up in a hand was a photograph of a modern card on a dim table,
+which is where it stops being thin. Both halves want the engine's own
+rectified crop to measure against rather than a JPEG cropped by hand.
+
+**Color off the whole card is the cheaper half, and most of it is already a
+column.** Frame color is the card's color identity, which `oracle.colors`
+holds in canonical WUBRG — six buckets covering thirty-one thousand rows of
+thirty-four. Nothing has to be hashed or pulled to index that, only read off
+the rectified card, where the near-neutral text box is a grey reference to
+normalize against: which is the answer the art crop has not got to being
+photographed under a warm bulb. Cutting the candidates five or six fold
+ahead of the Hamming scan is also the one move that helps the margin and the
+34ms retrieve at once. Hashing the whole card is the dear half and likely
+the wrong one, every modern card sharing a layout the bits would go on, and
+a whole card differing per printing where an artwork is shared by all of
+them.
 
 **One cheap thing is missing that is not a technique at all.** A camera
 gives thirty frames a second where this thinks in photographs, and taking
