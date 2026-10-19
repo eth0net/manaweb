@@ -577,8 +577,9 @@ in, which is the dearer of the two, and a budget of 33ms is what reading
 every one of them would have to fit inside.
 
 **That measurement has an instrument.** A development readout over the
-viewfinder times one read by its parts — the canvas grab, the luma plane,
-the wasm call, the lookup — and a continuous run reports the rate it
+viewfinder times one read by its parts — the canvas grab in its two halves,
+the luma plane, the wasm call, the lookup — above what the camera settled on
+rather than what was asked of it, and a continuous run reports the rate it
 achieved with the p50, p90 and worst of them, frames a card was found in
 kept apart from frames where the framing was guessed. It also reads the
 first of five frames and the sharpest of them by gradient energy, which is
@@ -595,10 +596,12 @@ lookup is where a laptop said it would be — 14ms and 33 — and the wasm 13
 and 23, so the arithmetic transfers. What no laptop figure here ever
 included is the canvas grab in front of it, and that is 84ms of both:
 `getImageData` over 1280x720 reads back through the GPU, which is the one
-thing a phone is far worse at than the machine this was written on. So
-reading every frame is 9 a second and 7, not 30, and nothing in the lookup
-is worth cutting before the grab is — with the other three stages at zero a
-frame still costs 84ms and still misses the budget by two and a half times.
+thing a phone is far worse at than the machine this was written on. It was
+measured before the grab stopped resizing its canvas every frame, so it is a
+ceiling rather than a reading of what is there now. So reading every frame is
+9 a second and 7, not 30, and nothing in the lookup is worth cutting before
+the grab is — with the other three stages at zero a frame still costs 84ms
+and still misses the budget by two and a half times.
 A smaller capture, `createImageBitmap` into an `OffscreenCanvas`, or a WebGL
 readback are the three ways out, and each is a measurement away from being
 worth doing.
@@ -709,15 +712,15 @@ two, and they are all two questions rather than one: what every device gets,
 and what a device that can do better gets on top of it. A scan has to work
 on a phone that has none of this.
 
-- **Which half of the grab is the draw and which the read back.** `frame()`
-  times as one thing. `willReadFrequently` makes a canvas CPU-backed, which
-  is cheap to read out of and dear to draw a GPU's video frame into, so the
-  answer is either one word or a different capture path entirely. It comes
-  before the rest of this.
+- **Which half of the grab is the draw and which the read back.** The readout
+  reports the two apart and no phone has been asked yet. `willReadFrequently`
+  makes a canvas CPU-backed, which is cheap to read out of and dear to draw a
+  GPU's video frame into, so the answer is either one word or a different
+  capture path entirely. It comes before the rest of this.
 - **What the camera actually handed over.** The constraint asks 1280 as an
   ideal and nothing records what the track settled on, so every frame may be
-  being scaled during the draw. `getSettings()` says, and the readout's note
-  is where it belongs.
+  being scaled during the draw. `getSettings()` says, and the readout now
+  carries it; what it answers on a phone is still unknown.
 - **What a smaller frame costs.** Fewer pixels is cheaper at every stage at
   once, and what pays for it is the crop the hash is taken from — the same
   thing the sample cards measure, so the two want running together.

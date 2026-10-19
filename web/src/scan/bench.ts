@@ -7,6 +7,7 @@
 
 import type { Catalog } from "../catalog";
 import type { Artworks } from "../catalog/artwork";
+import type { Grab, Half } from "./camera";
 import { CAPTURE } from "./capture";
 import type { Engine } from "./engine";
 import { type Picture, type Read, read, type Stage } from "./read";
@@ -15,9 +16,13 @@ import { type Picture, type Read, read, type Stage } from "./read";
 // that a build read back as latin1 would still match it.
 export const MEASURING = "Stage timings, development only";
 
-// Milliseconds a frame spent, in the order they were spent.
+// Milliseconds a frame spent, in the order they were spent. `frame` is the
+// grab whole and `draw` and `readback` are its halves, so the three are not
+// four stages to add up.
 export interface Timing {
   frame: number;
+  draw: number;
+  readback: number;
   luma: number;
   query: number;
   retrieve: number;
@@ -34,10 +39,13 @@ export function timed(
   engine: Engine,
   catalog: Catalog,
   index: Artworks,
-  take: () => Picture | null,
+  take: (clock: Grab) => Picture | null,
 ): { timing: Timing; found: Read | null } | null {
+  const halves: Record<Half, number> = { draw: 0, readback: 0 };
   const began = performance.now();
-  const picture = take();
+  const picture = take((half, ms) => {
+    halves[half] = ms;
+  });
   if (!picture) return null;
   const frame = performance.now() - began;
 
@@ -50,6 +58,7 @@ export function timed(
     found,
     timing: {
       frame,
+      ...halves,
       ...stages,
       total: performance.now() - began,
       detected: found?.detected ?? false,
@@ -65,7 +74,7 @@ export interface Tally {
   fps: number;
   detected: number;
   total: { p50: number; p90: number; worst: number };
-  stages: Record<"frame" | Stage, number>;
+  stages: Record<"frame" | Half | Stage, number>;
   // Medians of the two cases apart, which is the split the budget turns on.
   // Null where the run held none of that kind.
   found: number | null;
@@ -98,6 +107,14 @@ export function summarize(
     stages: {
       frame: quantile(
         frames.map((one) => one.frame),
+        0.5,
+      ),
+      draw: quantile(
+        frames.map((one) => one.draw),
+        0.5,
+      ),
+      readback: quantile(
+        frames.map((one) => one.readback),
         0.5,
       ),
       luma: quantile(
@@ -151,6 +168,30 @@ export function energy(
   return count === 0 ? 0 : sum / count;
 }
 
+// What the camera actually handed over, which the constraint only asked for.
+// A frame larger than `LONGEST` is being scaled inside the draw, and that is
+// a cost nothing else here would show.
+export interface Settled {
+  width: number | null;
+  height: number | null;
+  rate: number | null;
+  facing: string | null;
+}
+
+export function settled(video: HTMLVideoElement | null): Settled | null {
+  const stream = video?.srcObject;
+  if (!(stream instanceof MediaStream)) return null;
+  const track = stream.getVideoTracks()[0];
+  if (!track) return null;
+  const got = track.getSettings();
+  return {
+    width: got.width ?? null,
+    height: got.height ?? null,
+    rate: got.frameRate ?? null,
+    facing: got.facingMode ?? null,
+  };
+}
+
 // Which of a handful of frames carried the most detail, and what a read of
 // the first and of that one each came back with.
 export interface Sharpest {
@@ -163,6 +204,7 @@ export interface Sharpest {
 // Everything the panel is showing, which is what a press keeps.
 export interface Kept {
   index: { version: string; rows: number; hashes: number } | null;
+  camera: Settled | null;
   one: Timing | null;
   run: Tally | null;
   sharpest: Sharpest | null;

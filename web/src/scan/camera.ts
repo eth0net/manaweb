@@ -67,11 +67,18 @@ function why(failed: unknown): string {
     : "The camera would not open";
 }
 
+// The two halves a grab is spent in. Taken apart because they are two
+// different machines: one is the GPU scaling a video frame, the other is
+// reading it back across the bus — `docs/scanner.md`.
+export type Half = "draw" | "readback";
+export type Grab = (half: Half, ms: number) => void;
+
 // One frame, or null before the video has any. `onto` is reused between
 // scans: a canvas an allocation apart is a garbage collection mid-scan.
 export function frame(
   from: HTMLVideoElement,
   onto: HTMLCanvasElement,
+  clock?: Grab,
 ): Picture | null {
   const { videoWidth, videoHeight } = from;
   if (videoWidth === 0 || videoHeight === 0) return null;
@@ -85,6 +92,11 @@ export function frame(
   const paper = onto.getContext("2d", { willReadFrequently: true });
   if (!paper) return null;
 
+  const began = performance.now();
   paper.drawImage(from, 0, 0, width, height);
-  return paper.getImageData(0, 0, width, height);
+  const drawn = performance.now();
+  clock?.("draw", drawn - began);
+  const picture = paper.getImageData(0, 0, width, height);
+  clock?.("readback", performance.now() - drawn);
+  return picture;
 }

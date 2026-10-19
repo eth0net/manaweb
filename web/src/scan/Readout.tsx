@@ -13,14 +13,16 @@ import {
   energy,
   type Kept,
   MEASURING,
+  type Settled,
   type Sharpest,
   send,
+  settled,
   summarize,
   type Tally,
   type Timing,
   timed,
 } from "./bench";
-import { frame } from "./camera";
+import { frame, type Grab } from "./camera";
 import { engine, index } from "./load";
 import { type Picture, type Read, read } from "./read";
 
@@ -55,12 +57,20 @@ export function Readout({
   const [sharp, setSharp] = useState<Sharpest | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [kept, setKept] = useState(false);
+  const [camera, setCamera] = useState<Settled | null>(null);
 
-  const take = useCallback((): Picture | null => {
-    if (!video.current) return null;
-    paper.current ??= document.createElement("canvas");
-    return frame(video.current, paper.current);
-  }, [video]);
+  // Read where the panel opens rather than per frame: a track settles once
+  // and `getSettings` is a question for the camera, not for the loop.
+  useEffect(() => setCamera(settled(video.current)), [video]);
+
+  const take = useCallback(
+    (clock?: Grab): Picture | null => {
+      if (!video.current) return null;
+      paper.current ??= document.createElement("canvas");
+      return frame(video.current, paper.current, clock);
+    },
+    [video],
+  );
 
   const ready = useCallback(async () => {
     const [held, artworks] = await Promise.all([engine(), index(manifest)]);
@@ -168,20 +178,34 @@ export function Readout({
   }, [catalog, ready, stop, take, video]);
 
   const put = useCallback(() => {
-    send({ index: about.current, one, run: tally, sharpest: sharp })
+    send({ index: about.current, camera, one, run: tally, sharpest: sharp })
       .then(() => setKept(true))
       .catch((failed: unknown) => setProblem(said(failed)));
-  }, [one, sharp, tally]);
+  }, [camera, one, sharp, tally]);
 
   return (
     <div className="scan-said solid">
       <p className="tally">{MEASURING}</p>
       {problem && <p className="warn">{problem}</p>}
 
+      {camera && (
+        <p className="tally">
+          <small>
+            camera {camera.width ?? "?"}x{camera.height ?? "?"} ·{" "}
+            {camera.rate === null ? "?" : camera.rate.toFixed(0)}/s ·{" "}
+            {camera.facing ?? "unsaid"}
+          </small>
+        </p>
+      )}
+
       {one && (
         <p className="tally">
           frame {ms(one.frame)} · luma {ms(one.luma)} · query {ms(one.query)} ·
           retrieve {ms(one.retrieve)} · <strong>total {ms(one.total)}</strong>
+          <br />
+          <small>
+            the grab: draw {ms(one.draw)} · readback {ms(one.readback)}
+          </small>
           <br />
           <small>
             {one.detected ? "card found" : "framings guessed at"}, margin{" "}
@@ -202,6 +226,11 @@ export function Readout({
             medians: frame {ms(tally.stages.frame)} · luma{" "}
             {ms(tally.stages.luma)} · query {ms(tally.stages.query)} · retrieve{" "}
             {ms(tally.stages.retrieve)}
+          </small>
+          <br />
+          <small>
+            the grab: draw {ms(tally.stages.draw)} · readback{" "}
+            {ms(tally.stages.readback)}
           </small>
           <br />
           <small>

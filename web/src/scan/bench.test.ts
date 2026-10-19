@@ -4,6 +4,8 @@ import { energy, quantile, summarize, type Timing } from "./bench";
 function timing(total: number, detected: boolean): Timing {
   return {
     frame: 1,
+    draw: 0.4,
+    readback: 0.6,
     luma: 2,
     query: total - 4,
     retrieve: 1,
@@ -36,6 +38,14 @@ describe("what a run is reported as", () => {
     expect(tally?.guessed).toBe(34);
     expect(tally?.detected).toBe(1);
     expect(tally?.fps).toBe(1);
+  });
+
+  // The grab is reported whole and in halves, which is what says whether the
+  // readback is the thing to cut.
+  test("keeps the two halves of a grab apart", () => {
+    const tally = summarize([timing(10, true), timing(30, false)], 1000);
+    expect(tally?.stages.draw).toBe(0.4);
+    expect(tally?.stages.readback).toBe(0.6);
   });
 
   test("has nothing to say about no frames", () => {

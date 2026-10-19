@@ -95,4 +95,10 @@ describe("what a grab costs", () => {
     frame(camera(720, 1280), held.onto);
     expect(held.sizings).toBe(4);
   });
+
+  test("times the two halves apart", () => {
+    const spent: string[] = [];
+    frame(camera(640, 480), paper().onto, (half) => spent.push(half));
+    expect(spent).toEqual(["draw", "readback"]);
+  });
 });
