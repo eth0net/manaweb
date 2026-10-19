@@ -97,7 +97,8 @@ engine: engine-build
 # lands elsewhere, so it belongs on the way out of a checkout rather than in
 # CI — `docs/scanner.md`. A compiler or a crate version that has moved fails
 # it, which is not a false alarm: the committed bytes are then what an older
-# one produced. `just engine` settles either, and `just release` runs it.
+# one produced. `just engine` settles either, as its own commit: a module is
+# what deploys, so it does not ride out inside a version bump.
 [doc('hold the committed engine to what this source builds (needs the wasm32 target)')]
 [group('checks')]
 engine-check: engine-build
@@ -248,11 +249,11 @@ release version title body="":
     awk '!done && /^version = / { sub(/=.*/, "= \"{{ version }}\""); done = 1 } 1' \
         Cargo.toml > Cargo.toml.next && mv Cargo.toml.next Cargo.toml
     cargo check --quiet --all-targets
-    # The crate version reaches the wasm, so the bump moves the committed
-    # engine and `just check` would otherwise refuse the release it is for.
-    just engine
+    # `check` holds the committed engine to a rebuild of its source, which
+    # rebuilding first would answer for it. A release that refuses is one
+    # whose module moved without a commit saying so.
     just check
-    git add Cargo.toml Cargo.lock web/src/scan/engine.wasm
+    git add Cargo.toml Cargo.lock
     # Nothing to commit where the manifest already reads this, which is the
     # normal shape when the bump landed with the work.
     @git diff --cached --quiet || git commit -s -m "chore: {{ version }}"
