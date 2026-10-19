@@ -556,18 +556,23 @@ anyone's time. Neither is measured against anything — a lens that focuses
 closer and a light that kills a foil's glare are both guesses until a shot
 taken with them is scored.
 
-**The quad is found and then dropped.** `read()` takes the corners only to
-answer whether a card was detected and keeps nothing else, so the one thing
-a viewfinder could say about a read — where the card is — never leaves the
-engine. Returning them and drawing a box, colored by whether the margin
-would accept it, is what turns a still picture and a verdict into something
-a person can aim. Two things make it less trivial than it sounds: the
-corners are in the frame's own pixels against a video shown `object-fit:
-cover`, so the overlay has to repeat the scale and crop the browser is
-doing and a corner outside that crop cannot be drawn at all; and a box is
-as old as the read that made it, a tenth of a second at today's cost, so it
-belongs on its own clock drawing the last corners rather than inside the
-read.
+**The box goes on the frame that was read, not on the viewfinder.** The
+corners come back in the picture's own pixels, so drawing them over live
+video would mean repeating the scale and crop `object-fit: cover` is doing,
+and the box would describe a frame the video has already moved on from. The
+read's own frame has neither problem — the corners are in its coordinates
+already, and it is the picture the engine saw rather than the one the camera
+showed, which is the difference that matters when the question is why a read
+went wrong. It sits under the verdict and fills the viewfinder when pressed,
+which is what inspecting glare or an angle wants. Solid where the margin
+would accept it, dashed where it would not, so the two do not rest on hue
+alone.
+
+**Tracking the card while it is aimed is what still owes that mapping.** A
+box that follows has to be drawn over the video, which brings back both
+problems and adds a third: a corner outside the crop cannot be drawn at all.
+It also wants a rate the grab does not reach yet, so it waits on what the
+84ms is made of.
 
 **Scanning is still a button.** A camera gives thirty frames a second and
 the margin already says which to believe, so reading frames until one clears

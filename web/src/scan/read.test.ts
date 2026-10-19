@@ -166,8 +166,7 @@ describe("a picture against the index", () => {
     expect(found?.sure).toBe(false);
   });
 
-  // The corners come back in the picture's own pixels, which is what a box
-  // drawn over the frame is placed by.
+  // In the coordinates of what was handed in, not of what the camera gave.
   test("answers with the corners of the card it found", () => {
     const quad = read(engine, catalog, indexed(shot, []), shot)?.quad;
     expect(quad).not.toBeNull();

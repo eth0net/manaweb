@@ -18,8 +18,9 @@ import {
 import { describe } from "../Printing";
 import { Link } from "../router";
 import { frame, open } from "./camera";
+import type { Quad } from "./engine";
 import { engine, index } from "./load";
-import { type Read, read } from "./read";
+import { type Picture, type Read, read } from "./read";
 import {
   copies,
   type Entry,
@@ -49,6 +50,11 @@ export const REVIEW = `${SCAN}/review`;
 
 const APP = appLanguage();
 
+// Picked against a photograph rather than against the page, the way the
+// panel over the camera is — `docs/scanner.md`.
+const SURE = "#4ade80";
+const THIN = "#fbbf24";
+
 // How many of one artwork's printings to put up before asking. The median
 // artwork carries two and the tail reaches fourteen — `docs/scanner.md`.
 const MOST = 4;
@@ -58,7 +64,9 @@ type Answer =
   | { at: "reading" }
   // `frame` names the frame held for this read, whether or not it made a
   // stack. A read that named nothing is the one most worth sending back.
-  | { at: "nothing"; frame: string }
+  // `picture` is the pixels the engine saw, which is what the outline is
+  // placed against.
+  | { at: "nothing"; frame: string; picture: Picture }
   // `stack` names the entry once it is in the list. `offer` is one made and
   // not put there: a read the margin does not carry joins the list when it
   // is agreed with, not because the shutter was pressed.
@@ -66,6 +74,7 @@ type Answer =
       at: "found";
       held: Read;
       frame: string;
+      picture: Picture;
       stack: string | null;
       offer: Entry | null;
     };
@@ -94,6 +103,10 @@ export function Scan({
   const [told, setTold] = useState(false);
   // Development only: whether the stage timings are up.
   const [timing, setTiming] = useState(false);
+  // Whether the panel is showing everything it has. Shut, it is a line: the
+  // camera is stopped behind the frame anyway, so what is wanted most of the
+  // time is the name and the next press.
+  const [expanded, setExpanded] = useState(false);
 
   const video = useRef<HTMLVideoElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
@@ -158,6 +171,7 @@ export function Scan({
     if (!catalog || !manifest || !video.current) return;
     setAnswer({ at: "reading" });
     setProblem(null);
+    setExpanded(false);
     try {
       paper.current ??= document.createElement("canvas");
       const picture = frame(video.current, paper.current);
@@ -190,10 +204,11 @@ export function Scan({
               at: "found",
               held: found,
               frame: id,
+              picture,
               stack: agreed ? made.id : null,
               offer: agreed ? null : made,
             }
-          : { at: "nothing", frame: id },
+          : { at: "nothing", frame: id, picture },
       );
       if (import.meta.env.DEV && paper.current) {
         // Every read, not only the ones that made a stack: a phantom card and
@@ -239,6 +254,19 @@ export function Scan({
   // Every read holds one, including the read that named nothing.
   const shot =
     answer.at === "found" || answer.at === "nothing" ? answer.frame : null;
+
+  // The frame the read was taken from. A read that found nothing still has
+  // one, and it is the one most worth looking at.
+  const seen =
+    answer.at === "found"
+      ? {
+          picture: answer.picture,
+          quad: answer.held.quad,
+          sure: answer.held.sure,
+        }
+      : answer.at === "nothing"
+        ? { picture: answer.picture, quad: null, sure: false }
+        : null;
 
   // Picking among the printings one artwork carries, which is why the read
   // was not kept in the first place.
@@ -298,6 +326,12 @@ export function Scan({
         </div>
       )}
 
+      {camera === "on" && seen && !telling && (
+        <div className="scan-frozen">
+          <Shot {...seen} />
+        </div>
+      )}
+
       {camera === "on" && (
         <div className="scan-foot">
           {Timed && timing && manifest && (
@@ -346,26 +380,31 @@ export function Scan({
           {answered && !telling && (
             <div className={solid ? "scan-said solid" : "scan-said"}>
               <div className="scan-panel">
-                <button
-                  type="button"
-                  className="scan-veil"
-                  onClick={() => setSolid(!solid)}
-                  aria-pressed={solid}
-                >
-                  {solid ? "See through" : "Solid"}
-                </button>
+                {expanded && (
+                  <button
+                    type="button"
+                    className="scan-veil"
+                    onClick={() => setSolid(!solid)}
+                    aria-pressed={solid}
+                  >
+                    {solid ? "See through" : "Solid"}
+                  </button>
+                )}
                 {problem && <p className="warn">{problem}</p>}
                 {scratch.problem && <p className="warn">{scratch.problem}</p>}
                 {answer.at === "nothing" && (
                   <p>Nothing in that frame looked like a card.</p>
                 )}
-                {answer.at === "found" && (
-                  <Answered
-                    found={answer.held}
-                    stack={stack ?? offer}
-                    onPick={offer ? pick : null}
-                  />
-                )}
+                {answer.at === "found" &&
+                  (expanded ? (
+                    <Answered
+                      found={answer.held}
+                      stack={stack ?? offer}
+                      onPick={offer ? pick : null}
+                    />
+                  ) : (
+                    <Said found={answer.held} stack={stack ?? offer} />
+                  ))}
               </div>
               {offer && (
                 <p className="scan-count">
@@ -375,7 +414,7 @@ export function Scan({
                   <span className="quiet">or scan again</span>
                 </p>
               )}
-              {import.meta.env.DEV && shot && (
+              {import.meta.env.DEV && expanded && shot && (
                 <p className="scan-count">
                   <button
                     type="button"
@@ -389,6 +428,18 @@ export function Scan({
                   <span className="quiet">
                     {told ? "sent, thank you" : "something is wrong with it"}
                   </span>
+                </p>
+              )}
+              {answer.at === "found" && (
+                <p className="scan-count">
+                  <button
+                    type="button"
+                    className="link"
+                    onClick={() => setExpanded(!expanded)}
+                    aria-expanded={expanded}
+                  >
+                    {expanded ? "Less" : "More"}
+                  </button>
                 </p>
               )}
               {scratch.list.length > 0 && (
@@ -437,6 +488,47 @@ export function Scan({
   );
 }
 
+// The frame the engine read, with the card's own corners on it. Drawn at the
+// picture's size and sized down by CSS, so enlarging it costs no second copy
+// and no second read.
+function Shot({
+  picture,
+  quad,
+  sure,
+}: {
+  picture: Picture;
+  quad: Quad | null;
+  sure: boolean;
+}) {
+  const onto = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const held = onto.current;
+    const paper = held?.getContext("2d");
+    if (!held || !paper) return;
+    held.width = picture.width;
+    held.height = picture.height;
+    paper.putImageData(picture as ImageData, 0, 0);
+    if (!quad) return;
+
+    paper.beginPath();
+    for (const [at, { x, y }] of quad.entries()) {
+      if (at === 0) paper.moveTo(x, y);
+      else paper.lineTo(x, y);
+    }
+    paper.closePath();
+    // Against the picture's own width, the canvas being drawn at whatever
+    // the camera gave rather than at the size it is shown.
+    const wide = Math.max(2, picture.width / 200);
+    paper.lineWidth = wide;
+    paper.setLineDash(sure ? [] : [wide * 3, wide * 2]);
+    paper.strokeStyle = sure ? SURE : THIN;
+    paper.stroke();
+  }, [picture, quad, sure]);
+
+  return <canvas ref={onto} />;
+}
+
 // How many of it were seen, kept out of the scroll above so the press that
 // undoes a scan is always in the same place.
 function Counted({
@@ -469,6 +561,31 @@ function Waiting({ list }: { list: Entry[] }) {
     <Link className="link" to={REVIEW}>
       {held.toLocaleString()} card{held === 1 ? "" : "s"} scanned
     </Link>
+  );
+}
+
+// A shut panel: the printing it settled on and nothing to choose between.
+// Opening it is what offers the runners-up and the presses.
+function Said({ found, stack }: { found: Read; stack: Entry | null }) {
+  const lead = found.found.find((one) => one.prints.length > 0)?.prints[0];
+  const certain = stack ? sure(stack) : found.sure;
+  if (!lead) {
+    return (
+      <p className="quiet">No printing in this catalog carries that art.</p>
+    );
+  }
+
+  return (
+    <>
+      <Named card={lead.card} print={lead.print} />
+      {!certain && (
+        <p className="warn">
+          Not by much.
+          {!found.quad &&
+            " Its outline was not found, so the whole frame was read as the card."}
+        </p>
+      )}
+    </>
   );
 }
 

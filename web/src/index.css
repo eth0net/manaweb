@@ -270,6 +270,21 @@ nav a.here {
   flex: none;
 }
 
+/* The frame a read was taken from, held over the camera until the next
+   press. Nothing is aimed while a read is being looked at, so it takes the
+   picture rather than a corner of it. */
+.scan-frozen {
+  background: #000;
+  inset: 0;
+  position: absolute;
+}
+
+.scan-frozen canvas {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
 .tally {
   font-variant-numeric: tabular-nums;
   margin: 0 0 0.75rem;
