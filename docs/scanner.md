@@ -737,6 +737,18 @@ on a phone that has none of this.
 - **Whether an accept should take a vote.** The margin reads one frame, and
   a search has already read thirty — glare and a phantom both move between
   frames where a card does not. Cheap, because the frames are already there.
+  What it does not catch is a stable wrong answer: a propped phone over a
+  static surface hashes the same empty table every frame and agrees with
+  itself, so an outline having been found stays a separate bar.
+- **What makes a second card a second card.** The only safe rule hands-free
+  has is that the answer changed: a card left in frame under the next one
+  never leaves, so waiting for it to go waits for the end of the pile. No
+  card counts as a change, which covers taking one away and putting the next
+  in. A repeat is never a safe accept and never a safe `+1` — the foil of a
+  printing is the same artwork, set and number, so counting it as another
+  copy writes a finish nobody read. It stays a fresh scan until the bottom
+  line is read, which makes a foil a different answer and this question
+  nothing.
 - **What belongs behind a build flag rather than a setting.** The readout is
   development-only because it began as an instrument, which also means a
   tester holding their own phone cannot reach it. Some of it may be worth a
