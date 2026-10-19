@@ -578,7 +578,11 @@ function Waiting({ list }: { list: Entry[] }) {
 // A shut panel: the printing it settled on and nothing to choose between.
 // Opening it is what offers the runners-up and the presses.
 function Said({ found, stack }: { found: Read; stack: Entry | null }) {
-  const lead = found.found.find((one) => one.prints.length > 0)?.prints[0];
+  // What the stack settled on rather than what the read led with: a
+  // printing picked while it was open is the one `Keep it` would add.
+  const prints = found.found.flatMap((one) => one.prints);
+  const lead =
+    prints.find(({ print }) => print.id === stack?.scryfallId) ?? prints[0];
   const certain = stack ? sure(stack) : found.sure;
   if (!lead) {
     return (
