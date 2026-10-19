@@ -8,7 +8,7 @@ import {
   type Retrieved,
   retrieve,
 } from "../catalog/artwork";
-import type { Engine } from "./engine";
+import type { Engine, Quad } from "./engine";
 
 // What a canvas hands back, which is all of one this needs.
 export interface Picture {
@@ -27,10 +27,10 @@ export type Stage = "luma" | "query" | "retrieve";
 export type Clock = (stage: Stage, ms: number) => void;
 
 export interface Read extends Retrieved {
-  // Whether a card was found in the frame rather than the framing guessed at.
-  // A guess is worth saying out loud: it means the card was not where the
-  // viewfinder expected one.
-  detected: boolean;
+  // The card's corners in the picture's own pixels, or null where the framing
+  // was guessed at. A guess is worth saying out loud: it means the card was
+  // not where the viewfinder expected one.
+  quad: Quad | null;
   // Whether the margin clears [`FLOOR`], which is what an accept turns on.
   sure: boolean;
 }
@@ -66,9 +66,7 @@ export function read(
   if (!found) return null;
   return {
     ...found,
-    // todo(viewfinder): the corners are answered with and not kept, so there
-    // is nothing to draw a box from — `docs/scanner.md`.
-    detected: asked.quad !== null,
+    quad: asked.quad,
     sure: found.margin >= FLOOR,
   };
 }

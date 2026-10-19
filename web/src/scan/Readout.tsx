@@ -279,7 +279,7 @@ function ms(of: number): string {
 
 function margin(of: Read | null): string {
   if (!of) return "nothing";
-  return `margin ${of.margin}${of.detected ? "" : ", guessed"}`;
+  return `margin ${of.margin}${of.quad ? "" : ", guessed"}`;
 }
 
 // One camera frame, where the browser will say when one arrives and a paint

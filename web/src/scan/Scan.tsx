@@ -524,7 +524,7 @@ function Answered({
         {/* Both can be true at once: the framings guessed at when no outline
             was found still answered, and still answered clear of the floor.
             Said as a caveat rather than as a second verdict. */}
-        {!found.detected &&
+        {!found.quad &&
           " Its outline was not found, so the whole frame was read as the card."}
       </p>
 

@@ -166,15 +166,22 @@ describe("a picture against the index", () => {
     expect(found?.sure).toBe(false);
   });
 
-  test("says a card was found rather than the framing guessed at", () => {
-    expect(read(engine, catalog, indexed(shot, []), shot)?.detected).toBe(
-      true,
-    );
+  // The corners come back in the picture's own pixels, which is what a box
+  // drawn over the frame is placed by.
+  test("answers with the corners of the card it found", () => {
+    const quad = read(engine, catalog, indexed(shot, []), shot)?.quad;
+    expect(quad).not.toBeNull();
+    for (const { x, y } of quad ?? []) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(WIDE);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(TALL);
+    }
   });
 
-  test("says when the framing was guessed at instead", () => {
+  test("has no corners where the framing was guessed at instead", () => {
     const filled = picture(0, 0, WIDE, 260);
     const found = read(engine, catalog, indexed(filled, []), filled);
-    expect(found?.detected).toBe(false);
+    expect(found?.quad).toBeNull();
   });
 });

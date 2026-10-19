@@ -34,7 +34,7 @@ export function Report({
       ? {
           at: new Date().toISOString(),
           margin: found.margin,
-          detected: found.detected,
+          detected: found.quad !== null,
           matched: [],
           said: "",
         }

@@ -61,7 +61,7 @@ export function timed(
       ...halves,
       ...stages,
       total: performance.now() - began,
-      detected: found?.detected ?? false,
+      detected: found?.quad != null,
       margin: found?.margin ?? 0,
       sure: found?.sure ?? false,
     },

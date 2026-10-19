@@ -72,7 +72,7 @@ export function scanned(found: Read, id: string, at: string): Entry | null {
     id,
     at,
     margin: gap(found, matched),
-    detected: found.detected,
+    detected: found.quad !== null,
     matched,
     scryfallId: first,
     finish: settled(made.get(first) ?? []),

@@ -39,7 +39,7 @@ function print(id: string, finishes: string[]): { card: Card; print: Print } {
 function found(artworks: { card: Card; print: Print }[][]): Read {
   return {
     margin: artworks.length > 1 ? 2 : APART,
-    detected: true,
+    quad: null,
     sure: false,
     found: artworks.map((prints, at) => ({
       artwork: at,
@@ -105,6 +105,21 @@ test("the margin is the gap to the next artwork a printing carries", () => {
 
 test("a scan matching no printing at all makes no stack", () => {
   expect(scanned(found([[], []]), "a", "now")).toBeNull();
+});
+
+// A stack says whether the card was found or the framing guessed at, and
+// the only thing that answers that is whether corners came back.
+test("reads detection off the corners the engine answered with", () => {
+  const read = found([[print("p1", ["nonfoil"])]]);
+  expect(scanned(read, "a", "now")?.detected).toBe(false);
+
+  const corners: NonNullable<Read["quad"]> = [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 1, y: 1 },
+    { x: 0, y: 1 },
+  ];
+  expect(scanned({ ...read, quad: corners }, "a", "now")?.detected).toBe(true);
 });
 
 test("the margin is what says whether to believe it", () => {
