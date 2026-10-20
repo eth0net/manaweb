@@ -41,7 +41,9 @@ function revision(): string {
     return execFileSync(
       "git",
       ["describe", "--always", "--dirty", "--abbrev=8"],
-      { encoding: "utf8" },
+      // Its stderr is inherited by default, so a checkout without `.git`
+      // prints git's complaint before the fallback answers for it.
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     ).trim();
   } catch {
     return "unknown";
