@@ -6,7 +6,7 @@ import { type RefObject, useEffect, useRef } from "react";
 import { frame } from "./camera";
 import type { Engine, Quad } from "./engine";
 import { engine } from "./load";
-import { type Box, placed, within } from "./placing";
+import { type Box, eased, placed, within } from "./placing";
 
 // Bytes a canvas gives per pixel.
 const RGBA = 4;
@@ -15,6 +15,22 @@ const RGBA = 4;
 // reads as smooth at fewer, so the ones it skips are frames nobody pays for.
 const EVERY = 1000 / 20;
 
+// Passes a box outlives the reading that drew it. Detection drops one here
+// and there over a card nobody has touched, and clearing on the first of
+// those reads as a flicker rather than as an answer.
+const MISSES = 3;
+
+// A corner further than an eighth of the frame from where it was is the card
+// moving rather than the detector wandering.
+const FAR = 8;
+
+// What the last pass saw, kept so the next one can ease toward rather than
+// jump to it.
+interface Held {
+  quad: Quad;
+  missed: number;
+}
+
 export function Outline({
   video,
 }: {
@@ -22,16 +38,17 @@ export function Outline({
 }) {
   const onto = useRef<HTMLCanvasElement>(null);
   const paper = useRef<HTMLCanvasElement | null>(null);
+  const held = useRef<Held | null>(null);
 
   useEffect(() => {
     let live = true;
-    let held: Engine | null = null;
+    let hashing: Engine | null = null;
     let last = 0;
     // A failure leaves the outline off rather than the tab broken: the scan
     // button asks for the same engine and reports what it says.
     engine().then(
       (got) => {
-        held = got;
+        hashing = got;
       },
       () => {},
     );
@@ -41,7 +58,7 @@ export function Outline({
       requestAnimationFrame(tick);
       if (now - last < EVERY) return;
       last = now;
-      look(held, video.current, paper, onto.current);
+      look(hashing, video.current, paper, onto.current, held);
     };
     requestAnimationFrame(tick);
 
@@ -54,22 +71,23 @@ export function Outline({
 }
 
 function look(
-  held: Engine | null,
+  hashing: Engine | null,
   from: HTMLVideoElement | null,
   paper: RefObject<HTMLCanvasElement | null>,
   onto: HTMLCanvasElement | null,
+  held: RefObject<Held | null>,
 ): void {
   if (!onto) return;
   const ink = ready(onto);
   if (!ink) return;
   ink.clearRect(0, 0, onto.width, onto.height);
-  if (!held || !from) return;
+  if (!hashing || !from) return;
 
   paper.current ??= document.createElement("canvas");
   const picture = frame(from, paper.current);
   if (!picture) return;
 
-  const levels = held.luma(
+  const levels = hashing.luma(
     new Uint8Array(
       picture.data.buffer,
       picture.data.byteOffset,
@@ -77,11 +95,23 @@ function look(
     ),
     RGBA,
   );
-  const quad = held.detect(levels, picture.width, picture.height);
-  if (!quad) return;
+  const quad = hashing.detect(levels, picture.width, picture.height);
+  const was = held.current;
+  if (quad) {
+    held.current = {
+      quad: was ? eased(was.quad, quad, picture.width / FAR) : quad,
+      missed: 0,
+    };
+  } else if (was && was.missed < MISSES) {
+    held.current = { quad: was.quad, missed: was.missed + 1 };
+  } else {
+    held.current = null;
+  }
 
+  const show = held.current?.quad;
+  if (!show) return;
   const box: Box = { width: onto.width, height: onto.height };
-  const at = placed(quad, picture, box);
+  const at = placed(show, picture, box);
   if (at && within(at, box)) draw(ink, at, onto.width);
 }
 

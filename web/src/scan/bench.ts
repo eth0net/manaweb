@@ -18,7 +18,7 @@ export const MEASURING = "Stage timings, development only";
 
 // Set by hand before asking a device to try something. A phone reading an
 // old bundle and a fix that did not work are the same report otherwise.
-export const BUILT = "20 Oct 10:55";
+export const BUILT = "20 Oct 11:10";
 
 // Milliseconds a frame spent, in the order they were spent. `frame` is the
 // grab whole and `draw` and `readback` are its halves, so the three are not
