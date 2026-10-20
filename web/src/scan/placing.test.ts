@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Quad } from "./engine";
-import { placed, within } from "./placing";
+import { aligned, eased, placed, within } from "./placing";
 
 // The corners of the picture itself, so what comes back says where the
 // picture's own edges went.
@@ -73,5 +73,42 @@ describe("where a card's corners land on the viewfinder", () => {
   test("has nothing to place before the camera has given a frame", () => {
     expect(placed(edges(1, 1), { width: 0, height: 0 }, PICTURE)).toBeNull();
     expect(placed(edges(1, 1), PICTURE, { width: 0, height: 0 })).toBeNull();
+  });
+});
+
+describe("holding a box still while the card is", () => {
+  const box: Quad = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 200 },
+    { x: 0, y: 200 },
+  ];
+
+  // The same four corners named from the other short side, which is what a
+  // detector hands back every so often over a card nobody has moved.
+  const turned: Quad = [box[2], box[3], box[0], box[1]];
+
+  test("reads a turned quad as the same corners", () => {
+    expect(aligned(box, turned)).toEqual(box);
+  });
+
+  test("eases toward a corner that barely moved", () => {
+    const crept: Quad = box.map(({ x, y }) => ({ x: x + 2, y })) as Quad;
+    const got = eased(box, crept, 50);
+    expect(got[0].x).toBeGreaterThan(0);
+    expect(got[0].x).toBeLessThan(2);
+  });
+
+  // Easing a real move would drag the box along behind the card.
+  test("follows a corner that jumped", () => {
+    const moved: Quad = box.map(({ x, y }) => ({ x: x + 80, y })) as Quad;
+    expect(eased(box, moved, 50)).toEqual(moved);
+  });
+
+  test("settles where the card is if it stays there", () => {
+    const crept: Quad = box.map(({ x, y }) => ({ x: x + 4, y })) as Quad;
+    let at = box;
+    for (let pass = 0; pass < 40; pass++) at = eased(at, crept, 50);
+    expect(at[0].x).toBeCloseTo(4, 2);
   });
 });
