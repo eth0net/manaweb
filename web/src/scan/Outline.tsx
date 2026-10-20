@@ -11,9 +11,10 @@ import { type Box, eased, placed, within } from "./placing";
 // Bytes a canvas gives per pixel.
 const RGBA = 4;
 
-// How often it is redrawn. A camera gives thirty a second and an outline
-// reads as smooth at fewer, so the ones it skips are frames nobody pays for.
-const EVERY = 1000 / 20;
+// A floor rather than a rate: the camera says when there is something new
+// to look at, and this only stops a sixty-a-second one asking for sixty
+// detections.
+const SOONEST = 1000 / 40;
 
 // Passes a box outlives the reading that drew it. Detection drops one here
 // and there over a card nobody has touched, and clearing on the first of
@@ -53,14 +54,28 @@ export function Outline({
       () => {},
     );
 
-    const tick = (now: number) => {
+    // Woken by the camera where it will say: a frame arrives thirty times a
+    // second and wants looking at once, where a paint clock reads some of
+    // them twice and misses others. iOS has had it since 15.4.
+    function again() {
+      const on = video.current as
+        | (HTMLVideoElement & {
+            requestVideoFrameCallback?: (run: (now: number) => void) => number;
+          })
+        | null;
+      if (on?.requestVideoFrameCallback) on.requestVideoFrameCallback(tick);
+      else requestAnimationFrame(tick);
+    }
+
+    function tick(now: number) {
       if (!live) return;
-      requestAnimationFrame(tick);
-      if (now - last < EVERY) return;
+      again();
+      if (now - last < SOONEST) return;
       last = now;
       look(hashing, video.current, paper, onto.current, held);
-    };
-    requestAnimationFrame(tick);
+    }
+
+    again();
 
     return () => {
       live = false;
