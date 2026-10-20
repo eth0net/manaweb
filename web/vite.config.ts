@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
+import { built } from "./vite/built.ts";
 import { captures } from "./vite/capture.ts";
 import { headers } from "./vite/headers.ts";
 import { client } from "./vite/oauth.ts";
@@ -72,5 +73,5 @@ export default defineConfig(({ command }) => ({
         }
       : {}),
   },
-  plugins: [react(), worker(), headers(NONCE), captures(), client()],
+  plugins: [react(), worker(), built(), headers(NONCE), captures(), client()],
 }));

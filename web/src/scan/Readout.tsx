@@ -1,6 +1,7 @@
 // The readout, laid over the viewfinder like everything else in the tab.
 // Reached only from a branch the build drops — see [`bench.ts`].
 
+import { at, rev } from "virtual:built";
 import {
   type RefObject,
   useCallback,
@@ -10,7 +11,6 @@ import {
 } from "react";
 import type { Catalog, Manifest } from "../catalog";
 import {
-  BUILT,
   energy,
   type Kept,
   MEASURING,
@@ -189,7 +189,9 @@ export function Readout({
       <p className="tally">
         {MEASURING}
         <br />
-        <small>built {BUILT}</small>
+        <small>
+          built {at.slice(0, 16).replace("T", " ")} · {rev}
+        </small>
       </p>
       {problem && <p className="warn">{problem}</p>}
 

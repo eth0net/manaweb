@@ -16,10 +16,6 @@ import { type Picture, type Read, read, type Stage } from "./read";
 // that a build read back as latin1 would still match it.
 export const MEASURING = "Stage timings, development only";
 
-// Set by hand before asking a device to try something. A phone reading an
-// old bundle and a fix that did not work are the same report otherwise.
-export const BUILT = "20 Oct 11:30";
-
 // Milliseconds a frame spent, in the order they were spent. `frame` is the
 // grab whole and `draw` and `readback` are its halves, so the three are not
 // four stages to add up.
