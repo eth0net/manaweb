@@ -104,6 +104,9 @@ export function Scan({
   const [told, setTold] = useState(false);
   // Development only: whether the stage timings are up.
   const [timing, setTiming] = useState(false);
+  // One per camera, so each open lays a fresh element out against the stream
+  // it is given. Not per scan: the ref has to outlive a read.
+  const [session, setSession] = useState(0);
   // Whether the panel is showing everything it has. Shut, it is a line: the
   // camera is stopped behind the frame anyway, so what is wanted most of the
   // time is the name and the next press.
@@ -138,6 +141,7 @@ export function Scan({
   const start = useCallback(async () => {
     run.current += 1;
     const mine = run.current;
+    setSession((was) => was + 1);
     setCamera("opening");
     setProblem(null);
     try {
@@ -308,9 +312,16 @@ export function Scan({
 
   return (
     <div className="scan">
-      {/* Mounted whatever the state: the ref has to outlive a read, and a
-          video remade between scans loses the stream attached to it. */}
-      <video ref={video} playsInline muted hidden={camera !== "on"} />
+      {/* Mounted whatever the state, so the ref outlives a read, and keyed
+          per camera: reattaching a stream to the element a closed one left
+          behind paints it against that element's old box. */}
+      <video
+        key={session}
+        ref={video}
+        playsInline
+        muted
+        hidden={camera !== "on"}
+      />
 
       {camera !== "on" && (
         <div className="scan-idle">
