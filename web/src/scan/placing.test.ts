@@ -43,8 +43,7 @@ describe("where a card's corners land on the viewfinder", () => {
     expect(got?.[2]).toEqual({ x: 540, y: 1280 });
   });
 
-  // The whole point of the mapping: a corner the crop took comes back
-  // outside the box rather than at the edge of it.
+  // Outside the box rather than clamped to its edge.
   test("answers outside the box for a corner the crop took", () => {
     const onto = { width: 720, height: 640 };
     const got = placed(edges(720, 1280), PICTURE, onto);

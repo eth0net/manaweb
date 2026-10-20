@@ -29,9 +29,8 @@ export function placed(quad: Quad, from: Box, onto: Box): Quad | null {
   return [at(quad[0]), at(quad[1]), at(quad[2]), at(quad[3])];
 }
 
-// Whether any of it is in the box at all. Bounding boxes rather than
-// corners: a card filling the viewfinder has all four of its own outside
-// the view, and answering no to that one is the way to be wrong here.
+// Whether any of it shows, by bounding box rather than by corner — see
+// `docs/scanner.md` for which way that has to be wrong.
 export function within(quad: Quad, onto: Box): boolean {
   const xs = quad.map(({ x }) => x);
   const ys = quad.map(({ y }) => y);

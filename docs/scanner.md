@@ -592,11 +592,18 @@ which is what inspecting glare or an angle wants. Solid where the margin
 would accept it, dashed where it would not, so the two do not rest on hue
 alone.
 
-**Tracking the card while it is aimed is what still owes that mapping.** A
-box that follows has to be drawn over the video, which brings back both
-problems and adds a third: a corner outside the crop cannot be drawn at all.
-It also wants a rate the grab does not reach yet, so it waits on what the
-84ms is made of.
+**The card is also outlined while it is being aimed, which is the mapping
+paid for.** That box is drawn over the video, so it repeats the scale and
+the crop `object-fit: cover` is doing and a corner the crop took comes back
+outside the view rather than clamped to its edge. Whether any of it shows is
+a question about bounding boxes and not about corners: a card filling the
+viewfinder has all four of its own outside it, and the answer that matters
+is the one that would be wrong. It asks for corners and nothing else — no
+hashing, no lookup — so it costs a grab, a luma plane and a detect at twenty
+a second, and it stops the moment a frame is held, that frame carrying its
+own outline and a margin to color it by. White there rather than the
+verdict's green: what a box over a live camera knows is where a card is, not
+whether the index will agree.
 
 **Scanning is still a button.** A camera gives thirty frames a second and
 the margin already says which to believe, so reading frames until one clears
