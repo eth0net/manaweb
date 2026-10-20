@@ -599,8 +599,10 @@ outside the view rather than clamped to its edge. Whether any of it shows is
 a question about bounding boxes and not about corners: a card filling the
 viewfinder has all four of its own outside it, and the answer that matters
 is the one that would be wrong. It asks for corners and nothing else — no
-hashing, no lookup — so it costs a grab, a luma plane and a detect at twenty
-a second, and it stops the moment a frame is held, that frame carrying its
+hashing, no lookup — so it costs a grab, a luma plane and a detect for each
+frame the camera gives, thirty a second on the phone this was read on and
+capped at forty for one that gives more. It stops the moment a frame is
+held, that frame carrying its
 own outline and a margin to color it by. White there rather than the
 verdict's green: what a box over a live camera knows is where a card is, not
 whether the index will agree.
