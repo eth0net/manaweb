@@ -21,8 +21,9 @@ const SOONEST = 1000 / 40;
 // those reads as a flicker rather than as an answer.
 const MISSES = 3;
 
-// A corner further than an eighth of the frame from where it was is the card
-// moving rather than the detector wandering.
+// A corner further than an eighth of the frame's shorter side from where it
+// was is the card moving rather than the detector wandering. The shorter
+// side rather than the width, or turning the phone would redefine which.
 const FAR = 8;
 
 // What the last pass saw, kept so the next one can ease toward rather than
@@ -125,7 +126,9 @@ function look(
   const was = held.current;
   if (quad) {
     held.current = {
-      quad: was ? eased(was.quad, quad, picture.width / FAR) : quad,
+      quad: was
+        ? eased(was.quad, quad, Math.min(picture.width, picture.height) / FAR)
+        : quad,
       missed: 0,
     };
   } else if (was && was.missed < MISSES) {
