@@ -176,10 +176,16 @@ export interface Settled {
   height: number | null;
   rate: number | null;
   facing: string | null;
+  // What the element is, against what the track gives. A viewfinder that
+  // looks letterboxed and a dark room look alike in a screenshot; these two
+  // tell them apart.
+  shown: { width: number; height: number } | null;
+  frame: { width: number; height: number } | null;
 }
 
 export function settled(video: HTMLVideoElement | null): Settled | null {
-  const stream = video?.srcObject;
+  if (!video) return null;
+  const stream = video.srcObject;
   if (!(stream instanceof MediaStream)) return null;
   const track = stream.getVideoTracks()[0];
   if (!track) return null;
@@ -189,6 +195,8 @@ export function settled(video: HTMLVideoElement | null): Settled | null {
     height: got.height ?? null,
     rate: got.frameRate ?? null,
     facing: got.facingMode ?? null,
+    shown: { width: video.clientWidth, height: video.clientHeight },
+    frame: { width: video.videoWidth, height: video.videoHeight },
   };
 }
 

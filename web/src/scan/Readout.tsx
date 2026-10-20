@@ -194,6 +194,9 @@ export function Readout({
             camera {camera.width ?? "?"}x{camera.height ?? "?"} ·{" "}
             {camera.rate === null ? "?" : camera.rate.toFixed(0)}/s ·{" "}
             {camera.facing ?? "unsaid"}
+            <br />
+            shown {camera.shown?.width ?? "?"}x{camera.shown?.height ?? "?"} ·
+            frame {camera.frame?.width ?? "?"}x{camera.frame?.height ?? "?"}
           </small>
         </p>
       )}
