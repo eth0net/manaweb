@@ -72,7 +72,18 @@ export function Outline({
       again();
       if (now - last < SOONEST) return;
       last = now;
-      look(hashing, video.current, paper, onto.current, held);
+      try {
+        look(hashing, video.current, paper, onto.current, held);
+      } catch {
+        // The engine refuses a frame it has no room for, and the loop is
+        // already armed for the next one, so this would throw every frame
+        // for as long as the camera was open. An outline is what a capable
+        // device gets on top: it stops, and scanning still says what is
+        // wrong when somebody presses it.
+        live = false;
+        held.current = null;
+        clear(onto.current);
+      }
     }
 
     again();
@@ -128,6 +139,11 @@ function look(
   const box: Box = { width: onto.width, height: onto.height };
   const at = placed(show, picture, box);
   if (at && within(at, box)) draw(ink, at, onto.width);
+}
+
+function clear(onto: HTMLCanvasElement | null): void {
+  if (!onto) return;
+  onto.getContext("2d")?.clearRect(0, 0, onto.width, onto.height);
 }
 
 // The backing store in device pixels, so a hairline stays one on a phone.
