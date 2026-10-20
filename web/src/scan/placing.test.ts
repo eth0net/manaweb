@@ -99,6 +99,22 @@ describe("holding a box still while the card is", () => {
     expect(got[0].x).toBeLessThan(2);
   });
 
+  // The whole of what the easing is for: the same pass damps a wander and
+  // keeps up with a move, so the fraction has to rise with the distance.
+  test("covers more of a longer move in one pass", () => {
+    const near = eased(
+      box,
+      box.map(({ x, y }) => ({ x: x + 2, y })) as Quad,
+      50,
+    );
+    const far = eased(
+      box,
+      box.map(({ x, y }) => ({ x: x + 20, y })) as Quad,
+      50,
+    );
+    expect(near[0].x / 2).toBeLessThan(far[0].x / 20);
+  });
+
   // Easing a real move would drag the box along behind the card.
   test("follows a corner that jumped", () => {
     const moved: Quad = box.map(({ x, y }) => ({ x: x + 80, y })) as Quad;

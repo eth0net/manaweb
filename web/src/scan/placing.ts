@@ -42,8 +42,10 @@ export function within(quad: Quad, onto: Box): boolean {
   );
 }
 
-// How far a corner travels toward where it was last seen, per pass.
-const EASE = 0.35;
+// How far a corner travels toward where it was last seen when it has barely
+// moved at all. What it moved is added to this, so the same pass damps a
+// detector wandering over a still card and follows a card being moved.
+const CALM = 0.3;
 
 // The engine names corners from one of the card's short sides, and which of
 // the two it picks can differ between frames. Easing across that swap swings
@@ -65,24 +67,19 @@ export function aligned(was: Quad, now: Quad): Quad {
   return best;
 }
 
-// Partway from where the box was to where the card is. A corner that moved
-// further than `far` is the card itself moving rather than the detector
-// wandering, so that one is followed rather than eased.
+// Partway from where the box was to where the card is, each corner by how
+// far it went. `far` is the distance at which a corner is taken to be the
+// card moving and is followed outright rather than eased.
 export function eased(was: Quad, now: Quad, far: number): Quad {
   const turned = aligned(was, now);
-  if (turned.some((point, at) => apart(point, corner(was, at)) > far)) {
-    return turned;
-  }
-  return spin(
-    turned.map((point, at) => {
-      const from = corner(was, at);
-      return {
-        x: from.x + (point.x - from.x) * EASE,
-        y: from.y + (point.y - from.y) * EASE,
-      };
-    }) as Quad,
-    0,
-  );
+  return turned.map((point, at) => {
+    const from = corner(was, at);
+    const by = Math.min(1, CALM + apart(point, from) / far);
+    return {
+      x: from.x + (point.x - from.x) * by,
+      y: from.y + (point.y - from.y) * by,
+    };
+  }) as Quad;
 }
 
 function spin(quad: Quad, by: number): Quad {
