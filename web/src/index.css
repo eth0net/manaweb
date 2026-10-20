@@ -270,6 +270,17 @@ nav a.here {
   flex: none;
 }
 
+/* The card the camera can see, over the picture and under everything that
+   is pressed. What it says a read says again afterwards, so nothing here
+   needs to be reachable. */
+.scan-outline {
+  height: 100%;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+}
+
 /* The frame a read was taken from, held over the camera until the next
    press. Nothing is aimed while a read is being looked at, so it takes the
    picture rather than a corner of it. */

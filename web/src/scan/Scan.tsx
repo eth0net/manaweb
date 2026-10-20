@@ -20,6 +20,7 @@ import { Link } from "../router";
 import { frame, open } from "./camera";
 import type { Quad } from "./engine";
 import { engine, index } from "./load";
+import { Outline } from "./Outline";
 import { type Picture, type Read, read } from "./read";
 import {
   copies,
@@ -328,6 +329,10 @@ export function Scan({
           {scratch.list.length > 0 && <Waiting list={scratch.list} />}
           {problem && <p className="warn">{problem}</p>}
         </div>
+      )}
+
+      {camera === "on" && (!seen || live) && !telling && (
+        <Outline video={video} />
       )}
 
       {camera === "on" && seen && !live && !telling && (
