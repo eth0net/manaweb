@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Catalog, Manifest } from "../catalog";
 import {
+  BUILT,
   energy,
   type Kept,
   MEASURING,
@@ -185,7 +186,11 @@ export function Readout({
 
   return (
     <div className="scan-said solid">
-      <p className="tally">{MEASURING}</p>
+      <p className="tally">
+        {MEASURING}
+        <br />
+        <small>built {BUILT}</small>
+      </p>
       {problem && <p className="warn">{problem}</p>}
 
       {camera && (
