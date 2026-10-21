@@ -5,20 +5,22 @@ import { SETS } from "./Sets";
 // A name you already know, or a set to look through: different enough to be
 // two places rather than one view that changes shape when the box is empty.
 const MODES = [
-  { path: HOME, label: "Search" },
+  { path: HOME, label: "Cards" },
   { path: SETS, label: "Sets" },
 ];
 
 export function Modes({ path, crumb }: { path: string; crumb?: ReactNode }) {
   return (
-    <p className="modes">
-      {MODES.map(({ path: to, label }) => (
-        <Link key={to} to={to} className={to === path ? "here" : undefined}>
-          {label}
-        </Link>
-      ))}
-      {crumb && <span className="crumb quiet">{crumb}</span>}
-    </p>
+    <>
+      <p className="modes">
+        {MODES.map(({ path: to, label }) => (
+          <Link key={to} to={to} className={to === path ? "here" : undefined}>
+            {label}
+          </Link>
+        ))}
+      </p>
+      {crumb && <p className="crumb quiet">{crumb}</p>}
+    </>
   );
 }
 

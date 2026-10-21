@@ -123,25 +123,34 @@ nav a.here {
 
 /* The two ways into the catalog, marked like the tab bar but sized to their
    own words: they switch a view rather than a tab. */
+/* A box the two share, so the one not chosen still reads as a tab rather than
+   as a word beside a button. */
 .modes {
-  align-items: center;
+  border: 1px solid var(--edge);
+  border-radius: 0.5rem;
   display: flex;
-  flex-wrap: wrap;
   gap: 0.25rem;
   margin: 0 0 0.75rem;
+  padding: 0.25rem;
 }
 
-/* A whole line of its own: a long set name shares the row otherwise, and
-   wrapping it there grows the buttons beside it. */
-.modes .crumb {
-  flex-basis: 100%;
+.modes:has(+ .crumb) {
+  margin-bottom: 0.5rem;
+}
+
+/* Outside the box: it says what is being looked at, not what to look at. */
+.crumb {
+  margin: 0 0 0.75rem;
+  text-align: center;
 }
 
 .modes a {
   border-radius: 0.375rem;
   color: var(--quiet);
+  flex: 1;
   font-size: 0.8125rem;
   padding: 0.25rem 0.625rem;
+  text-align: center;
   text-decoration: none;
 }
 
