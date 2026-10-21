@@ -204,6 +204,9 @@ function SignIn({
   return (
     <>
       <h3>Sign in</h3>
+      <label className="field" htmlFor="handle">
+        Enter your handle or DID
+      </label>
       <form
         className="query"
         onSubmit={(event) => {
@@ -212,6 +215,7 @@ function SignIn({
         }}
       >
         <input
+          id="handle"
           type="text"
           value={handle}
           placeholder="liliana.mnwb.me"
@@ -223,10 +227,21 @@ function SignIn({
           {going ? "Continuing…" : "Continue"}
         </button>
       </form>
-      <p className="quiet">
-        Your handle or DID. Records are written to your own PDS, never ours.
-      </p>
       {error && <p className="warn">{error}</p>}
+      {/* A new tab, unlike every other link here: this one is mid-flow, and
+          a handle has to be carried back to the form behind it. */}
+      <p className="quiet">
+        No account? Sign up with{" "}
+        <a href="https://bsky.app" target="_blank" rel="noreferrer">
+          Bluesky
+        </a>{" "}
+        or{" "}
+        <a href="https://tangled.org/signup" target="_blank" rel="noreferrer">
+          Tangled
+        </a>
+        .
+      </p>
+      <p className="quiet">Records are written to your own PDS, never ours.</p>
     </>
   );
 }

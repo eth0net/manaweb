@@ -472,6 +472,13 @@ nav a.here {
   font-variant-numeric: tabular-nums;
 }
 
+/* Above the row rather than in it: `.query` is a flex line, so a label
+   inside the form would sit beside the input it names. */
+.field {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
 .query {
   display: flex;
   gap: 0.5rem;
