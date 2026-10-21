@@ -507,6 +507,19 @@ Raw matters as much as brotli: one is the download and the other is what the
 device keeps. Text is nearly half again on disk and a seventh on the wire,
 which is small in absolute terms and still a choice worth offering.
 
+**Which printings have a second image is a layout question the layout cannot
+quite answer.** Counted over the cache: `transform` 1,060 of 1,060,
+`modal_dfc` 327, `double_faced_token` 121 and `reversible_card` 83 all carry
+one on every row, and no other layout carries one at all — `front_card` and
+`prepare` are recent arrivals that do not. `art_series` is the exception that
+makes the rule untrustworthy: 2,608 of 2,775 have a back, and of the 167 that
+do not, 162 are `missing` and never render anyway, leaving five printings
+whose layout promises an image Scryfall does not hold. So the client treats
+the layout as a reason to offer the control and the image's own failure to
+load as the answer, rather than keeping a list it would have to be right
+about. A layout added later shows no control until someone counts again,
+which costs a feature nobody sees rather than a broken image everyone does.
+
 Three things share a word otherwise, so each gets its own: a **card image** is
 a face rendered by Scryfall, six sizes of it, hotlinked and never re-served;
 an **artwork** is the illustration alone and the printings that share it,

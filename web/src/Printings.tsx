@@ -1,8 +1,14 @@
 import { type ReactNode, useState } from "react";
-import { type Card, type Catalog, image, type Print } from "./catalog";
+import {
+  type Card,
+  type Catalog,
+  image,
+  type Print,
+  type Side,
+} from "./catalog";
 import { Add } from "./collection/Add";
 import { Modal } from "./Modal";
-import { describe, hasArt, Language } from "./Printing";
+import { describe, hasArt, Language, twoSided } from "./Printing";
 
 // Art is what a printing is chosen by.
 export function Printings({
@@ -28,6 +34,38 @@ export function Printings({
   );
 }
 
+// Whether the back is really there is answered by fetching it: a layout that
+// usually has one is a reason to offer the turn, not a promise of an image.
+function Face({ print }: { print: Print }) {
+  const [side, turn] = useState<Side>("front");
+  const [turnable, setTurnable] = useState(twoSided(print));
+
+  if (!hasArt(print)) return null;
+
+  return (
+    <>
+      <img
+        src={image(print.id, "normal", side)}
+        alt=""
+        onError={() => {
+          setTurnable(false);
+          turn("front");
+        }}
+      />
+      {turnable && (
+        <p className="actions">
+          <button
+            type="button"
+            onClick={() => turn(side === "front" ? "back" : "front")}
+          >
+            Turn over
+          </button>
+        </p>
+      )}
+    </>
+  );
+}
+
 function Gallery({
   card,
   catalog,
@@ -49,7 +87,7 @@ function Gallery({
             ← All printings
           </button>
         </p>
-        {hasArt(chosen) && <img src={image(chosen.id)} alt="" />}
+        <Face key={chosen.id} print={chosen} />
         <p>
           {chosen.lang !== "en" && <Language code={chosen.lang} />}
           {describe(chosen)}

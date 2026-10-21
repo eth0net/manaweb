@@ -191,13 +191,13 @@ export function printKey(set: string, collectorNumber: string): string {
 // One pass of the catalog answering every key an import is waiting on.
 export type Locate = (keys: Set<string>) => Map<string, string>;
 
+export type Side = "front" | "back";
+
 // Hotlinked from the id, so no URL is stored. Nothing is behind it when
-// `imageStatus` is `missing` or `placeholder`.
-//
-// todo(faces): a two-faced card has a back under `/back/`, and the detail view
-// has no way to turn one over — `docs/scryfall.md`.
-export function image(id: string, size = "normal"): string {
-  return `https://cards.scryfall.io/${size}/front/${id[0]}/${id[1]}/${id}.jpg`;
+// `imageStatus` is `missing` or `placeholder`, and a back exists only for
+// some layouts — `docs/scryfall.md`.
+export function image(id: string, size = "normal", side: Side = "front") {
+  return `https://cards.scryfall.io/${size}/${side}/${id[0]}/${id[1]}/${id}.jpg`;
 }
 
 // Tengwar sits in the Private Use Area, so no font on the device has it.
