@@ -2,10 +2,11 @@ import { published } from "./CatalogStatus";
 import type { Loaded } from "./catalog/load";
 import { CATALOG } from "./config";
 import { Modal } from "./Modal";
+import { stamp } from "./stamp";
 import type { Status } from "./useCatalog";
 
-// What the app is rather than what is in it: the catalog it loaded, and what
-// the licenses oblige.
+// What the app is rather than what is in it: the catalog it loaded, the build
+// serving it, and what the licenses oblige.
 export function About({
   status,
   loaded,
@@ -16,6 +17,8 @@ export function About({
   return (
     <Modal trigger="summary" title="About Manaweb" label="About">
       {loaded && <Catalog loaded={loaded} status={status} />}
+      <h3>Build</h3>
+      <p className="quiet">{stamp()}</p>
       <Licenses />
     </Modal>
   );

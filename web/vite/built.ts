@@ -50,6 +50,22 @@ function revision(): string {
   }
 }
 
+// The commit's own date in a build, because a clock makes every one of them
+// a different bundle and the worker drops its cache when the names move.
+function stamped(): number {
+  try {
+    const at = Date.parse(
+      execFileSync("git", ["log", "-1", "--format=%cI"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim(),
+    );
+    return Number.isNaN(at) ? Date.now() : at;
+  } catch {
+    return Date.now();
+  }
+}
+
 export function built(): Plugin {
   let serving = false;
 
@@ -68,7 +84,7 @@ export function built(): Plugin {
     },
     load(id) {
       if (id !== HELD) return null;
-      const at = serving ? newest() : Date.now();
+      const at = serving ? newest() : stamped();
       return [
         `export const at = ${JSON.stringify(new Date(at).toISOString())};`,
         `export const rev = ${JSON.stringify(revision())};`,
