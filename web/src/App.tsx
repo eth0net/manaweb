@@ -69,6 +69,8 @@ export function App() {
             Manaweb
           </Link>
         </h1>
+        {/* todo(settings): profile, settings, about and sign out as one menu
+            off the picture; sign in stays a button, there being none. */}
         <div className="controls">
           <About
             status={status}
