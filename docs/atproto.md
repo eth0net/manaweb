@@ -457,6 +457,29 @@ the warm-up. That rebuilds their entire dataset in 30 seconds to 20 minutes
 with no disk at all. Neither has a public instance, so what's worth copying is
 the pattern rather than a service to consume.
 
+**Hosting accounts is an identity commitment, not a storage one.** A serious
+collection is small in a repo: 8,321 stacks packed into 1.89MB of import
+parts, and those are deleted as they drain, so steady state is the stacks
+themselves. What moves is notes — a stack carrying a full note, tags and
+history runs past 12KB, so the same collection could be a hundred times that
+if someone filled every field. A limit therefore wants to be bytes rather than
+records.
+
+Restricting a manaweb-issued account to `app.manaweb.*` collections is the
+answer to reach for and the wrong one. A DID points at exactly one PDS and
+every app a person uses writes there, so the filter breaks their Bluesky posts
+and anything else they adopt, and undoing it costs them a PLC operation and a
+repo migration rather than a setting. A byte quota bounds the same risk — the
+one worth bounding is someone signing up here because it is the easy button
+and then storing a social account's blobs with us — without issuing an account
+that works with one app. The cost that actually scales is being an identity
+provider: resets, deliverability, abuse, deletion, and being the component
+that cannot go down without signing everyone out.
+
+What the PDS buys against that is the funnel. Until it opens, a new user has
+to leave, make an account elsewhere and come back with a handle, which the
+sign-in panel can only paper over with a link.
+
 ## References
 
 - [atproto Spaces alpha](https://atproto.com/blog/atproto-spaces-alpha) —
