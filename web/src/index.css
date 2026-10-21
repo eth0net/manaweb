@@ -124,9 +124,17 @@ nav a.here {
 /* The two ways into the catalog, marked like the tab bar but sized to their
    own words: they switch a view rather than a tab. */
 .modes {
+  align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   margin: 0 0 0.75rem;
+}
+
+/* A whole line of its own: a long set name shares the row otherwise, and
+   wrapping it there grows the buttons beside it. */
+.modes .crumb {
+  flex-basis: 100%;
 }
 
 .modes a {

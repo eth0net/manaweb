@@ -17,7 +17,7 @@ export function Modes({ path, crumb }: { path: string; crumb?: ReactNode }) {
           {label}
         </Link>
       ))}
-      {crumb && <span className="quiet">{crumb}</span>}
+      {crumb && <span className="crumb quiet">{crumb}</span>}
     </p>
   );
 }
