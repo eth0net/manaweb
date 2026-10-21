@@ -42,7 +42,7 @@ export function Menu({ account }: { account: Session }) {
   return (
     <Modal
       trigger="summary"
-      title="Manaweb"
+      title={session ? "Account" : "Sign in"}
       label={
         state.status === "in" ? (
           <>
@@ -100,7 +100,6 @@ function Account({
 
   return (
     <>
-      <h3>Account</h3>
       <Picture session={session} onWorn={onWorn} />
       <dl>
         <dt>DID</dt>
@@ -203,7 +202,6 @@ function SignIn({
 
   return (
     <>
-      <h3>Sign in</h3>
       <label className="field" htmlFor="handle">
         Enter your handle or DID
       </label>
