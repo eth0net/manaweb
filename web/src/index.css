@@ -867,7 +867,25 @@ dialog::backdrop {
 
 .panel h2 {
   font-size: 1rem;
-  margin: 0 0 0.75rem;
+  margin: 0;
+}
+
+/* The title and the way out share a line, so a panel with nothing to act on
+   ends at its content rather than at a row holding one button. */
+.panel-head {
+  align-items: baseline;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.shut {
+  border: 0;
+  color: var(--quiet);
+  font-size: 1.125rem;
+  line-height: 1;
+  padding: 0 0.25rem;
 }
 
 .panel dl {

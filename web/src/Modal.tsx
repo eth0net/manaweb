@@ -48,16 +48,21 @@ export function Modal({
           onClose={() => setOpen(false)}
         >
           <div className="panel">
-            <h2>{title}</h2>
+            <div className="panel-head">
+              <h2>{title}</h2>
+              <button
+                type="button"
+                className="shut"
+                aria-label="Close"
+                onClick={() => dialog.current?.close()}
+              >
+                ×
+              </button>
+            </div>
             {/* Built on opening, so a modal per search result costs three
                 elements rather than a list nobody has asked to see. */}
             {open && children}
-            <p className="actions">
-              {actions}
-              <button type="button" onClick={() => dialog.current?.close()}>
-                Close
-              </button>
-            </p>
+            {actions && <p className="actions">{actions}</p>}
           </div>
         </dialog>,
         document.body,
