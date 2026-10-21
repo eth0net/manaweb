@@ -18,6 +18,7 @@ export function Modal({
   children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
   // Set here because React's types don't carry it yet. A click handler on the
@@ -34,6 +35,9 @@ export function Modal({
         onClick={() => {
           setOpen(true);
           dialog.current?.showModal();
+          // Opening would otherwise focus the first control in the panel and
+          // ring it, for a click that was aimed at the trigger.
+          panel.current?.focus();
         }}
       >
         {label}
@@ -47,7 +51,7 @@ export function Modal({
           className={wide ? "wide" : undefined}
           onClose={() => setOpen(false)}
         >
-          <div className="panel">
+          <div className="panel" ref={panel} tabIndex={-1}>
             <div className="panel-head">
               <h2>{title}</h2>
               <button

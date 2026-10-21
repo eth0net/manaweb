@@ -855,6 +855,8 @@ dialog::backdrop {
 .panel {
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
+  /* Holds the dialog's opening focus, and is reachable no other way. */
+  outline: none;
   padding: 1rem 1.25rem 1.25rem;
 }
 
