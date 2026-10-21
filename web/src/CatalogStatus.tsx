@@ -1,7 +1,7 @@
 import type { Status } from "./useCatalog";
 
 // The one thing about the catalog worth interrupting for, so it sits in the
-// page rather than in the menu holding everything else.
+// page rather than in the `About` panel holding the rest of it.
 export function CatalogUpdate({ status }: { status: Status }) {
   if (!status.available) return null;
   return (

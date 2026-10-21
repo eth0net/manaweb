@@ -32,7 +32,7 @@ symbol at `svgs.scryfall.io`, open CORS and cached for a year. Hotlinked rather
 than redistributed, the same call as card images: we display Wizards' graphics
 under the policy below and never ship a copy of them.
 
-The disclaimer that obliges is verbatim in the account menu's Licenses
+The disclaimer that obliges is verbatim in the About panel's Licenses
 section. Scryfall's guidelines also ask that the source of card data be
 identifiable, which the same section does. It stood in a footer until that
 footer was costing every phone screen four lines to say the same thing.

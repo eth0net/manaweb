@@ -78,6 +78,14 @@ h1 {
   margin: 0;
 }
 
+/* Both triggers travel as one end of the line: space-between would otherwise
+   leave About stranded in the middle of the header. */
+.controls {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+}
+
 .mark {
   align-items: center;
   color: inherit;

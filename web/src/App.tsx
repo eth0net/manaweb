@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { About } from "./About";
 import { CatalogUpdate } from "./CatalogStatus";
 import { Collection } from "./collection/Collection";
 import { useCollection } from "./collection/cards";
@@ -68,11 +69,13 @@ export function App() {
             Manaweb
           </Link>
         </h1>
-        <Menu
-          account={account}
-          status={status}
-          loaded={load.status === "ready" ? load : null}
-        />
+        <div className="controls">
+          <About
+            status={status}
+            loaded={load.status === "ready" ? load : null}
+          />
+          <Menu account={account} />
+        </div>
       </header>
 
       <div className="column">
