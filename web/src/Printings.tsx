@@ -70,31 +70,49 @@ export function Printings({
   );
 }
 
+// What the picture is doing, the box it will fill being held either way.
+type Showing = "loading" | "shown" | "gone";
+
 // Whether the back is really there is answered by fetching it: a layout that
 // usually has one is a reason to offer the turn, not a promise of an image.
 function Face({ print }: { print: Print }) {
   const [side, turn] = useState<Side>("front");
   const [turnable, setTurnable] = useState(twoSided(print));
+  const [showing, setShowing] = useState<Showing>("loading");
 
-  if (!hasArt(print)) return null;
+  if (!hasArt(print)) return <span className="noart" />;
 
   return (
     <>
-      <img
-        src={image(print.id, "normal", side)}
-        alt=""
-        width={NORMAL.width}
-        height={NORMAL.height}
-        onError={() => {
-          setTurnable(false);
-          turn("front");
-        }}
-      />
+      <span className={`face ${showing}`}>
+        <img
+          // Its own element per side, so turning starts the wait over.
+          key={side}
+          src={image(print.id, "normal", side)}
+          alt=""
+          width={NORMAL.width}
+          height={NORMAL.height}
+          onLoad={() => setShowing("shown")}
+          onError={() => {
+            // A back that is not there is the layout having been optimistic.
+            // A front that is not there is a picture Scryfall does not hold.
+            if (side === "back") {
+              setTurnable(false);
+              turn("front");
+              setShowing("loading");
+            } else setShowing("gone");
+          }}
+        />
+        {showing === "loading" && <span className="spin" />}
+      </span>
       {turnable && (
         <p className="actions">
           <button
             type="button"
-            onClick={() => turn(side === "front" ? "back" : "front")}
+            onClick={() => {
+              turn(side === "front" ? "back" : "front");
+              setShowing("loading");
+            }}
           >
             Turn over
           </button>

@@ -1134,14 +1134,64 @@ dialog.wide {
   gap: 0.75rem;
 }
 
+/* The picture's box, which stands whether or not there is a picture in it.
+   Measured out here rather than left to the image: a wrapper sizes by its
+   contents, and a contents that has not arrived is nothing to size by. */
+.detail .face,
+.detail .noart {
+  aspect-ratio: 488 / 680;
+  border-radius: 0.75rem;
+  display: block;
+  position: relative;
+  width: min(100%, 60vh * 488 / 680);
+}
+
+.detail .face.loading,
+.detail .face.gone,
+.detail .noart {
+  background: var(--edge);
+}
+
+/* `contain` so a picture that is not the shape the box was built for shows
+   as one, rather than being stretched into it. */
+.detail .face img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+/* Hidden rather than unmounted, so a failure keeps the room a picture had. */
+.detail .face.gone img {
+  visibility: hidden;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+  border: 2px solid var(--edge);
+  border-radius: 50%;
+  border-top-color: var(--quiet);
+  height: 1.5rem;
+  inset: calc(50% - 0.75rem) auto auto calc(50% - 0.75rem);
+  position: absolute;
+  width: 1.5rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* A ring that says the same thing without turning. */
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}
+
 .detail img {
   border-radius: 0.75rem;
-  /* Both auto against the size the element declares, so whichever maximum
-     binds, the other follows the ratio rather than squashing it. */
-  height: auto;
-  max-height: 60vh;
-  max-width: 100%;
-  width: auto;
 }
 
 .detail p {
