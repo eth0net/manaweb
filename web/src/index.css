@@ -1136,6 +1136,9 @@ dialog.wide {
 
 .detail img {
   border-radius: 0.75rem;
+  /* Both auto against the size the element declares, so whichever maximum
+     binds, the other follows the ratio rather than squashing it. */
+  height: auto;
   max-height: 60vh;
   max-width: 100%;
   width: auto;

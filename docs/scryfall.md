@@ -55,6 +55,9 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
   `cards.scryfall.io/{size}/front/{id[0]}/{id[1]}/{id}.jpg`, the query string
   being a cache-buster. Keep `image_status` — `missing`/`placeholder` printings
   have nothing behind that URL. Back faces use `/back/`, and `png` ends `.png`.
+  Every size is one shape whatever the card is: `normal` measured 488x680 on
+  a planar and a split printing as much as an ordinary one, so a client can
+  reserve the box before the bytes land.
 - Import/export is client-side and costs us nothing. ManaBox CSV both ways
   first, since it's the likeliest source of an existing collection, then
   Moxfield, Archidekt, Deckbox and a plain `scryfall_id`+quantity shape. Being

@@ -193,6 +193,10 @@ export type Locate = (keys: Set<string>) => Map<string, string>;
 
 export type Side = "front" | "back";
 
+// What `normal` measures, whatever the layout — `docs/scryfall.md`. Given to
+// the element so its box is the right shape before the bytes arrive.
+export const NORMAL = { width: 488, height: 680 };
+
 // Hotlinked from the id, so no URL is stored. Nothing is behind it when
 // `imageStatus` is `missing` or `placeholder`, and a back exists only for
 // some layouts — `docs/scryfall.md`.

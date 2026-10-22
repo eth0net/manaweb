@@ -3,6 +3,7 @@ import {
   type Card,
   type Catalog,
   image,
+  NORMAL,
   type Print,
   type Side,
 } from "./catalog";
@@ -82,6 +83,8 @@ function Face({ print }: { print: Print }) {
       <img
         src={image(print.id, "normal", side)}
         alt=""
+        width={NORMAL.width}
+        height={NORMAL.height}
         onError={() => {
           setTurnable(false);
           turn("front");
