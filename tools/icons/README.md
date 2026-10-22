@@ -28,9 +28,15 @@ Two of those exist for Android alone. A launcher crops a home screen icon to
 whatever shape it uses and guarantees only the middle 80%, and it fills a
 themed icon from the wallpaper after throwing away every color in it — so one
 raster is inset on an opaque background and another is the silhouette, and
-neither is what a browser tab wants. iOS takes its icon once, when the app is
-added, and the dark alternative is offered through a media query the same way
-the favicon's already is. Whether Safari reads it there is untested.
+neither is what a browser tab wants.
+
+iOS takes its icon once, when the app is added, and reads no alternative: it
+was offered a light raster and a dark one behind a media query, and in dark
+mode it took the light one. It also composites anything transparent onto
+white, which every raster it could reach then was. So the home screen is one
+tile — the dark palette on a ground of its own, the same in both appearances,
+inset enough to keep clear of its corners — and the only thing still varying
+with a theme is the favicon a tab draws.
 
 **A composed app icon is a shipped one, not a chosen one.** iOS fixes a PWA's
 icon when it is added to the home screen, and a native app's alternates have to

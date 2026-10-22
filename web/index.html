@@ -10,18 +10,14 @@
 
     <!-- First wins where it is understood, and only this one takes the dark
          palette. The rasters below are what everything else falls back to. -->
+    <!-- A tab only: it paints no background, and the manifest naming it is
+         how iOS came to composite a transparent icon onto white. -->
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
     <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
+    <!-- One for both appearances: iOS picked the light one in dark mode, and
+         an icon it bakes at install time cannot follow a change anyway. -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
-    <!-- After the one above, so a browser that ignores the media query keeps
-         the light icon rather than taking this one for every appearance. -->
-    <link
-      rel="apple-touch-icon"
-      href="/apple-touch-icon-dark.png"
-      sizes="180x180"
-      media="(prefers-color-scheme: dark)"
-    />
     <link rel="manifest" href="/site.webmanifest" />
 
     <meta

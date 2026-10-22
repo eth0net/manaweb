@@ -46,32 +46,31 @@ const DARK: Look = {
 // so every part of the drawing has to be the one shape.
 const MONO: Look = { web: "#000", core: "#000", facet: "#000", glow: "" };
 
-const PAPER = "#fdfdfc";
-const INK = "#16161a";
+// One ground for every raster the home screen takes. iOS bakes the icon in
+// when the app is added and picked the light one in dark mode regardless of
+// the media query, so there is nothing for an alternative to be chosen over.
+const GROUND = "#1b1733";
 
 // Android's masks range from a circle to a rounded square, and the circle is
 // the one that crops: the guaranteed area is the middle 80%.
 const SAFE = 0.8;
 
+// What a tile nobody crops keeps clear of its own corners, which is a look
+// rather than a guarantee.
+const ROOM = 0.88;
+
+const TILE: Look = { ...DARK, paper: GROUND, fill: ROOM };
+
 const RASTERS: { name: string; size: number; look: Look }[] = [
   { name: "favicon-16x16.png", size: 16, look: LIGHT },
   { name: "favicon-32x32.png", size: 32, look: LIGHT },
-  { name: "android-chrome-192x192.png", size: 192, look: LIGHT },
-  { name: "android-chrome-512x512.png", size: 512, look: LIGHT },
-  {
-    name: "apple-touch-icon.png",
-    size: 180,
-    look: { ...LIGHT, paper: PAPER },
-  },
-  {
-    name: "apple-touch-icon-dark.png",
-    size: 180,
-    look: { ...DARK, paper: INK },
-  },
+  { name: "android-chrome-192x192.png", size: 192, look: TILE },
+  { name: "android-chrome-512x512.png", size: 512, look: TILE },
+  { name: "apple-touch-icon.png", size: 180, look: TILE },
   {
     name: "icon-maskable.png",
     size: 512,
-    look: { ...LIGHT, paper: PAPER, fill: SAFE },
+    look: { ...TILE, fill: SAFE },
   },
   { name: "icon-mono.png", size: 512, look: { ...MONO, fill: SAFE } },
 ];
