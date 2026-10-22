@@ -8,6 +8,7 @@ export function Modal({
   title,
   actions,
   wide,
+  onOpen,
   children,
 }: {
   label: ReactNode;
@@ -15,6 +16,9 @@ export function Modal({
   title: string;
   actions?: ReactNode;
   wide?: boolean;
+  // Opening is the only moment a panel can be told to start over: what it
+  // holds outlives a close, the trigger staying mounted.
+  onOpen?: () => void;
   children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -52,6 +56,7 @@ export function Modal({
         type="button"
         className={trigger}
         onClick={() => {
+          onOpen?.();
           setOpen(true);
           dialog.current?.showModal();
           // Opening would otherwise focus the first control in the panel and

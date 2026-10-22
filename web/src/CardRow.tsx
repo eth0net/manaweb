@@ -1,20 +1,8 @@
-import {
-  appLanguage,
-  type Card,
-  type Catalog,
-  cardName,
-  image,
-  type Print,
-  words,
-} from "./catalog";
+import { type Card, type Catalog, image, type Print, words } from "./catalog";
 import { Add } from "./collection/Add";
 import { Mana } from "./Mana";
-import { describe, hasArt, Language } from "./Printing";
-import { Printings } from "./Printings";
-
-// Card names are read in the app's language, not the printing's. A setting of
-// its own once there is somewhere to put it — see `docs/search.md`.
-const APP = appLanguage();
+import { describe, hasArt, Language, titled } from "./Printing";
+import { type Along, Printings } from "./Printings";
 
 // One card and the printing on show for it. The printing is given rather than
 // chosen here, because a search picks it by language and a set is the printing.
@@ -22,13 +10,18 @@ export function CardRow({
   card,
   print,
   catalog,
+  along,
+  at,
 }: {
   card: Card;
   print: Print | undefined;
   catalog: Catalog;
+  // What the list shows, so the panel walks that rather than this card.
+  along?: Along[];
+  at?: number;
 }) {
   const tags = card.kind === "card" ? card.flags : [card.kind, ...card.flags];
-  const name = cardName(card.name, print, APP);
+  const name = titled(card, print);
 
   return (
     <li>
@@ -39,6 +32,8 @@ export function CardRow({
             catalog={catalog}
             name={name.text}
             start={print}
+            along={along}
+            at={at}
             trigger="art"
             label={
               <img src={image(print.id, "small")} alt="" loading="lazy" />

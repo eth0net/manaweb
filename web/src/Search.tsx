@@ -43,6 +43,13 @@ export function Search({
     [catalog, parsed],
   );
 
+  // One row per card, the printing being whichever the query picked. Built
+  // here rather than per row, a panel walking the list needing the whole of it.
+  const rows = useMemo(
+    () => found.map((card) => ({ card, print: shown(catalog, card, parsed) })),
+    [catalog, found, parsed],
+  );
+
   return (
     <>
       <Modes path="/cards" />
@@ -80,12 +87,14 @@ export function Search({
         <p>Nothing matches “{query}”.</p>
       ) : (
         <ol className="results">
-          {found.map((card) => (
+          {rows.map(({ card, print }, at) => (
             <CardRow
               key={card.oracleId}
               card={card}
               catalog={catalog}
-              print={shown(catalog, card, parsed)}
+              print={print}
+              along={rows}
+              at={at}
             />
           ))}
         </ol>

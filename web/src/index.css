@@ -1146,8 +1146,14 @@ dialog.wide {
   text-align: center;
 }
 
+/* Stretched, or the column centers it and the arrows have no edges to sit
+   against: a flex line distributes the room it was given. */
 .detail .back {
-  align-self: flex-start;
+  align-items: center;
+  align-self: stretch;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
 }
 
 .detail .row {

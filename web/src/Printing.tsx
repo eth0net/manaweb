@@ -1,4 +1,21 @@
-import { language, type Print, words } from "./catalog";
+import {
+  appLanguage,
+  type Card,
+  cardName,
+  language,
+  type Print,
+  words,
+} from "./catalog";
+
+// Card names are read in the app's language, not the printing's. A setting of
+// its own once there is somewhere to put it — see `docs/search.md`.
+const APP = appLanguage();
+
+// One owner for which of a card's names is shown, the modal's title having to
+// agree with the row that opened it.
+export function titled(card: Card, print: Print | undefined) {
+  return cardName(card.name, print, APP);
+}
 
 export function Language({ code }: { code: string }) {
   return (

@@ -94,6 +94,13 @@ function Printings({
     [catalog, printings, parsed],
   );
 
+  // One row per printing, which is what a set is looked through by.
+  const rows = useMemo(
+    () =>
+      shown.map(({ card, print }) => ({ card: catalog.card(card), print })),
+    [catalog, shown],
+  );
+
   return (
     <>
       <Modes
@@ -129,12 +136,14 @@ function Printings({
         <p>Nothing in {label(sets, codes)} matches.</p>
       ) : (
         <ol className="results">
-          {shown.map(({ card, print }) => (
+          {rows.map(({ card, print }, at) => (
             <CardRow
-              key={print.id}
-              card={catalog.card(card)}
+              key={print?.id}
+              card={card}
               catalog={catalog}
               print={print}
+              along={rows}
+              at={at}
             />
           ))}
         </ol>

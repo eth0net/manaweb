@@ -8,7 +8,14 @@ import {
 } from "./catalog";
 import { Add } from "./collection/Add";
 import { Modal } from "./Modal";
-import { describe, hasArt, Language, twoSided } from "./Printing";
+import { describe, hasArt, Language, titled, twoSided } from "./Printing";
+
+// A row of the list that opened this, so the panel can walk the list the way
+// it is shown rather than the printings of one card.
+export interface Along {
+  card: Card;
+  print: Print | undefined;
+}
 
 // Art is what a printing is chosen by.
 export function Printings({
@@ -18,6 +25,8 @@ export function Printings({
   start,
   trigger,
   label,
+  along,
+  at,
 }: {
   card: Card;
   catalog: Catalog;
@@ -26,10 +35,36 @@ export function Printings({
   start?: Print;
   trigger: string;
   label: ReactNode;
+  // The whole list and this row's place in it. Absent where there is no list
+  // to walk, as from the count of a card's own printings.
+  along?: Along[];
+  at?: number;
 }) {
+  const from = at ?? 0;
+  const [here, move] = useState(from);
+  const one = along?.[here];
+  const step =
+    along && along.length > 1
+      ? (by: number) => move((was) => (was + by + along.length) % along.length)
+      : null;
+
   return (
-    <Modal wide trigger={trigger} title={name} label={label}>
-      <Gallery card={card} catalog={catalog} start={start} />
+    <Modal
+      wide
+      trigger={trigger}
+      title={one ? titled(one.card, one.print).text : name}
+      label={label}
+      // A panel reopened from this row starts on this row, wherever walking
+      // left it.
+      onOpen={() => move(from)}
+    >
+      <Gallery
+        key={here}
+        card={one ? one.card : card}
+        catalog={catalog}
+        start={one ? one.print : start}
+        step={step}
+      />
     </Modal>
   );
 }
@@ -70,10 +105,12 @@ function Gallery({
   card,
   catalog,
   start,
+  step,
 }: {
   card: Card;
   catalog: Catalog;
   start?: Print;
+  step: ((by: number) => void) | null;
 }) {
   const [chosen, choose] = useState<Print | null>(start ?? null);
 
@@ -82,12 +119,30 @@ function Gallery({
   if (chosen) {
     return (
       <div className="detail">
-        <p className="back">
-          <button type="button" className="link" onClick={() => choose(null)}>
-            ← All printings
-          </button>
-        </p>
         <Face key={chosen.id} print={chosen} />
+        <p className="back">
+          {step && (
+            <button
+              type="button"
+              aria-label="Previous card"
+              onClick={() => step(-1)}
+            >
+              ‹
+            </button>
+          )}
+          <button type="button" className="link" onClick={() => choose(null)}>
+            All printings
+          </button>
+          {step && (
+            <button
+              type="button"
+              aria-label="Next card"
+              onClick={() => step(1)}
+            >
+              ›
+            </button>
+          )}
+        </p>
         <p>
           {chosen.lang !== "en" && <Language code={chosen.lang} />}
           {describe(chosen)}
