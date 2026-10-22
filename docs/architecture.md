@@ -259,11 +259,38 @@ callback can be declared for them in advance. Reach the `dev` preview by its
 custom domain, which is the one that has one. The OAuth side is in
 [`atproto.md`](atproto.md).
 
-That is also why Pages rather than Workers with static assets, which Cloudflare
-otherwise points new projects at: branch aliases there are listed as coming
-soon, so a preview would be a second Worker wired up by hand instead of a
-branch that deploys itself. Their own migration guide calls the move
-straightforward, so this is a decision to revisit rather than live with.
+Workers with static assets is where this should go, and the reason it was not
+has expired. Branch aliases were listed as coming soon, so a preview would
+have been a second Worker wired up by hand; Cloudflare's
+[migrate-from-Pages guide](https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/)
+read on 2026-10-22 marks preview URLs supported and says `_headers` and
+`_redirects` are read natively, so the CSP moves with the app. What Workers
+will not do is take a domain whose nameservers it does not manage, which this
+does not need. Cloudflare has said its investment goes to Workers from here,
+which is the other half of the argument.
+
+**A preview is named, not branched.** The two features read alike and are not:
+version URLs live at `<alias>-<worker>.<subdomain>.workers.dev` and the docs
+say outright that they cannot be moved off `workers.dev`, while
+[Worker Previews](https://developers.cloudflare.com/workers/previews/custom-domains/),
+read on 2026-10-23, take a custom domain and answer at
+`<preview-name>.<domain>` — with every deployment also reachable at
+`<deployment-id>-<preview-name>.<domain>`. The name is configured rather than
+read off the branch, so a preview called `dev` answers on the host the client
+document already declares without a branch of that name existing.
+
+That settles the shape: main deploys to the preview on every commit, and
+production moves only when a tag does, `release.yaml` already running on
+`v*` and so needing no help from Cloudflare's own build triggers. Nothing is
+held back from main to make it work, which is the usual cost of a staging
+branch and the reason not to have one.
+
+Three things it asks for. A workers.dev preview carries `X-Robots-Tag:
+noindex` and one on a domain of ours does not, so the staging copy wants
+Cloudflare Access in front of it or it is a second indexable site. A preview
+inherits no production settings and declares its own. And only the stable
+host can be signed in to, the per-deployment one being as unpredictable as
+the per-commit URLs were, so a login is tested on `dev` or not at all.
 
 **Previews read and write production data.** A parallel NSID namespace would
 be permanent once records existed, would be declared in the scopes every user
