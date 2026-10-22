@@ -21,10 +21,29 @@ export function Modal({
   const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
-  // Set here because React's types don't carry it yet. A click handler on the
-  // backdrop would be a way to close that a keyboard can't reach.
+  // `closedby` is set here because React's types don't carry it yet, and
+  // listened for beside it because Safari does not implement it.
   useEffect(() => {
-    dialog.current?.setAttribute("closedby", "any");
+    const on = dialog.current;
+    if (!on) return;
+    on.setAttribute("closedby", "any");
+
+    // The dialog's own box is the panel, `padding: 0` saying so, and a press
+    // that began inside is a drag rather than a tap beside it.
+    let beside = false;
+    const down = (event: PointerEvent) => {
+      beside = event.target === on;
+    };
+    const up = (event: MouseEvent) => {
+      if (beside && event.target === on) on.close();
+    };
+
+    on.addEventListener("pointerdown", down);
+    on.addEventListener("click", up);
+    return () => {
+      on.removeEventListener("pointerdown", down);
+      on.removeEventListener("click", up);
+    };
   }, []);
 
   return (
