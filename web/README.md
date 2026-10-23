@@ -6,8 +6,8 @@ Cloudflare Pages from the repo on commit.
     just serve-client   # the dev server, hot reloading
     just ts       # what CI runs: biome, tsc, bun test, vite build
 
-The catalog comes from the other origin, so `just serve` has to be running
-too: it exports the artifact from the cache and sends the
+The catalog comes from the other origin, so `just serve` has to be running too:
+it exports the artifact from the cache and sends the
 `Access-Control-Allow-Origin` the bucket has to send in production.
 `src/config.ts` holds the two origins.
 
@@ -19,8 +19,8 @@ boundaries in them, `columns.ts` and `strings.ts` hold what it reads out,
 IndexedDB, which is what leaves the format and the ranking testable under
 `bun test`.
 
-`public/oauth/client-metadata.json` is the OAuth client metadata document.
-Vite copies `public/` into `dist/` verbatim, which is what serves it at
+`public/oauth/client-metadata.json` is the OAuth client metadata document. Vite
+copies `public/` into `dist/` verbatim, which is what serves it at
 `/oauth/client-metadata.json` — the URL its `client_id` has to equal. The
 client imports the same file for the scopes it requests.
 

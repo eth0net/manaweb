@@ -1,9 +1,9 @@
 # Contributing
 
-Manaweb is pre-v0: the collection tracker runs end to end, and everything
-after it is in [`docs/`](docs/roadmap.md). The most useful contribution is a
-second opinion on the lexicon shapes, before records exist in other people's
-PDSes — that's the part expensive to change later.
+Manaweb is pre-v0: the collection tracker runs end to end, and everything after
+it is in [`docs/`](docs/roadmap.md). The most useful contribution is a second
+opinion on the lexicon shapes, before records exist in other people's PDSes —
+that's the part expensive to change later.
 
 ## Getting set up
 
@@ -20,22 +20,22 @@ cargo test
 [prek](https://github.com/j178/prek) runs what CI runs — `cargo fmt`, a
 warning-free `cargo clippy --all-targets --all-features`, `cargo test`,
 `biome`, `tsc`, `bun test`, `typos`, the prose check and the sign-off check —
-on commit and push, so a red build costs no round trip. The Rust and
-TypeScript hooks are scoped by path, so touching one side never asks for the
-other's toolchain. CI runs what a checkout cannot: the macOS and Windows
-matrix and the oldest Rust we support.
+on commit and push, so a red build costs no round trip. The Rust and TypeScript
+hooks are scoped by path, so touching one side never asks for the other's
+toolchain. CI runs what a checkout cannot: the macOS and Windows matrix and the
+oldest Rust we support.
 
-`rust-toolchain.toml` names the compiler both of them use, so rustup fetches
-it on your first build and a new release lands on whoever bumped the file
-rather than on whoever pushed next. The container and the oldest-Rust job
-each say in place why they ignore it.
+`rust-toolchain.toml` names the compiler both of them use, so rustup fetches it
+on your first build and a new release lands on whoever bumped the file rather
+than on whoever pushed next. The container and the oldest-Rust job each say in
+place why they ignore it.
 
-One hook is git's own rather than prek's. A tag-only push runs no hooks at
-all, so `reference-transaction` refuses a `v*` tag the manifest disagrees
-with, before the tag exists — `just release` is the way to cut one, and CI
-checks the same thing for a tag pushed from somewhere without hooks. It takes
-the title the tag is annotated with, since a release that cannot be named in a
-few words is probably two.
+One hook is git's own rather than prek's. A tag-only push runs no hooks at all,
+so `reference-transaction` refuses a `v*` tag the manifest disagrees with,
+before the tag exists — `just release` is the way to cut one, and CI checks the
+same thing for a tag pushed from somewhere without hooks. It takes the title
+the tag is annotated with, since a release that cannot be named in a few words
+is probably two.
 
 Spelling is American, because the vocabulary already is: `color`, `license`,
 `serialize`. `typos` enforces it, and `typos.toml` says what it skips —
@@ -43,8 +43,8 @@ captured Scryfall fixtures, license text, and translations when they arrive.
 
 [just](https://github.com/casey/just) holds the whole workflow — `just check`
 runs the checks a checkout can, `just serve` starts the server, and
-`just --list` shows the rest. Every recipe names the one toolchain it wants,
-so `just rust` needs nothing but cargo and `just ts` nothing but bun.
+`just --list` shows the rest. Every recipe names the one toolchain it wants, so
+`just rust` needs nothing but cargo and `just ts` nothing but bun.
 
 Tests are offline, against Scryfall responses captured under
 `crates/*/tests/fixtures`. The parts that talk to Scryfall are examples, run by
@@ -61,7 +61,7 @@ artifact from whatever the cache holds, and needs no network at all.
 
 ## Commits
 
-Conventional commits. The subject carries it; explain *why* in the body only
+Conventional commits. The subject carries it; explain _why_ in the body only
 when the diff doesn't. One logical change per commit.
 
 Commits need a [DCO](https://developercertificate.org) sign-off, which

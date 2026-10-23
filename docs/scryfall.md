@@ -10,15 +10,15 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
   the client to resolve against Scryfall's API, a printing at a time into
   IndexedDB: CORS is `access-control-allow-origin: *` with a 48-hour
   `cache-control`, so an exotic card would cost one fetch per device, ever.
-  **Not built** — nothing in `web/` calls their API, and everything below
-  about non-English printings rests on it.
+  **Not built** — nothing in `web/` calls their API, and everything below about
+  non-English printings rests on it.
 - That means **All Cards (~392MB) is a build input rather than the cache**.
-  Default Cards is what the server holds and what every client gets; All
-  Cards is streamed and filtered to what Default Cards does not already
-  carry, to build the translations table and the language packs. The order
-  of it is [`search.md`](search.md). Phase 3 does not bring it back either:
-  Explore resolves a printing nobody here owns over the network, cached
-  lightly, rather than by carrying every printing offline.
+  Default Cards is what the server holds and what every client gets; All Cards
+  is streamed and filtered to what Default Cards does not already carry, to
+  build the translations table and the language packs. The order of it is
+  [`search.md`](search.md). Phase 3 does not bring it back either: Explore
+  resolves a printing nobody here owns over the network, cached lightly, rather
+  than by carrying every printing offline.
 - **Don't push catalog load onto Scryfall wholesale.** Per-keystroke search
   against their API would be externalizing our load onto a free service that
   publishes bulk files specifically so apps don't do that — and it's our API
@@ -28,35 +28,36 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
   weighs, is settled below.
 - Bulk files are **gzipped JSONL**, one card per line, served as
   `application/gzip` with an ETag and `accept-ranges`. Stream line by line;
-  parsing whole will OOM a 1GB box. The index entry gives
-  `jsonl_download_uri` and `compressed_size` — the older `download_uri` /
-  `content_encoding` pair is gone.
+  parsing whole will OOM a 1GB box. The index entry gives `jsonl_download_uri`
+  and `compressed_size` — the older `download_uri` / `content_encoding` pair is
+  gone.
 - **Card objects aren't uniformly shaped, and this bites on the first sync.**
-  `layout: reversible_card` has no top-level `oracle_id`, `cmc`,
-  `mana_cost`, `type_line`, `oracle_text`, `colors` or `image_uris` — all on
-  `card_faces`. Transform layouts have null top-level `mana_cost` and
-  face-level images. So `oracle_id` cannot be `NOT NULL`, and the cache needs
-  `layout` and `card_faces`.
+  `layout: reversible_card` has no top-level `oracle_id`, `cmc`, `mana_cost`,
+  `type_line`, `oracle_text`, `colors` or `image_uris` — all on `card_faces`.
+  Transform layouts have null top-level `mana_cost` and face-level images. So
+  `oracle_id` cannot be `NOT NULL`, and the cache needs `layout` and
+  `card_faces`.
 - **Taxonomies grow without notice**, so `layout`, `rarity`, `set_type`,
   `finishes`, `games` and `legalities` stay strings in the parse layer. A
   weekly unattended sync shouldn't fail on a new value, and two undocumented
-  layouts (`front_card`, `prepare`) turned up on the first real run. Colors
-  are the exception: the game's rules close that set.
+  layouts (`front_card`, `prepare`) turned up on the first real run. Colors are
+  the exception: the game's rules close that set.
 - Measured on 2026-09-18: 118,239 printings, streamed and parsed in seconds.
   The parse is not the expensive part of a refresh.
 - The bulk files include digital-only printings, tokens and art series. Which
-  of those search surfaces is settled below; the cache keeps all of them,
-  since a printing you can own has to be findable.
+  of those search surfaces is settled below; the cache keeps all of them, since
+  a printing you can own has to be findable.
 - Refresh weekly — Scryfall says gameplay data needs fetching "once per week or
   right after set releases". The API also requires an accurate `User-Agent`
-  naming the app, explicitly not a library default. `manaweb_scryfall::USER_AGENT`
-  is the only place it is spelled, and CI holds a tag to that same version.
+  naming the app, explicitly not a library default.
+  `manaweb_scryfall::USER_AGENT` is the only place it is spelled, and CI holds
+  a tag to that same version.
 - Don't ship image URIs; they derive from the card id as
   `cards.scryfall.io/{size}/front/{id[0]}/{id[1]}/{id}.jpg`, the query string
   being a cache-buster. Keep `image_status` — `missing`/`placeholder` printings
   have nothing behind that URL. Back faces use `/back/`, and `png` ends `.png`.
-  Every size is one shape whatever the card is: `normal` measured 488x680 on
-  a planar and a split printing as much as an ordinary one, so a client can
+  Every size is one shape whatever the card is: `normal` measured 488x680 on a
+  planar and a split printing as much as an ordinary one, so a client can
   reserve the box before the bytes land.
 - Import/export is client-side and costs us nothing. ManaBox CSV both ways
   first, since it's the likeliest source of an existing collection, then
@@ -67,13 +68,14 @@ terms are in [`ip.md`](ip.md); what the client does with the artifact is in
 
 Scryfall models the printing and stops there. A serialized card carries
 `serialized` in `promo_types`, collector numbers ending `z`, and
-`is:serialized` filters them. The Lord of the Rings 1-of-1 One
-Ring is collector number `0`.
+`is:serialized` filters them. The Lord of the Rings 1-of-1 One Ring is
+collector number `0`.
 
 **Neither the print-run size nor the individual number exists anywhere in
-Scryfall.** So "042/500" would be data we hold with nothing to validate it
-against, which is half of why a field for it is not worth having; the CSV
-survey below is the other half.
+Scryfall.**
+So "042/500" would be data we hold with nothing to validate it against, which
+is half of why a field for it is not worth having; the CSV survey below is the
+other half.
 
 ## Scryfall id migrations are smaller than they look
 
@@ -93,13 +95,13 @@ number and oracle id, so an orphan usually stays readable.
 Sample CSVs from five tools, since these are the import targets and their
 columns are the evidence for what a collection row needs.
 
-| | container | trade qty | tags | notes | serial | price paid | date added | date bought |
-|---|---|---|---|---|---|---|---|---|
-| ManaBox | Binder Name + Type | — | signed, altered, misprint | — | — | yes | yes | — |
-| Moxfield | — | yes | yes | — | — | yes | — | — |
-| Dragon Shield | Folder Name | yes | — | — | — | yes | — | yes |
-| MTGGoldfish | — | — | — | — | — | — | — | — |
-| TCGplayer | — | — | — | — | — | — | — | — |
+|               | container          | trade qty | tags                      | notes | serial | price paid | date added | date bought |
+| ------------- | ------------------ | --------- | ------------------------- | ----- | ------ | ---------- | ---------- | ----------- |
+| ManaBox       | Binder Name + Type | —         | signed, altered, misprint | —     | —      | yes        | yes        | —           |
+| Moxfield      | —                  | yes       | yes                       | —     | —      | yes        | —          | —           |
+| Dragon Shield | Folder Name        | yes       | —                         | —     | —      | yes        | —          | yes         |
+| MTGGoldfish   | —                  | —         | —                         | —     | —      | —          | —          | —           |
+| TCGplayer     | —                  | —         | —                         | —     | —      | —          | —          | —           |
 
 **No tracker records a serial number**, which settles the serialized question:
 treat it as the promo printing it is. Scryfall lists `serialized` alongside
@@ -108,7 +110,6 @@ quantity 1 — can't be expressed in a lexicon anyway, so it would be a
 client-side rule other implementers break.
 
 Two columns we would silently drop, both worth settling before import ships:
-
 - **Price paid**, in three of five, and Dragon Shield adds date bought. That is
   collection data rather than market data, so it is not the Phase 2 price
   cache.
@@ -122,8 +123,8 @@ field each.
 
 Only ManaBox's whole-collection export names a binder per row. A binder export
 and a list export carry the same sixteen columns with nothing distinguishing
-them, though one is cards you own in one container and the other references
-you may not own, so import asks which it is rather than sniffing the header.
+them, though one is cards you own in one container and the other references you
+may not own, so import asks which it is rather than sniffing the header.
 
 Import parses rather than splits: card names carry commas inside quotes, and
 nothing guarantees a line ending or rules out a leading BOM across five tools
@@ -151,11 +152,11 @@ how an import silently mangles a collection.
 
 Reading a file throws nothing away. Writing one has to choose.
 
-A record holds copies and a history of the lots they came in, where a row
-holds one figure, so a stack goes out as one row per lot. History need not sum
-to what is held, so lots are spent in order until the copies run out and
-whatever is left over is written with no figure beside it. A file says what
-you own now, never what you once did.
+A record holds copies and a history of the lots they came in, where a row holds
+one figure, so a stack goes out as one row per lot. History need not sum to
+what is held, so lots are spent in order until the copies run out and whatever
+is left over is written with no figure beside it. A file says what you own now,
+never what you once did.
 
 Where the copies run out first, the lots past that point are counted, as every
 other thing the file cannot carry is. Selling part of a stack is how a
@@ -165,16 +166,16 @@ paid is worth keeping, so the cap going unsaid would read as a clean export.
 Counted, though, only where there was a loss and the cap caused it. A lot
 stating no amount and no day said nothing for a row to lose, and where the
 format binds no column for what it does state, every lot went the same way
-whether the copies reached it or not — which is the dropped column's to
-report, since naming the cap there would point at the wrong cause. A lot
-counting no copies is neither, wherever it sits in a history: `minimum: 1`
-keeps it out of a valid record, and what a PDS hands back is unvalidated, so
-the same record read twice must not count two ways.
+whether the copies reached it or not — which is the dropped column's to report,
+since naming the cap there would point at the wrong cause. A lot counting no
+copies is neither, wherever it sits in a history: `minimum: 1` keeps it out of
+a valid record, and what a PDS hands back is unvalidated, so the same record
+read twice must not count two ways.
 
 One lot ending short of the copies it states is the case this leaves silent.
 Its amount and its day are in the row and only its count was shortened, which
-is a different loss in a different unit, and folding it in would make the
-count of purchases nothing in particular.
+is a different loss in a different unit, and folding it in would make the count
+of purchases nothing in particular.
 
 Rows go out in set and collector number order rather than the repo's, which is
 whatever order the records happened to be written in. Two exports of an
@@ -183,18 +184,18 @@ diffing.
 
 An export invents nothing it was not holding. A lot counting none of the
 copies, or a fraction of one, is a record some other client wrote, and
-subtracting it would put cards in the file that nobody owns, so it is spent
-for the whole copies it covers and no more.
+subtracting it would put cards in the file that nobody owns, so it is spent for
+the whole copies it covers and no more.
 
-Columns the format cannot fill are named before the file is written rather
-than noticed afterwards. A ManaBox file has nowhere to put a container, a
-note, a proxy flag, what you paid or the day you came by it, and dropping
-those quietly is the same defect as mangling an import. A printing the catalog
-cannot name is counted the same way and still written: the print id is on the
-record, so we can read the row back even with the name beside it blank. A
-finish the vendor has no word for is counted too, and that row really is lost
-on the way back in — the record says what it says, and guessing at `foil`
-would be the silent mangling the whole arrangement exists to avoid.
+Columns the format cannot fill are named before the file is written rather than
+noticed afterwards. A ManaBox file has nowhere to put a container, a note, a
+proxy flag, what you paid or the day you came by it, and dropping those quietly
+is the same defect as mangling an import. A printing the catalog cannot name is
+counted the same way and still written: the print id is on the record, so we
+can read the row back even with the name beside it blank. A finish the vendor
+has no word for is counted too, and that row really is lost on the way back in
+— the record says what it says, and guessing at `foil` would be the silent
+mangling the whole arrangement exists to avoid.
 
 ### A file of our own, for everything a vendor has no room for
 
@@ -207,81 +208,81 @@ columns would do, and keeping one path for both means the uncommon one is
 exercised.
 
 **One thing it writes and cannot read back.** A container is a record of its
-own, and a file carries the name rather than the key, so putting one back
-means deciding whether to create a container that is no longer there, match
-one by name, or ask. That is a question about importing rather than about
-writing a file, and it is open. The export says so rather than implying a
-round trip it does not make.
+own, and a file carries the name rather than the key, so putting one back means
+deciding whether to create a container that is no longer there, match one by
+name, or ask. That is a question about importing rather than about writing a
+file, and it is open. The export says so rather than implying a round trip it
+does not make.
 
 **`updatedAt` crosses, and the plan carries it.** An import entry held every
 field a card does except that one, on the reasoning that a plan is a card
 nobody has amended yet. A file from another tracker breaks it: a collection
-kept somewhere else for two years has been amended plenty, and the date is
-the only record of when. So the entry gained the field and
-`lexicon-check` now holds the two shapes equal rather than equal-but-one.
+kept somewhere else for two years has been amended plenty, and the date is the
+only record of when. So the entry gained the field and `lexicon-check` now
+holds the two shapes equal rather than equal-but-one.
 
 **What a merge does to that date is the part worth knowing.** Two rows of one
-file describing one stack change nothing by being read, so the stack keeps
-the later of the two dates — the dual of taking the earlier of two
-`createdAt`. A row that joins a stack already in the repo is different: the
-quantity really does change, at that moment, so the write stamps it with the
-time of the write and the file's date is discarded. Which means a collection
-moved between trackers keeps its modification history exactly where nothing
-merged, and resets it where something did. That is the honest answer rather
-than a tidy one, and there is no third option: a stack that gained copies
-today was last changed today.
+file describing one stack change nothing by being read, so the stack keeps the
+later of the two dates — the dual of taking the earlier of two `createdAt`. A
+row that joins a stack already in the repo is different: the quantity really
+does change, at that moment, so the write stamps it with the time of the write
+and the file's date is discarded. Which means a collection moved between
+trackers keeps its modification history exactly where nothing merged, and
+resets it where something did. That is the honest answer rather than a tidy
+one, and there is no third option: a stack that gained copies today was last
+changed today.
 
-Reading a lot's date arrives with it: a date on its own is a lot, where
-before a lot needed a figure. When copies were come by is the fact Dragon
-Shield exports and a drift-since-acquisition figure needs.
+Reading a lot's date arrives with it: a date on its own is a lot, where before
+a lot needed a figure. When copies were come by is the fact Dragon Shield
+exports and a drift-since-acquisition figure needs.
 
 **Writing a column is not the same as being able to read it.** A tag holding
-the comma the column is joined on comes back as two tags, and the export
-counts the copies before writing one. For a lot it asks the reader instead of
-listing the ways one fails: a figure with no currency beside it, a lot that is
-only a count, and what a lexicon permits without meaning to — an empty price
-for want of a `minLength`, a currency of three spaces for want of anything but
-a length. None is something this app writes and every one is a record another
-client may, so the rule worth holding to is the reader's, and this follows it
-rather than restating it.
+the comma the column is joined on comes back as two tags, and the export counts
+the copies before writing one. For a lot it asks the reader instead of listing
+the ways one fails: a figure with no currency beside it, a lot that is only a
+count, and what a lexicon permits without meaning to — an empty price for want
+of a `minLength`, a currency of three spaces for want of anything but a length.
+None is something this app writes and every one is a record another client may,
+so the rule worth holding to is the reader's, and this follows it rather than
+restating it.
 
 **A date is gated on its shape before it is parsed.** `Date.parse` reads `12`
 as a December, `Mar 3` as this year, and anything past the year 9999 as an
-expanded-year string no lexicon will take — and the refusal lands not where
-the file was read but inside the transaction that retires an import part,
-which pauses the import and pauses it again on every retry. So a cell is a
-date only if it starts with a four-digit year, and anything else is treated
-as the absence it probably is.
+expanded-year string no lexicon will take — and the refusal lands not where the
+file was read but inside the transaction that retires an import part, which
+pauses the import and pauses it again on every retry. So a cell is a date only
+if it starts with a four-digit year, and anything else is treated as the
+absence it probably is.
 
 **A tag is cut to bytes and a note between characters.** A lexicon's
-`maxLength` counts UTF-8, so 32 emoji are 128 of the 64 bytes a tag may have;
-a slice by length would pass the check here and be refused on arrival. The
-same slice through a surrogate pair leaves half a character behind, which
-nothing refuses and everything renders wrong.
+`maxLength` counts UTF-8, so 32 emoji are 128 of the 64 bytes a tag may have; a
+slice by length would pass the check here and be refused on arrival. The same
+slice through a surrogate pair leaves half a character behind, which nothing
+refuses and everything renders wrong.
 
 Nothing escapes a leading `=` or `@`. A spreadsheet reads those as formulas,
-but the only hand that writes a note into your collection is yours, and
-quoting them would break the round trip for every file that is read back
-rather than opened.
+but the only hand that writes a note into your collection is yours, and quoting
+them would break the round trip for every file that is read back rather than
+opened.
 
 A format names the header it writes rather than deriving one from its binding,
 because `ManaBox ID` is theirs to issue and ours goes out empty. A mapping
-built in the browser from a file's own headers has no such column, so it
-writes what it binds.
+built in the browser from a file's own headers has no such column, so it writes
+what it binds.
 
 Whether ManaBox will read ours is a question only their file answers, so the
 fixtures are imported, exported and held to themselves row by row. All 403
-match outside those two columns, the second being a currency they print
-against a blank price: no amount is no lot, so there is nothing to write the
-currency back from and the row says as little either way.
+match outside those two columns, the second being a currency they print against
+a blank price: no amount is no lot, so there is nothing to write the currency
+back from and the row says as little either way.
 
 ### A vendor's columns move, and a binding has to let them
 
 ManaBox's export was sixteen columns when the first of these fixtures was
-captured and is eighteen now: `Signed` and `Proxy` arrived in between, both
-of which a record here can hold — `signed` is one of the labels a tag may
-be, and a proxy has a field of its own. Until October 2026 neither was bound,
-so importing a current file dropped both without saying so.
+captured and is eighteen now: `Signed` and `Proxy` arrived in between, both of
+which a record here can hold — `signed` is one of the labels a tag may be, and
+a proxy has a field of its own. Until October 2026 neither was bound, so
+importing a current file dropped both without saying so.
 
 That is why a bound column is no longer the same thing as a required one.
 Anything a vendor added after we last looked is read when it is there and
@@ -289,44 +290,44 @@ missed when it is not, so a file written before the column existed is still
 that vendor's file. The alternative is a binding that can never grow without
 refusing every export older than itself.
 
-**Which columns those are belongs to the format, not to the field.** Two
-things excuse a missing column and they are not the same thing. A printing's
-set name, rarity and language are filled from the catalog and read back by
-nobody, so no format is recognized by them — that is a fact about the reader.
-`Signed` and `Proxy` arriving late is a fact about ManaBox, and saying so
-once for every format would have quietly stopped our own format requiring a
-column it has carried since the day it was written.
+**Which columns those are belongs to the format, not to the field.** Two things
+excuse a missing column and they are not the same thing. A printing's set name,
+rarity and language are filled from the catalog and read back by nobody, so no
+format is recognized by them — that is a fact about the reader. `Signed` and
+`Proxy` arriving late is a fact about ManaBox, and saying so once for every
+format would have quietly stopped our own format requiring a column it has
+carried since the day it was written.
 
 ### The one place our file is righter than theirs
 
 ManaBox refused six rows of an export in October 2026 for a language it would
-not take: `ph`, the Phyrexian of the Phyrexia: All Will Be One cards. The
-`ph` is ours. Their own export of that collection — the file those cards came
-from — does not use the code anywhere, and calls those exact print ids
-English, while Scryfall gives them `lang: ph` and a printed name in glyphs no
-font on the device will render.
+not take: `ph`, the Phyrexian of the Phyrexia: All Will Be One cards. The `ph`
+is ours. Their own export of that collection — the file those cards came from —
+does not use the code anywhere, and calls those exact print ids English, while
+Scryfall gives them `lang: ph` and a printed name in glyphs no font on the
+device will render.
 
-So ManaBox does not model Phyrexian. It writes English for a Phyrexian
-printing on the way out and refuses the true code on the way in, which is
-consistent rather than contradictory and simply coarser than the id it is
-carrying. Nothing here is wrong either: an import reads the language off the
-print id and never off the column, which `data-model.md` settles, so the id
-carried a truth the file beside it had lost.
+So ManaBox does not model Phyrexian. It writes English for a Phyrexian printing
+on the way out and refuses the true code on the way in, which is consistent
+rather than contradictory and simply coarser than the id it is carrying.
+Nothing here is wrong either: an import reads the language off the print id and
+never off the column, which `data-model.md` settles, so the id carried a truth
+the file beside it had lost.
 
 What to do about it is the user's. The column says what the card is, and an
 export offers to say English instead for the languages a vendor is known to
 turn down — which is what that vendor already calls those printings, so the
 offer is to speak its vocabulary rather than to invent anything. It is off
-unless asked for, named with the count it would change, and the list of
-refused languages belongs to the format rather than to the exporter.
+unless asked for, named with the count it would change, and the list of refused
+languages belongs to the format rather than to the exporter.
 
 ### What you paid is not what it was worth
 
 ManaBox's `Purchase price` holds two different things. Left alone it fills in
 the market price at the moment you add a card, so a column named for what you
 paid is often just a snapshot, and afterwards the two are indistinguishable.
-That makes its profit-and-loss really "market drift since I added it" wearing
-a P&L label.
+That makes its profit-and-loss really "market drift since I added it" wearing a
+P&L label.
 
 Measured across a real export: 251 identity keys repeat, and 216 of them differ
 only in price. The same card at a different figure each time is a snapshot of
@@ -361,19 +362,19 @@ Moxfield's `Last Modified` seeds `updatedAt`.
 
 ## Oracle and printing are two tables
 
-Which fields belong to a card rather than a printing was measured, not
-guessed: group every printing by `oracle_id` and count the columns that
-disagree. Six never do — `color_identity`, `defense`, `edhrec_rank`,
-`game_changer`, `keywords`, `reserved`. Ten more disagree for 71 cards, and
-every one of those 71 is a reversible printing sharing an id with a normal
-one, whose nulls are almost the whole disagreement.
+Which fields belong to a card rather than a printing was measured, not guessed:
+group every printing by `oracle_id` and count the columns that disagree. Six
+never do — `color_identity`, `defense`, `edhrec_rank`, `game_changer`,
+`keywords`, `reserved`. Ten more disagree for 71 cards, and every one of those
+71 is a reversible printing sharing an id with a normal one, whose nulls are
+almost the whole disagreement.
 
-**`name` is the one that disagrees by value rather than by absence**, and
-that was missed until ManaBox refused an export in October 2026. A reversible
+**`name` is the one that disagrees by value rather than by absence**, and that
+was missed until ManaBox refused an export in October 2026. A reversible
 printing is named for both its sides, which are the same card twice, so
 Scryfall calls it `Blood Crypt // Blood Crypt` — a fact about the printing
-wearing the shape of a fact about the card. Taken as the card's name it makes
-a name no tracker and no search will match.
+wearing the shape of a fact about the card. Taken as the card's name it makes a
+name no tracker and no search will match.
 
 Counting them wants care. 2,255 cards in the cache are named `X // X` and
 almost all of them rightly are: 2,232 are art series and fifteen are
@@ -389,27 +390,27 @@ nowhere. Neither is `layout` — a card printed both normally and reversibly has
 two shapes, and that is a fact about the objects.
 
 **The split repairs reversible printings rather than merely deduplicating
-them.** They carry no top-level gameplay data at all, so there was nowhere for
-it to come from; the card's row is filled from the best-ranked printing and any
-field still missing from whichever printing has it. Every one of them now
-resolves to a card with a type line.
+them.**
+They carry no top-level gameplay data at all, so there was nowhere for it to
+come from; the card's row is filled from the best-ranked printing and any field
+still missing from whichever printing has it. Every one of them now resolves to
+a card with a type line.
 
 Best-ranked is not first-seen: a printing arriving later can displace what
-earlier ones established. The two merge either way round rather than the
-later one starting over, or the file's order would decide what a card's type
-line is.
+earlier ones established. The two merge either way round rather than the later
+one starting over, or the file's order would decide what a card's type line is.
 
 **A reversible printing ranks below the card it depicts**, which is the last
 thing the order asks before falling back to the date. It carries no top-level
 gameplay data, so it is the worst printing to take a card's fields from, and
 its name is the printing's rather than the card's. Without that, eight cards
 were named twice over, in two shapes. Three are a tie: Scryfall shipped a
-reversible Blood Crypt in the same expansion, on the same day, as the
-ordinary one, so the two agreed on every count the order knew about and
-whichever the file listed first won. The other five are not close — a Secret
-Lair from 2025 against a commander printing from 2019 — and the date alone
-handed the card to the novelty, whatever order they arrived in. After the
-change no card in the cache takes its fields from a reversible printing.
+reversible Blood Crypt in the same expansion, on the same day, as the ordinary
+one, so the two agreed on every count the order knew about and whichever the
+file listed first won. The other five are not close — a Secret Lair from 2025
+against a commander printing from 2019 — and the date alone handed the card to
+the novelty, whatever order they arrived in. After the change no card in the
+cache takes its fields from a reversible printing.
 
 Measured: the database drops by about an eighth and the client's gameplay
 payload by nearly two thirds — the artifact is the real prize, being the
@@ -424,10 +425,10 @@ at sync time, so search needs no window functions and no `bm25` gymnastics.
 Two files under one version. Positional rows with their column names in a
 header, written uncompressed for a CDN to compress.
 
-| | rows | uncompressed |
-|---|---|---|
-| cards | 37,836 | 4.99MB |
-| prints | 109,271 | 8.55MB |
+|        | rows    | uncompressed |
+| ------ | ------- | ------------ |
+| cards  | 37,836  | 4.99MB       |
+| prints | 109,271 | 8.55MB       |
 
 Rows and bytes off the manifest of the 2026-09-29 sync, which compresses to
 4.21MB — near the top of the 4-5MB target in
@@ -440,13 +441,13 @@ the leading row is the printing search would show. That is why the pair carries
 one version and why the build refuses to publish runs that don't add up: an
 index read against the wrong ordering is wrong quietly.
 
-**That order is written twice** — in Rust to pick the representative, in SQL
-to number the rows — and had drifted for 1,907 of 37,852 cards, whose run led
-with a promo or a foil-only variant where search named the ordinary printing.
-The Rust half stopped at the release date and left the rest to the file's
-order; it now ends in the printing id, which is also what keeps a tie off
-SQLite, since a file addressed by its own bytes would be renamed for nothing.
-The SQL half in turn gained the clause demoting a reversible printing.
+**That order is written twice** — in Rust to pick the representative, in SQL to
+number the rows — and had drifted for 1,907 of 37,852 cards, whose run led with
+a promo or a foil-only variant where search named the ordinary printing. The
+Rust half stopped at the release date and left the rest to the file's order; it
+now ends in the printing id, which is also what keeps a tie off SQLite, since a
+file addressed by its own bytes would be renamed for nothing. The SQL half in
+turn gained the clause demoting a reversible printing.
 
 **What holds them together is one card per key, read back whole.** A card of a
 single printing leads its run under any order at all, and a pair of them pins
@@ -455,9 +456,9 @@ fixture is a card whose printings separate on one key each, in sequence, and
 the test reads the run rather than what leads it. Two implementations agreeing
 is not the same as either being right.
 
-**Names are per card. Printed names are per printing** — the few paper printings
-carry one, 32KB in total, so a Japanese card is found by the name on its own
-printing and no per-language index is needed.
+**Names are per card. Printed names are per printing** — the few paper
+printings carry one, 32KB in total, so a Japanese card is found by the name on
+its own printing and no per-language index is needed.
 
 **Ids stay 36-character hex.** Base64 of the UUID bytes is smaller but costs
 every consumer a decode before it can write a `scryfallId` or build an image
@@ -494,95 +495,98 @@ arrive.
 ## What to cache, and when
 
 The pair the client fetches today is the floor: names, types and printings,
-which search and collection tracking cannot work without. Everything past it
-is opt-in, because the point of a catalog on the device is that someone chose
-to hold it.
+which search and collection tracking cannot work without. Everything past it is
+opt-in, because the point of a catalog on the device is that someone chose to
+hold it.
 
-| part | raw | brotli | when |
-|---|---|---|---|
-| cards, prints | 13.54MB | 4.21MB | always |
-| text — oracle text | 5.70MB | 0.57MB | opt-in: offline viewing, text search |
-| names, per language | | ~300KB each | opt-in: chosen at onboarding |
-| artwork hashes | 1.78MB | 1.47MB | opt-in: the scanner |
-| card images | unbounded | unbounded | opt-in, per card, the service worker's |
+| part                | raw       | brotli      | when                                   |
+| ------------------- | --------- | ----------- | -------------------------------------- |
+| cards, prints       | 13.54MB   | 4.21MB      | always                                 |
+| text — oracle text  | 5.70MB    | 0.57MB      | opt-in: offline viewing, text search   |
+| names, per language |           | ~300KB each | opt-in: chosen at onboarding           |
+| artwork hashes      | 1.78MB    | 1.47MB      | opt-in: the scanner                    |
+| card images         | unbounded | unbounded   | opt-in, per card, the service worker's |
 
 Raw matters as much as brotli: one is the download and the other is what the
 device keeps. Text is nearly half again on disk and a seventh on the wire,
 which is small in absolute terms and still a choice worth offering.
 
 **Which printings have a second image is a layout question the layout cannot
-quite answer.** Counted over the cache: `transform` 1,060 of 1,060,
-`modal_dfc` 327, `double_faced_token` 121 and `reversible_card` 83 all carry
-one on every row, and no other layout carries one at all — `front_card` and
-`prepare` are recent arrivals that do not. `art_series` is the exception that
-makes the rule untrustworthy: 2,608 of 2,775 have a back, and of the 167 that
-do not, 162 are `missing` and never render anyway, leaving five printings
-whose layout promises an image Scryfall does not hold. So the client treats
-the layout as a reason to offer the control and the image's own failure to
-load as the answer, rather than keeping a list it would have to be right
-about. A layout added later shows no control until someone counts again,
-which costs a feature nobody sees rather than a broken image everyone does.
+quite answer.**
+Counted over the cache: `transform` 1,060 of 1,060, `modal_dfc` 327,
+`double_faced_token` 121 and `reversible_card` 83 all carry one on every row,
+and no other layout carries one at all — `front_card` and `prepare` are recent
+arrivals that do not. `art_series` is the exception that makes the rule
+untrustworthy: 2,608 of 2,775 have a back, and of the 167 that do not, 162 are
+`missing` and never render anyway, leaving five printings whose layout promises
+an image Scryfall does not hold. So the client treats the layout as a reason to
+offer the control and the image's own failure to load as the answer, rather
+than keeping a list it would have to be right about. A layout added later shows
+no control until someone counts again, which costs a feature nobody sees rather
+than a broken image everyone does.
 
 Three things share a word otherwise, so each gets its own: a **card image** is
-a face rendered by Scryfall, six sizes of it, hotlinked and never re-served;
-an **artwork** is the illustration alone and the printings that share it,
-which `illustration_id` names and the printings file numbers; the **artwork
-index** is the part above. Scryfall themselves now serve a size called `art`,
-which is why the bare word is no use to us.
+a face rendered by Scryfall, six sizes of it, hotlinked and never re-served; an
+**artwork** is the illustration alone and the printings that share it, which
+`illustration_id` names and the printings file numbers; the
+**artwork
+index**
+is the part above. Scryfall themselves now serve a size called `art`, which is
+why the bare word is no use to us.
 
 ## Three features are waiting on one decision
 
 Faces block agreeing with Scryfall on a two-sided card, oracle text blocks
 `o:`, and an illustration group per printing blocks the scanner: its whole
 approach is art narrowing to the printings that share one, with the collector
-line picking among those. Each asks the same thing — base pair, or opt-in
-part — and answering it three times is how a format stops cohering.
+line picking among those. Each asks the same thing — base pair, or opt-in part
+— and answering it three times is how a format stops cohering.
 
 Measured 2026-09-20, each built as the file it would be and compressed the way
 the CDN compresses:
 
-| candidate | rows | raw | brotli | on the base as it then was |
-|---|---|---|---|---|
-| faces, the fields the rules read | 3,295 cards | 0.67MB | 0.10MB | +2.5% |
-| illustration group | 108,883 printings | 0.63MB | 0.04MB | +1.0% |
-| keywords | 37,821 cards | 0.35MB | 0.05MB | +1.2% |
-| oracle text | 37,821 cards | 5.70MB | 0.57MB | +14% |
+| candidate                        | rows              | raw    | brotli | on the base as it then was |
+| -------------------------------- | ----------------- | ------ | ------ | -------------------------- |
+| faces, the fields the rules read | 3,295 cards       | 0.67MB | 0.10MB | +2.5%                      |
+| illustration group               | 108,883 printings | 0.63MB | 0.04MB | +1.0%                      |
+| keywords                         | 37,821 cards      | 0.35MB | 0.05MB | +1.2%                      |
+| oracle text                      | 37,821 cards      | 5.70MB | 0.57MB | +14%                       |
 
-**The estimate for text was three times too pessimistic** — 0.57MB against
-the 1.5MB guessed at before anyone built the file. Oracle text is the most
+**The estimate for text was three times too pessimistic** — 0.57MB against the
+1.5MB guessed at before anyone built the file. Oracle text is the most
 repetitive thing we ship and brotli eats it. The table above is the corrected
 version.
 
 **Faces, illustration groups and keywords earn the base pair.** Together they
 are 0.19MB, which puts the download at 4.20MB and leaves the 4-5MB target
 alone. None of them is a feature someone might not want: without faces a
-two-sided card answers no question about its colors or its types, and without
-a group number an artwork match names a card where a scanner needs a
-printing.
-Few cards carry faces the rules ever read, which is why the dominant class
-of divergence costs almost nothing to close — what it came to is below.
+two-sided card answers no question about its colors or its types, and without a
+group number an artwork match names a card where a scanner needs a printing.
+Few cards carry faces the rules ever read, which is why the dominant class of
+divergence costs almost nothing to close — what it came to is below.
 
 **Two of the three are built, and the estimates were out in both
-directions.** The illustration group came in at the 0.63MB raw it predicted
-but 0.12MB brotli rather than 0.04MB; keywords at 0.18MB raw rather than
-0.35MB, and 0.04MB brotli. Measured 2026-09-22 as columns in the files
-themselves rather than as files of their own, which is the difference. The
-pair is 4.19MB compressed with both in, against 4.03MB without.
+directions.**
+The illustration group came in at the 0.63MB raw it predicted but 0.12MB brotli
+rather than 0.04MB; keywords at 0.18MB raw rather than 0.35MB, and 0.04MB
+brotli. Measured 2026-09-22 as columns in the files themselves rather than as
+files of their own, which is the difference. The pair is 4.19MB compressed with
+both in, against 4.03MB without.
 
-**Oracle text stays opt-in**, being a seventh of the base for two features
-that a collection tracker does not need. Cheap enough now that the question is
-worth revisiting if a third feature ever wants it.
+**Oracle text stays opt-in**, being a seventh of the base for two features that
+a collection tracker does not need. Cheap enough now that the question is worth
+revisiting if a third feature ever wants it.
 
-**Bytes are the cheap part.** Only the group number needed the cache to
-change, and it has one: `illustration_id` is parsed, stored and lifted off the
-front face where a two-faced layout carries no top-level one. Faces and
-keywords were already held. The work that matters is in the client, where a
-term has to be satisfied by a card or by any one of its faces — a change to
-how the tree is walked, not a column to read.
+**Bytes are the cheap part.** Only the group number needed the cache to change,
+and it has one: `illustration_id` is parsed, stored and lifted off the front
+face where a two-faced layout carries no top-level one. Faces and keywords were
+already held. The work that matters is in the client, where a term has to be
+satisfied by a card or by any one of its faces — a change to how the tree is
+walked, not a column to read.
 
-**The column arrives empty, though.** It comes from Scryfall and nothing in
-the cache derives it, so a database synced before it existed reads null until
-the next weekly refresh. The artifact that names a group therefore cannot be
+**The column arrives empty, though.** It comes from Scryfall and nothing in the
+cache derives it, so a database synced before it existed reads null until the
+next weekly refresh. The artifact that names a group therefore cannot be
 published from a cache that has not refreshed since — an ordering that binds
 the deploy, the way the prefix rule binds the upload.
 
@@ -599,51 +603,49 @@ forgotten, and being wrong costs one extra download of a file that changes
 weekly anyway.
 
 **A sync refuses on four counts now**, all of them rolled back by the one
-transaction so the published catalog stays where it was. Nothing written at
-all was the first. The second is a file that lost more than a hundredth of
-itself on the way in: one odd record a week is what the skipped count exists
-to survive, but a parser that stopped reading a field Scryfall renamed loses
-most of a file rather than a hundredth of one, and that share is only read
-off files long enough for it to mean something. The third is a catalog that
-came back more than a twentieth shorter than the last — printings do leave,
-142 of them in the week to 2026-09-30, but not in thousands.
+transaction so the published catalog stays where it was. Nothing written at all
+was the first. The second is a file that lost more than a hundredth of itself
+on the way in: one odd record a week is what the skipped count exists to
+survive, but a parser that stopped reading a field Scryfall renamed loses most
+of a file rather than a hundredth of one, and that share is only read off files
+long enough for it to mean something. The third is a catalog that came back
+more than a twentieth shorter than the last — printings do leave, 142 of them
+in the week to 2026-09-30, but not in thousands.
 
 **The fourth is the one the other three cannot see.** A rename only loses
-records where the field is required to parse. `cmc`, `type_line`,
-`legalities`, `games` and `finishes` are each optional or defaulted, so a
-renamed one costs nothing: every record reads, the skipped count stays at
-zero, the catalog is the same size as last week, and every card in it has no
-mana value, or no legality, or no finish to pick. So the sync counts how many
-records carried each of the five and refuses a file where any of those counts
-is zero, naming all of them: a file restructured rather than renamed should
-cost one refusal and not one download per field.
+records where the field is required to parse. `cmc`, `type_line`, `legalities`,
+`games` and `finishes` are each optional or defaulted, so a renamed one costs
+nothing: every record reads, the skipped count stays at zero, the catalog is
+the same size as last week, and every card in it has no mana value, or no
+legality, or no finish to pick. So the sync counts how many records carried
+each of the five and refuses a file where any of those counts is zero, naming
+all of them: a file restructured rather than renamed should cost one refusal
+and not one download per field.
 
-**Zero is the whole test, and it needs no calibration.** A rename takes a
-field from every record at once, so one record still carrying it means the
-cache is still reading it; nothing sits between the two states for a
-threshold to be wrong about. Healthy, measured on the server's own cache on
-2026-10-05: 118,467 printings carry a legality, 118,464 a finish, 118,447 a
-game, and all 38,705 cards a mana value and a type line. Broken is 0 in every
-case.
+**Zero is the whole test, and it needs no calibration.** A rename takes a field
+from every record at once, so one record still carrying it means the cache is
+still reading it; nothing sits between the two states for a threshold to be
+wrong about. Healthy, measured on the server's own cache on 2026-10-05: 118,467
+printings carry a legality, 118,464 a finish, 118,447 a game, and all 38,705
+cards a mana value and a type line. Broken is 0 in every case.
 
-All five are counted off the record as it is read, before the schema has had
-an opinion on it, because the question is what Scryfall sent rather than what
-the cache kept. A reversible printing carries no `cmc` or `type_line` of its
-own and takes both from a sibling, which at this bound changes nothing: every
-other printing has them, so a count reaches zero only on a rename. Counting
-after the card is assembled would have answered the same question through our
-own merge, and a bug in that would then read as Scryfall having changed
-something.
+All five are counted off the record as it is read, before the schema has had an
+opinion on it, because the question is what Scryfall sent rather than what the
+cache kept. A reversible printing carries no `cmc` or `type_line` of its own
+and takes both from a sibling, which at this bound changes nothing: every other
+printing has them, so a count reaches zero only on a rename. Counting after the
+card is assembled would have answered the same question through our own merge,
+and a bug in that would then read as Scryfall having changed something.
 
-`oracle_id` is deliberately not among them. A printing naming no oracle is
-one the schema refuses, so losing it shows up as a skipped record and the
-second guard already answers for it.
+`oracle_id` is deliberately not among them. A printing naming no oracle is one
+the schema refuses, so losing it shows up as a skipped record and the second
+guard already answers for it.
 
-**A healthy sync skips nothing at all.** Measured on the server on
-2026-10-02, over a full file into an empty cache: 118,467 printings written
-and 0 skipped. So the hundredth is three orders of magnitude of headroom
-rather than a guess near the line, which is the right side to be wrong on
-for a guard nobody is watching.
+**A healthy sync skips nothing at all.** Measured on the server on 2026-10-02,
+over a full file into an empty cache: 118,467 printings written and 0 skipped.
+So the hundredth is three orders of magnitude of headroom rather than a guess
+near the line, which is the right side to be wrong on for a guard nobody is
+watching.
 
 **It is still one measurement**, and one is not a trend. `sync_history` now
 takes a row per attempt — what landed, what was skipped, what the cache held
@@ -657,30 +659,29 @@ four downloads a day, shouting in the log, against a catalog nobody looked at.
 It is countable now, and the line the sync logs says which attempt it is.
 
 **Not every printing has one.** Measured over a full sync on 2026-09-22:
-117,860 of 118,609 carry an illustration, across some 52,400 distinct
-artworks — a count that moved by twelve overnight, Scryfall having
-reassigned them.
-The 749 that do not are ordinary cards with ordinary images, mostly in one-off
+117,860 of 118,609 carry an illustration, across some 52,400 distinct artworks
+— a count that moved by twelve overnight, Scryfall having reassigned them. The
+749 that do not are ordinary cards with ordinary images, mostly in one-off
 promotional sets, so it is an omission upstream rather than a shape we failed
-to read. An art match can say nothing about 0.7% of what someone might hold
-up, and the collector line is all that names those.
+to read. An art match can say nothing about 0.7% of what someone might hold up,
+and the collector line is all that names those.
 
 **Settle it before the scanner index exists, not after.** That artifact is
-gigabytes pulled at a throttle and hours of hashing, and what it keys on is
-the printings an illustration group names. Deciding first costs nothing;
-deciding after costs the rebuild.
+gigabytes pulled at a throttle and hours of hashing, and what it keys on is the
+printings an illustration group names. Deciding first costs nothing; deciding
+after costs the rebuild.
 
 ### None of it scales the same way with language
 
-Those figures are measured against the cache, which holds Default Cards and
-is therefore 97.6% English. What each one does when every language arrives is
-not the same answer, and Scryfall's own counts on 2026-09-20 say which:
+Those figures are measured against the cache, which holds Default Cards and is
+therefore 97.6% English. What each one does when every language arrives is not
+the same answer, and Scryfall's own counts on 2026-09-20 say which:
 
-| | English | every language | ratio |
-|---|---|---|---|
-| paper printings | 98,578 | 521,724 | 5.3× |
-| distinct cards | 32,992 | ~33,000 | 1× |
-| distinct artworks | 48,478 | 48,478 | 1× |
+|                   | English | every language | ratio |
+| ----------------- | ------- | -------------- | ----- |
+| paper printings   | 98,578  | 521,724        | 5.3×  |
+| distinct cards    | 32,992  | ~33,000        | 1×    |
+| distinct artworks | 48,478  | 48,478         | 1×    |
 
 **Cards and artworks do not scale, printings do.** A Japanese printing is
 another printing of a card we already hold, sharing its art; Japanese covers
@@ -688,13 +689,13 @@ another printing of a card we already hold, sharing its art; Japanese covers
 illustration index stays the size it is, and only the prints file multiplies —
 2.73MB becoming something near 14MB, which no budget survives.
 
-**The scanner does not need them anyway.** What it reads off a card is the
-art, the set code, the collector number and the language glyph, and those
-three together name a printing outright. Turning that name into an id is one
-call to Scryfall, the same per-device path a non-English printing takes above
-and the same one nothing has built. A thousand scanned Japanese cards is a
-hundred seconds of it, once, against fourteen megabytes every user would carry
-whether or not they own a single one.
+**The scanner does not need them anyway.** What it reads off a card is the art,
+the set code, the collector number and the language glyph, and those three
+together name a printing outright. Turning that name into an id is one call to
+Scryfall, the same per-device path a non-English printing takes above and the
+same one nothing has built. A thousand scanned Japanese cards is a hundred
+seconds of it, once, against fourteen megabytes every user would carry whether
+or not they own a single one.
 
 **So a language pack, and the useful one is printings rather than text.** Each
 major language runs 15,000 to 62,000 paper printings, so Japanese comes to
@@ -704,42 +705,44 @@ pack per language is near the English 0.57MB whatever the language, and all of
 them at once would be some eight megabytes of text in languages its reader
 cannot read. Per language, opt-in, both of them.
 
-Either pack has to be built from All Cards, which is unrelated to this
-decision and wanted anyway — see below.
+Either pack has to be built from All Cards, which is unrelated to this decision
+and wanted anyway — see below.
 
 **Settled: everything past the default printing is a pack.** Names, text and
-the scan index are one per language, chosen at onboarding or added later
-from settings, because a name is worth 26 bytes a card to somebody who reads
-that language and nothing at all to anybody else. Names ride at roughly
-300KB a language — the base stays the base, and a reader who wants Japanese
-asks for Japanese.
+the scan index are one per language, chosen at onboarding or added later from
+settings, because a name is worth 26 bytes a card to somebody who reads that
+language and nothing at all to anybody else. Names ride at roughly 300KB a
+language — the base stays the base, and a reader who wants Japanese asks for
+Japanese.
 
-**Default Cards is not the English file**, which is the trap in filtering
-All Cards against it. It carries one row per printing in English *where that
-printing has an English version*, so 2,635 paper rows are not English at
-all — `fbb`, `4bb`, the Japanese-exclusive printings — and no set and
-collector number appears twice under two languages. Filtering All Cards on
-`lang <> 'en'` would therefore import those 2,635 a second time. What the
-filter has to exclude is what the cache already holds, not what is English.
+**Default Cards is not the English file**, which is the trap in filtering All
+Cards against it. It carries one row per printing in English
+_where that
+printing has an English version_,
+so 2,635 paper rows are not English at all — `fbb`, `4bb`, the
+Japanese-exclusive printings — and no set and collector number appears twice
+under two languages. Filtering All Cards on `lang <> 'en'` would therefore
+import those 2,635 a second time. What the filter has to exclude is what the
+cache already holds, not what is English.
 
 ### Colors are stored as the wrong thing
 
 Five bits say what a canonical WUBRG string says, in one integer rather than a
 string to scan, and a query comparing two color sets becomes a bitwise test
-instead of a character walk. The rules close the set at five, so the column
-can never need a sixth. A card with no face of its own keeps its null, which
-is the one thing a mask cannot spell.
+instead of a character walk. The rules close the set at five, so the column can
+never need a sixth. A card with no face of its own keeps its null, which is the
+one thing a mask cannot spell.
 
-The query language is unaffected: `c:rg` is still letters, because that is
-what a person types. Only what the row holds changes.
+The query language is unaffected: `c:rg` is still letters, because that is what
+a person types. Only what the row holds changes.
 
 **cards and prints are one part in two files**, always fetched together:
 printings are grouped by card in the cards file's order, so either alone is
 useless. An optional part keys by position into the pair — a row of the cards
 file, or a printing's artwork group — which makes it valid against that export
-and no other. The content-addressed names are what enforce that, and every
-part repeats the version in its header so a mismatched set fails loudly
-instead of reading the wrong rows.
+and no other. The content-addressed names are what enforce that, and every part
+repeats the version in its header so a mismatched set fails loudly instead of
+reading the wrong rows.
 
 **Oracle text isn't the search default**, but offline card viewing needs it,
 which makes it one opt-in rather than two features. Text search is a different
@@ -761,10 +764,10 @@ printings: 14KB at `small`, 105KB at `normal`, 173KB at `large`, 1.19MB at
 answer. They stay the client's own copies whatever the tier — see
 [`ip.md`](ip.md).
 
-**The manifest names the pair and whatever else the export produced.** An
-entry past the pair is optional, so a client reading a manifest without one
-has no scanner rather than no catalog. It is rebuilt every export, so a part
-added later costs nothing in the shape.
+**The manifest names the pair and whatever else the export produced.** An entry
+past the pair is optional, so a client reading a manifest without one has no
+scanner rather than no catalog. It is rebuilt every export, so a part added
+later costs nothing in the shape.
 
 **The artwork index is the first of those.** One entry per artwork, in the
 order the printings file numbers them, carrying four 64-bit hashes each: the
@@ -780,31 +783,31 @@ lie and only the last is addressed a byte at a time. `fronts` in the header is
 how many of the entries a printing can name, which is the count the printings
 file's own column has to agree with.
 
-**The header also names what filled it.** Two sides compute these from the
-same artwork and never compare notes, so a builder and a reader that resample
-or transform even slightly differently retrieve nothing at all — and a lookup
-with no match cannot say that is why. What the header carries is therefore the
+**The header also names what filled it.** Two sides compute these from the same
+artwork and never compare notes, so a builder and a reader that resample or
+transform even slightly differently retrieve nothing at all — and a lookup with
+no match cannot say that is why. What the header carries is therefore the
 hashing itself: one picture the code states rather than ships, hashed and
 folded to a word. Being made of the hashing it cannot be left behind by a
 change to it, and a reader that comes out differently refuses the file. The
-hash store carries the same word, which is what stops a top-up run filling
-half of one store with each.
+hash store carries the same word, which is what stops a top-up run filling half
+of one store with each.
 
-That picture is in color, so the word covers reaching a single channel as
-well as what happens after. The builder decodes a JPEG and a browser reads a
-canvas, and the weights and the rounding between them are as much a part of
-the answer as the transform is — a decoder's own conversion moving under a
-version bump would have re-keyed the index with nothing to say so.
+That picture is in color, so the word covers reaching a single channel as well
+as what happens after. The builder decodes a JPEG and a browser reads a canvas,
+and the weights and the rounding between them are as much a part of the answer
+as the transform is — a decoder's own conversion moving under a version bump
+would have re-keyed the index with nothing to say so.
 
 **Either side of a card can be matched.** 3,418 artworks sit on the back of
-one, and a pair names each against the artwork on its front, so a photograph
-of the back resolves to the same printings. A pair adds to what the back
-resolves to rather than replacing it, because 86 artworks are the front of one
-printing and the back of another — which is also why the number a match lands
-on never says by itself which of the two it is, and the pairs are read
-whatever it is. The printings file gains nothing from any of this: its column
-still names the one artwork on the front, and a back that is only ever a back
-takes a number past every front, where no column reaches.
+one, and a pair names each against the artwork on its front, so a photograph of
+the back resolves to the same printings. A pair adds to what the back resolves
+to rather than replacing it, because 86 artworks are the front of one printing
+and the back of another — which is also why the number a match lands on never
+says by itself which of the two it is, and the pairs are read whatever it is.
+The printings file gains nothing from any of this: its column still names the
+one artwork on the front, and a back that is only ever a back takes a number
+past every front, where no column reaches.
 
 ## Open questions
 
@@ -822,17 +825,18 @@ one like it, but a version of its own would say so directly rather than
 inferring it from a table's absence.
 
 **Faces cost a third of the estimate, because most of what has them does not
-need them.** The estimate counted every card with a `card_faces` array, and
-two thirds of those are art series, which no rules question is ever asked of.
-Excluding them and keeping cards and tokens leaves 1,025 cards and 2,055
-faces: 0.30MB raw and 0.02MB brotli, against 0.67MB and 0.10MB predicted.
+need them.**
+The estimate counted every card with a `card_faces` array, and two thirds of
+those are art series, which no rules question is ever asked of. Excluding them
+and keeping cards and tokens leaves 1,025 cards and 2,055 faces: 0.30MB raw and
+0.02MB brotli, against 0.67MB and 0.10MB predicted.
 
-They ride as a column on the card row rather than a section of their own,
-which was not a choice — the reader takes the rows array as the file's last
-key, so a second array after it could not be found. Read off whatever printing
-carries them, only three cards disagreeing between printings and only about a
-face's colors, where the printing naming them wins and a face naming none
-takes them from its cost, as the rules do.
+They ride as a column on the card row rather than a section of their own, which
+was not a choice — the reader takes the rows array as the file's last key, so a
+second array after it could not be found. Read off whatever printing carries
+them, only three cards disagreeing between printings and only about a face's
+colors, where the printing naming them wins and a face naming none takes them
+from its cost, as the rules do.
 
 **A face with neither colors nor a cost takes the card's.** Scryfall gives a
 face `colors` only where the game colors that face separately, so the absence
@@ -840,21 +844,21 @@ is a statement rather than a gap: no flip card carries the key on either half,
 because a flip card is printed with one cost and one color for both (CR
 710.1c). Reading the cost alone made all 26 of them colorless on the flipped
 side, which per-face matching then answered `c=c` for. `split` and `prepare`
-give every half a cost, so the cost still settles those; `adventure` gives
-one to all but six faces, the Town lands whose adventure half carries the
-cost, and those six sit on colorless cards, so falling through to the card
-is what they want anyway. Only `flip` needs the fallback and only `flip` and
-those six reach it.
+give every half a cost, so the cost still settles those; `adventure` gives one
+to all but six faces, the Town lands whose adventure half carries the cost, and
+those six sit on colorless cards, so falling through to the card is what they
+want anyway. Only `flip` needs the fallback and only `flip` and those six reach
+it.
 
 **Carrying them is not showing them.** A back face has its own image, under
 `/back/` rather than `/front/` of the same id, and the detail view draws one
-side and offers no way to turn a card over. That is a second `todo(faces)`,
-at the function deriving the URL.
+side and offers no way to turn a card over. That is a second `todo(faces)`, at
+the function deriving the URL.
 
-**Repeated tokens.** Tokens from different sets carry different oracle ids,
-so grouping doesn't collapse them: searching "goblin" still returns five rows
-of Goblin token. Grouping them wants a key that isn't `oracle_id` — name plus
-type plus power and toughness, probably — and that's guesswork until someone
+**Repeated tokens.** Tokens from different sets carry different oracle ids, so
+grouping doesn't collapse them: searching "goblin" still returns five rows of
+Goblin token. Grouping them wants a key that isn't `oracle_id` — name plus type
+plus power and toughness, probably — and that's guesswork until someone
 complains.
 
 ## References

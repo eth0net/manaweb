@@ -1,20 +1,20 @@
 # Docs
 
-One file per subject. All of it records decisions and *why*, so future work
+One file per subject. All of it records decisions and _why_, so future work
 doesn't re-derive them; none of it is a spec to build against literally.
 
-| | |
-|---|---|
-| [`roadmap.md`](roadmap.md) | Phases and scope, and what is deliberately not being built yet. |
-| [`architecture.md`](architecture.md) | The AppView shape, the two origins, what the browser holds. |
-| [`data-model.md`](data-model.md) | Owned versus referenced, stack identity, decks and history. |
-| [`atproto.md`](atproto.md) | Lexicons, OAuth scopes, and what a PDS will actually take. |
-| [`scryfall.md`](scryfall.md) | The card cache and the client artifact built from it. |
-| [`scanner.md`](scanner.md) | Reading a card out of a photograph, and what each part measures. |
-| [`search.md`](search.md) | Querying that artifact, and the syntax borrowed from Scryfall. |
-| [`reports.md`](reports.md) | The scans a person sends back, and what happens to one. |
-| [`configuration.md`](configuration.md) | Every variable the binary and the tools read. |
-| [`ip.md`](ip.md) | The WotC, Scryfall and EDHREC constraints, and the licenses. |
+|                                        |                                                                  |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| [`roadmap.md`](roadmap.md)             | Phases and scope, and what is deliberately not being built yet.  |
+| [`architecture.md`](architecture.md)   | The AppView shape, the two origins, what the browser holds.      |
+| [`data-model.md`](data-model.md)       | Owned versus referenced, stack identity, decks and history.      |
+| [`atproto.md`](atproto.md)             | Lexicons, OAuth scopes, and what a PDS will actually take.       |
+| [`scryfall.md`](scryfall.md)           | The card cache and the client artifact built from it.            |
+| [`scanner.md`](scanner.md)             | Reading a card out of a photograph, and what each part measures. |
+| [`search.md`](search.md)               | Querying that artifact, and the syntax borrowed from Scryfall.   |
+| [`reports.md`](reports.md)             | The scans a person sends back, and what happens to one.          |
+| [`configuration.md`](configuration.md) | Every variable the binary and the tools read.                    |
+| [`ip.md`](ip.md)                       | The WotC, Scryfall and EDHREC constraints, and the licenses.     |
 
 Reasoning that belongs to one tool lives beside it instead:
 [`tools/icons/README.md`](../tools/icons/README.md) is what the icon is drawn

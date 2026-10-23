@@ -1,18 +1,17 @@
 # Data model
 
-How owned cards, containers and designs relate, and what the interface makes
-of them. Schemas live in [`lexicons/`](../lexicons/README.md); this is the
+How owned cards, containers and designs relate, and what the interface makes of
+them. Schemas live in [`lexicons/`](../lexicons/README.md); this is the
 reasoning behind their shape.
 
 Everything hangs off one question: do these cards physically exist in your
 possession, or are they a reference?
-
 - **Container** — a named physical place: binder, box, deck box. A record with
   a name and a kind.
 - **Collection entry** — a card you own, in exactly one container. Carries
   `scryfall_id`, finish, condition, quantity.
-- **Design** — card references you may or may not own. A *deck* is a design
-  with deck metadata (`format`); a *list* is one without (wishlist, trade
+- **Design** — card references you may or may not own. A _deck_ is a design
+  with deck metadata (`format`); a _list_ is one without (wishlist, trade
   pile). Same entry shape, different parent. Commander and sideboard are not
   deck fields but entry ones — an entry's `section`.
 
@@ -30,7 +29,6 @@ you rob a deck for parts.
 entries wherever they live. Moving a card changes its container, not ownership.
 
 Consequences:
-
 - One record per collection stack, deck contents embedded as an array in the
   deck record. A 10k-card collection can't be one record; a 100-card deck
   shouldn't be 100.
@@ -41,8 +39,8 @@ Consequences:
 - **Design entries are keyed `(oracle_id, scryfall_id?, finish?)`**, so diffs
   and fork provenance have stable identity rather than array positions. The key
   also handles two entries for one card intended as different printings.
-- **Owned cards are keyed differently**: by everything said about those
-  copies in particular, which is spelled out under Stack identity below. No
+- **Owned cards are keyed differently**: by everything said about those copies
+  in particular, which is spelled out under Stack identity below. No
   `language`: every language of a printing has its own Scryfall id (m10 #146
   has nine), so the field could only contradict it.
 - The keys share no fields, and owned cards carry no `oracle_id`, so matching a
@@ -52,13 +50,12 @@ Consequences:
 - **A proxy is flagged; every other physical oddity is a tag.** A proxy is the
   one that behaves differently — it fills a deck slot but counts toward no
   valuation. `altered`, `misprint` and `signed` only affect what a copy is
-  worth, which we never compute per copy since Scryfall prices the printing,
-  so tags are a permanent enough home. Borrowed cards are a note.
+  worth, which we never compute per copy since Scryfall prices the printing, so
+  tags are a permanent enough home. Borrowed cards are a note.
 
 ## Interface — one model, separate views
 
 The model makes decks, binders and lists the same thing. The UI should hide it.
-
 - **Collection view** answers "where is my Sol Ring?" — every copy owned,
   grouped by container, naming the deck where the container is a deck box.
   That's why a deck references its container.
@@ -82,11 +79,13 @@ Four tabs, and a fifth once there is anything social to put in it:
 
     Cards · Collection · Decks · Lists    (· Feed, from Phase 3)
 
-Five is the ceiling, and what keeps it there is that **a tab is an object
-type, while segments say whose something is and what it is for**. Decks and
-Lists each carry Mine and Saved, `purpose` segments a list further, and Feed
-carries Following and Everyone, which is where exploring other people's decks
-lives. Whether you wrote a deck is a filter, not a different place to look.
+Five is the ceiling, and what keeps it there is that
+**a tab is an object
+type, while segments say whose something is and what it is for**.
+Decks and Lists each carry Mine and Saved, `purpose` segments a list further,
+and Feed carries Following and Everyone, which is where exploring other
+people's decks lives. Whether you wrote a deck is a filter, not a different
+place to look.
 
 Containers are a drill-down inside Collection rather than a peer of it, and a
 deck is one inside Decks: depth belongs to the view, breadth to the bar.
@@ -120,9 +119,9 @@ one proves not to be enough.
 
 Neither has a lexicon, and both are Phase 3.
 
-**A follow of ours, not Bluesky's.** The OAuth grant names our own
-collections and nothing else, so writing `app.bsky.graph.follow` would mean
-asking for Bluesky access again — see [`atproto.md`](atproto.md). It is the right answer
+**A follow of ours, not Bluesky's.** The OAuth grant names our own collections
+and nothing else, so writing `app.bsky.graph.follow` would mean asking for
+Bluesky access again — see [`atproto.md`](atproto.md). It is the right answer
 socially too, since following someone for their decks should not follow them
 anywhere else. Reading that graph to seed suggestions costs nothing.
 
@@ -135,14 +134,13 @@ consent screen.
 
 Three numbers rather than one with a toggle, because they answer different
 questions:
-
-- **Owned** — every collection entry, summed. Cards in a deck box count: a
-  deck box is a container, and what sits in it is still yours.
+- **Owned** — every collection entry, summed. Cards in a deck box count: a deck
+  box is a container, and what sits in it is still yours.
 - **Design** — a design's entries priced at the printing they name, or at the
-  cheapest where they name none. What it would cost to own, and what a
-  wishlist is worth.
-- **Gap** — design minus owned, straight out of the diff below. A shopping
-  list with a price on it.
+  cheapest where they name none. What it would cost to own, and what a wishlist
+  is worth.
+- **Gap** — design minus owned, straight out of the diff below. A shopping list
+  with a price on it.
 
 A deck shows all three, a list has no owned number, a container has only one.
 
@@ -187,14 +185,12 @@ unfiled pile, merging into whatever stack is already there.
 
 ### Signed out, signed in, and on this device only
 
-Three states, because reading needs no account and only writing needs
-somewhere to write. The catalog is client-side and public, so signed out
-already gets card search, printing comparison and a legality check against a
-pasted list, with no OAuth flow to get through first.
-
-- **Signed out** is the front page plus that search, and a scratch pad.
-  Nothing persists, and the interface says so rather than quietly
-  accumulating.
+Three states, because reading needs no account and only writing needs somewhere
+to write. The catalog is client-side and public, so signed out already gets
+card search, printing comparison and a legality check against a pasted list,
+with no OAuth flow to get through first.
+- **Signed out** is the front page plus that search, and a scratch pad. Nothing
+  persists, and the interface says so rather than quietly accumulating.
 - **Signed in** is the dashboard: your collection, your decks.
 - **On this device only** is the deliberate third choice in
   [`atproto.md`](atproto.md) — no PDS, no sync, an export nag, and the honest
@@ -209,16 +205,15 @@ is nothing to write to, and a tab's storage is not an answer anyone chose.
 Marked `todo(local)` at the gate.
 
 So **import is where you ask**, which is where the sharing warning has to go
-anyway. Search and scratch freely; the moment data arrives in volume, ask
-where it lives.
+anyway. Search and scratch freely; the moment data arrives in volume, ask where
+it lives.
 
 **Onboarding asks two more things**: which language to show cards in, and how
-much of the catalog to keep on this device. Both are display choices that
-reach no record — a print id already pins its language — so either can change
-later without migrating anything. A settings page owns them afterward. What
-the parts cost is in [`scryfall.md`](scryfall.md); the three senses of
-"language", and why import needs them before display does, are in
-[`search.md`](search.md).
+much of the catalog to keep on this device. Both are display choices that reach
+no record — a print id already pins its language — so either can change later
+without migrating anything. A settings page owns them afterward. What the parts
+cost is in [`scryfall.md`](scryfall.md); the three senses of "language", and
+why import needs them before display does, are in [`search.md`](search.md).
 
 Public activity while signed out — Tangled's front page — needs Explore, so
 that slot stays empty until Phase 3.
@@ -235,7 +230,6 @@ the design you have).
 
 Build completeness is **scoped by whether the deck has a container**, which
 needs no setting of its own:
-
 - **With a container** it asks "is this deck built?" — how much of the design
   is physically in that deck box. Precise, and it makes competing decks
   visible, since a card lives in one container.
@@ -257,7 +251,6 @@ you haven't built is (100%, 0%).
 The intended-print-versus-reality view is a feature in itself: you designed
 around a Necron Darkness, you have an ordinary one sleeved, and the app should
 say so rather than calling the slot filled. Per design entry:
-
 - **Satisfied** — intended print and finish present.
 - **Print mismatch** — right card, wrong printing. The upgrade list.
 - **Finish mismatch** — right print, nonfoil standing in for foil.
@@ -265,7 +258,7 @@ say so rather than calling the slot filled. Per design entry:
 
 Plus **extras**: cards in the container that aren't in the design.
 
-Missing plus mismatches *is* the shopping list, so a per-deck wishlist needs no
+Missing plus mismatches _is_ the shopping list, so a per-deck wishlist needs no
 maintaining. Only entries with a deliberate print intent can mismatch, which is
 what keeps "any printing" designs quiet.
 
@@ -308,22 +301,22 @@ part by part and asserts it.
 
 What such a card is not is addressable. No record holds it, so a change to it
 is a change to the parts holding it: the copies are taken out of their entries,
-an entry emptied is dropped, and a part emptied of every entry is deleted rather
-than left as a record of nothing. One transaction, under the lock a drain takes,
-against parts read inside it. A part another device drained first is already
-gone, and the repo refuses to update a key it does not hold, so the edit fails
-whole rather than putting its cards back.
+an entry emptied is dropped, and a part emptied of every entry is deleted
+rather than left as a record of nothing. One transaction, under the lock a
+drain takes, against parts read inside it. A part another device drained first
+is already gone, and the repo refuses to update a key it does not hold, so the
+edit fails whole rather than putting its cards back.
 
 Adding a copy is the asymmetry, and it needs no part at all: it writes a record
 of its own and the drain merges the part into that, because what an entry joins
 is decided when it drains. So the row carries a minus and no plus, and adding
 goes through the card the way it always did.
 
-**One identity spans both shapes**, matching a part's entry to a written
-record by the rule the merge already uses, so an entry needs no address of its
-own. Editing a card that has not been written yet rewrites
-its part: a delete then costs two points and the card is never created at all,
-against three to create it and one to remove it afterwards.
+**One identity spans both shapes**, matching a part's entry to a written record
+by the rule the merge already uses, so an entry needs no address of its own.
+Editing a card that has not been written yet rewrites its part: a delete then
+costs two points and the card is never created at all, against three to create
+it and one to remove it afterwards.
 
 **None of this makes an import faster.** The same cards cost the same points
 and take the same hours. What it buys is an upload that cannot be half-consumed
@@ -345,12 +338,11 @@ mode upfront, and it makes price-checking first-class rather than an abuse of
 the import flow.
 
 Destinations: a container; a deck from collection (owned cards move into its
-container); a deck as new (added to owned totals *and* placed); or a design
+container); a deck as new (added to owned totals _and_ placed); or a design
 only, with no collection entry created.
 
 **Source reconciliation.** Committing into a deck means saying where each card
 came from. One row per card with a source selector, kept cheap:
-
 - Prefill, don't interrogate. One plausible source fills silently; several fill
   the likeliest and allow a change. A hundred dropdowns demanding attention is
   worse than ManaBox today.
@@ -379,7 +371,8 @@ Stack in IndexedDB, kept for a meaningful window. Never goes to the network:
 cross-device undo isn't an interaction anyone wants.
 
 **Undo applies the inverse to current state; it never writes an old state
-back.** Deck holds A, B, C. Phone adds D, laptop (unsynced) adds E. Undo by
+back.**
+Deck holds A, B, C. Phone adds D, laptop (unsynced) adds E. Undo by
 state-restoration writes {A,B,C} and destroys E. Undo by inverse computes
 current-minus-D and E survives. Pair with `swapRecord` so a genuine race fails
 loudly.
@@ -387,10 +380,9 @@ loudly.
 ### Recent changes — bounded tail in the deck record
 
 Not an undo buffer. Its job is looking back over the last handful of changes,
-across devices, and *then* naming one as a snapshot. That works because the
+across devices, and _then_ naming one as a snapshot. That works because the
 diffs are invertible: current state plus N inverse diffs reconstructs any of
 the last N states, so "that version was good" is reachable retrospectively.
-
 - A diff is ~100-200 bytes. Ten is 1-2KB, fifty is 5-10KB, against a deck
   record of ~6-8KB for 100 cards.
 - No hard wall, just write bandwidth: the whole record is rewritten per edit.
@@ -401,10 +393,10 @@ the last N states, so "that version was good" is reachable retrospectively.
 
 ### Named snapshots
 
-A "save version" button writing a separate record: named, complete, and
-capped at 2,000 entries.
-The only thing that delivers restore, since a bounded tail can't reach past its
-window. A 100-card list is 5-10KB, so a dozen per deck is nothing.
+A "save version" button writing a separate record: named, complete, and capped
+at 2,000 entries. The only thing that delivers restore, since a bounded tail
+can't reach past its window. A 100-card list is 5-10KB, so a dozen per deck is
+nothing.
 
 **Restore auto-snapshots current state**, so restoring is itself undoable.
 
@@ -418,10 +410,9 @@ the window — say so, since that's the prompt that gets someone to name one.
 
 A fork is a new deck copied from a source, either current state or a named
 snapshot. Branch-versus-copy is **one optional field**, not a history copy:
-
-- **Fork** records `forkedFrom`: a strongRef to the source, and the at-uri of
-  a snapshot where it was forked from one. The
-  UI can show provenance, diff against the parent, list siblings.
+- **Fork** records `forkedFrom`: a strongRef to the source, and the at-uri of a
+  snapshot where it was forked from one. The UI can show provenance, diff
+  against the parent, list siblings.
 - **Copy** records nothing. An independent deck starting from the same list.
 
 Lineage is a pointer, not a duplicate, the way a git fork shares history rather
@@ -445,9 +436,9 @@ with a print-bound one for the same stack. Greedy matching gives different
 answers by iteration order. Needs a defined resolution order: print-bound
 first, then any-printing, extras as the complement.
 
-**Set completion counts printings, and some collectors count treatments.**
-A foil and a nonfoil of one printing share a Scryfall id, so counting ids
-answers "which cards from this set do I have" and never "have I got both
-finishes". The second is a larger denominator — printings times the finishes
-each offers — and it is a preference rather than a correction, so it waits for
-somewhere to keep preferences. Marked `todo(settings)` where it is displayed.
+**Set completion counts printings, and some collectors count treatments.** A
+foil and a nonfoil of one printing share a Scryfall id, so counting ids answers
+"which cards from this set do I have" and never "have I got both finishes". The
+second is a larger denominator — printings times the finishes each offers — and
+it is a preference rather than a correction, so it waits for somewhere to keep
+preferences. Marked `todo(settings)` where it is displayed.

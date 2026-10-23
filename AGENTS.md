@@ -6,17 +6,17 @@ corner if other TCGs are added later.
 
 Not a business. Running costs look light enough they may never need funding.
 WotC's Fan Content Policy, Scryfall's API terms and EDHREC's terms constrain
-what can be *built*, not only what can be charged for.
+what can be _built_, not only what can be charged for.
 
 `docs/` carries the reasoning, one file per subject: `roadmap.md` for phases,
 `data-model.md` for owned versus referenced and history, `architecture.md` for
 the AppView shape and storage, `scryfall.md` for the cache and the client
 artifact, `search.md` for querying it, `configuration.md` for the environment,
 `atproto.md` for lexicons and the PDS and OAuth limits, `scanner.md` for
-reading a card out of a photograph, `reports.md` for the scans a person
-sends back, `ip.md` for the WotC and Scryfall constraints. This file is the
-condensed orientation for picking the project back up; each crate describes
-itself in its `Cargo.toml`.
+reading a card out of a photograph, `reports.md` for the scans a person sends
+back, `ip.md` for the WotC and Scryfall constraints. This file is the condensed
+orientation for picking the project back up; each crate describes itself in its
+`Cargo.toml`.
 
 Prose here and in `lexicons/` is read more often than it is written, so keep it
 short: the non-obvious fact and its one consequence. Two lines of comment is a
@@ -38,16 +38,15 @@ nothing blocks and nobody owns, so prefer giving it an owner over leaving it —
 searching for one form finds a person's work, another a feature's, and `todo`
 alone finds every one of them before a release.
 
-A check lives in the thing it checks, as a test, wherever it can: the
-catalog's format is a Rust test beside the exporter rather than a tool. A
-standalone tool earns its place when the check spans both sides or needs
-someone else's implementation, and then it takes the toolchain of what it
-consumes rather than of what it asserts about — `lexicon-check` runs atproto's
-own validator and `scryfall-check` drives the client's own parser, so both are
-TypeScript whatever they are checking. Prefer Rust where a check is slow or
-settled, TypeScript where it moves with the client. A third toolchain is the
-thing to avoid: nobody should install one to run a check on work that never
-touches it.
+A check lives in the thing it checks, as a test, wherever it can: the catalog's
+format is a Rust test beside the exporter rather than a tool. A standalone tool
+earns its place when the check spans both sides or needs someone else's
+implementation, and then it takes the toolchain of what it consumes rather than
+of what it asserts about — `lexicon-check` runs atproto's own validator and
+`scryfall-check` drives the client's own parser, so both are TypeScript
+whatever they are checking. Prefer Rust where a check is slow or settled,
+TypeScript where it moves with the client. A third toolchain is the thing to
+avoid: nobody should install one to run a check on work that never touches it.
 
 Spelling is American, matching the vocabulary the code already uses. `typos`
 enforces it; `typos.toml` says what it skips.
@@ -56,9 +55,8 @@ enforces it; `typos.toml` says what it skips.
 
 This is an **AppView** in atproto terms, not a normal app-owns-its-data
 backend:
-
 - **User data** (collection entries, decks, eventually shared/published state)
-  are atproto records written to *the user's own PDS*, not our database. We
+  are atproto records written to _the user's own PDS_, not our database. We
   don't host user data.
 - **The browser writes directly to the user's PDS** using its own OAuth
   session. Our server never proxies a write and has no write handlers for user
@@ -67,7 +65,7 @@ backend:
 - **Our server** ("the AppView") is a single Rust process that: (1) syncs
   Scryfall card data into our own DB as a cache, (2) exports the catalog from
   that cache for a CDN to serve, (3) from Phase 3, consumes a filtered
-  Jetstream firehose to index *other people's* published records. It never
+  Jetstream firehose to index _other people's_ published records. It never
   touches the app itself, which Vite builds from the repo.
 - **Everything a browser fetches is static, on two origins.** The app and the
   OAuth client metadata document deploy from the repo to Pages on commit; the
@@ -77,9 +75,9 @@ backend:
 - **v0 doesn't need the firehose at all.** The client reads its own records
   straight from its own PDS (`listRecords`), so the PDS is the sync mechanism
   between a user's devices. That read is cached for a first paint but still
-  costs 84 round trips to settle — see `docs/architecture.md`.
-  Indexing only earns its place when we need what the client can't do locally —
-  Explore, cross-user aggregates.
+  costs 84 round trips to settle — see `docs/architecture.md`. Indexing only
+  earns its place when we need what the client can't do locally — Explore,
+  cross-user aggregates.
 - **Our database is disposable**: deleting it costs nothing running. The cache
   re-derives from Scryfall, records re-read from PDSes, tokens live in the
   browser. One table does not derive — `sync_history`, a row per Scryfall sync
@@ -101,18 +99,17 @@ backend:
   an English version, so it omits most non-English printings — 2,635 of its
   paper rows are another language, and no printing appears twice — so
   **a CSV import of a non-English collection can't resolve its print ids** and
-  All Cards (392MB) is a v0 need — as a build input, filtered to what the
-  cache lacks rather than to non-English, never as the cache itself. Default
-  Cards is what the server holds and what every client gets; the rest is
-  language packs, chosen at onboarding or from settings. A pack covers what
-  its language was printed in, and the default row covers the rest. See
-  `docs/search.md`.
+  All Cards (392MB) is a v0 need — as a build input, filtered to what the cache
+  lacks rather than to non-English, never as the cache itself. Default Cards is
+  what the server holds and what every client gets; the rest is language packs,
+  chosen at onboarding or from settings. A pack covers what its language was
+  printed in, and the default row covers the rest. See `docs/search.md`.
 - Don't store images or image URIs — hotlink Scryfall's CDN, deriving URLs from
   the card id. Keep `image_status`.
 - **The cache is two tables.** `oracle` holds what the rules see, one row per
-  card, verified constant across printings; `cards` holds one physical
-  printing each. `legalities` and `layout` stay per printing. The split also
-  fills in reversible printings, which carry no top-level gameplay data.
+  card, verified constant across printings; `cards` holds one physical printing
+  each. `legalities` and `layout` stay per printing. The split also fills in
+  reversible printings, which carry no top-level gameplay data.
 - **Card objects aren't uniformly shaped.** `layout: reversible_card` has no
   top-level `oracle_id`, `cmc`, `mana_cost`, `type_line`, `oracle_text`,
   `colors` or `image_uris` — those live on `card_faces`. The column stays
@@ -123,14 +120,13 @@ backend:
   from the rows themselves, so a value nobody wrote down reaches a client
   rather than being dropped on the way. In `crates/scryfall` — `layout`,
   `rarity`, `set_type`, `finishes`, `games`, `legalities`. New values appear
-  unannounced and must not fail an unattended sync. Colors are typed; the
-  rules close that set.
+  unannounced and must not fail an unattended sync. Colors are typed; the rules
+  close that set.
 - **The client artifact is two files under one version**: cards, and paper
-  printings grouped by card in the cards file's order. Written uncompressed
-  for the CDN to compress. Positional rows with integer codes for
-  low-cardinality columns. The base pair carries no oracle text or legality;
-  text is an opt-in part, because offline card viewing wants it and collection
-  tracking does not.
+  printings grouped by card in the cards file's order. Written uncompressed for
+  the CDN to compress. Positional rows with integer codes for low-cardinality
+  columns. The base pair carries no oracle text or legality; text is an opt-in
+  part, because offline card viewing wants it and collection tracking does not.
 - Price cache: **separate table**, keyed by `scryfall_id` + source + timestamp.
   Not built — nothing writes it before Phase 2, so the schema would be dead.
   Note there is **no prices bulk file** — prices exist only as fields inside
@@ -142,19 +138,20 @@ backend:
   create costs 3 of an hourly 5,000-point budget). Stacks measured at 70% of
   cards, so 11,839 cards is 8,321 records and five hours. A file therefore
   lands as `app.manaweb.import` parts first — 42 of them, 1.89MB, three calls —
-  and drains into cards afterwards. `importRepo` can't shortcut either.
-  Elapsed time is not attended time — see `docs/atproto.md` and
-  `docs/architecture.md`.
+  and drains into cards afterwards. `importRepo` can't shortcut either. Elapsed
+  time is not attended time — see `docs/atproto.md` and `docs/architecture.md`.
 - Collection entries reference `scryfall_id` (exact print), not `oracle_id` —
   we track specific physical cards (set/collector number/finish), same as
   ManaBox.
-- **Owned vs referenced is the core split.** A *collection entry* is a card you
-  own, in exactly one *container* (binder, box, deck box). A *design* — deck or
+- **Owned vs referenced is the core split.** A _collection entry_ is a card you
+  own, in exactly one _container_ (binder, box, deck box). A _design_ — deck or
   list — is card references you may or may not own; a wishlist is a design with
   no deck metadata.
-- "Built" is not stored. It's derived, and **scoped by whether the deck has a
-  container**: with one it means "how much is physically in that deck box",
-  without one it means "do you own enough copies anywhere". No setting needed.
+- "Built" is not stored. It's derived, and
+  **scoped by whether the deck has a
+  container**:
+  with one it means "how much is physically in that deck box", without one it
+  means "do you own enough copies anywhere". No setting needed.
 - Design entries carry `oracle_id` (required) and `scryfall_id` (optional).
   Rules reasoning — legality, EDHREC — keys on `oracle_id`; display and flavor
   key on the print. Omitting the print means "any printing". Deck and list
@@ -168,16 +165,16 @@ backend:
 - Lexicon NSIDs are rooted at `app.manaweb.*` (from `manaweb.app`) and carry
   **no game segment**: `app.manaweb.card`, not `app.manaweb.mtg.card`. Manaweb
   is an MTG app; a segment for a game that may never exist would sit in every
-  record forever. A second TCG would be a fork sharing extracted libraries,
-  not a branch of this namespace.
+  record forever. A second TCG would be a fork sharing extracted libraries, not
+  a branch of this namespace.
 
 ## Firehose strategy (Phase 3, not v0)
 
 - Not needed for v0 (see Core architecture). Building a consumer earlier means
   writing it for records nobody has created yet.
 - When it lands: `wantedCollections` scoped to our own NSIDs, network-wide, for
-  published/explore decks — cheap, because only Manaweb users ever match
-  those collections.
+  published/explore decks — cheap, because only Manaweb users ever match those
+  collections.
 - **Discovery needs no DID list.** A network-wide collection filter means
   anyone writing one of our records announces themselves.
 - Use Jetstream's time-based cursor for reconnects; keep indexing idempotent.
@@ -195,14 +192,15 @@ backend:
 - **Frontend**: TypeScript, built with **Bun** (not npm), lives in `web/`. PWA
   with a service worker — client-side caching (IndexedDB) of the card catalog
   is core to keeping server load light, especially for manual search.
-- **Deploy**: Pages for the app, R2 for the catalog, which **reverses the
-  earlier `rust-embed` decision** — there is nothing to embed, and Bun never
-  enters a Rust build at all. The binary writes a catalog directory
-  (`MANAWEB_CATALOG`) and uploads it through `crates/objects`, which is also
-  the `manaweb-upload` tool — the host runs a container and has no checkout to
-  run a recipe from. Each artifact set lands under its own prefix, the catalog
-  under `catalog/`. Still a `justfile` rather than `build.rs`, for the same
-  reason as before.
+- **Deploy**: Pages for the app, R2 for the catalog, which
+  **reverses the
+  earlier `rust-embed` decision**
+  — there is nothing to embed, and Bun never enters a Rust build at all. The
+  binary writes a catalog directory (`MANAWEB_CATALOG`) and uploads it through
+  `crates/objects`, which is also the `manaweb-upload` tool — the host runs a
+  container and has no checkout to run a recipe from. Each artifact set lands
+  under its own prefix, the catalog under `catalog/`. Still a `justfile` rather
+  than `build.rs`, for the same reason as before.
 - **Local dev**: frontend runs its own dev server (`bun run dev`, hot reload)
   fetching the catalog from the binary's site directory. Nothing has to be
   built into anything.
@@ -216,16 +214,15 @@ backend:
 1. **Done** — workspace scaffold, and `crates/scryfall`: bulk-data index,
    streaming NDJSON reader, card parse. Offline fixture tests plus an example
    that streams the real file.
-2. **Done** — card cache in `crates/core`: migrations, a full-replace sync
-   fed by a `CardStream`, FTS5 name search, printing lookup for CSV import.
+2. **Done** — card cache in `crates/core`: migrations, a full-replace sync fed
+   by a `CardStream`, FTS5 name search, printing lookup for CSV import.
    `legalities` is a lookup table, not a column.
 3. **Done** — lexicons enumerated in `lexicons/`, validated in CI against
-   atproto's own implementation plus records that must be refused.
-   Deck, list and snapshot precede their implementation deliberately: the
-   design entry and collection entry interlock, so the join wants settling
-   together.
-4. **Done** — the `manaweb` binary. Exports the content-addressed catalog
-   and its manifest from the cache, serves them for local development, and
+   atproto's own implementation plus records that must be refused. Deck, list
+   and snapshot precede their implementation deliberately: the design entry and
+   collection entry interlock, so the join wants settling together.
+4. **Done** — the `manaweb` binary. Exports the content-addressed catalog and
+   its manifest from the cache, serves them for local development, and
    refreshes the cache weekly. Configured from the environment; `just serve`.
    The OAuth client metadata document is committed at
    `web/public/oauth/client-metadata.json`, not generated.
@@ -234,14 +231,14 @@ backend:
    and drained into records at whatever the PDS will take. Measured end to end
    against a limited one. Deployed to Pages, reading the catalog from the
    bucket it is uploaded to. Search speaks most of Scryfall's syntax, held to
-   their own answers by `just scryfall-search`; a service worker holds
-   the shell offline and `web/public/_headers` carries the CSP.
+   their own answers by `just scryfall-search`; a service worker holds the
+   shell offline and `web/public/_headers` carries the CSP.
 6. **Done** — fixture records seeding a dev account without the UI, as a
    directory of JSON named by collection and record key, and `just seed`
    driving `goat` from an app password. CI validates them with the lexicons.
 
-Jetstream and the query API arrive with Phase 3 (Explore), not before. That
-API is XRPC, and nothing else is — see `docs/atproto.md`.
+Jetstream and the query API arrive with Phase 3 (Explore), not before. That API
+is XRPC, and nothing else is — see `docs/atproto.md`.
 
 v0 scope is deliberately narrow: **collection tracking only** — manual search +
 CSV import, no scanner, no live pricing yet. Scanner, valuation, EDHREC assist,

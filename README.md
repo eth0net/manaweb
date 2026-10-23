@@ -9,23 +9,24 @@ game toolkit later.
 
 ## Status
 
-Pre-v0, and it runs end to end. `crates/scryfall` streams Scryfall's bulk
-data, `crates/core` shreds every paper printing into SQLite, and the `manaweb`
-binary exports the catalog a browser needs and uploads it. The client signs in
-over OAuth, reads and writes records in your own PDS, imports a ManaBox CSV,
-and searches the catalog offline with most of [Scryfall's query
-syntax](docs/search.md). A tab holds a camera over a card and reads which
-printing it is against an index built from Scryfall's own artwork, though a
-scan lands nowhere yet. The lexicons are validated against atproto's own
-implementation in CI, along with the OAuth client metadata document.
+Pre-v0, and it runs end to end. `crates/scryfall` streams Scryfall's bulk data,
+`crates/core` shreds every paper printing into SQLite, and the `manaweb` binary
+exports the catalog a browser needs and uploads it. The client signs in over
+OAuth, reads and writes records in your own PDS, imports a ManaBox CSV, and
+searches the catalog offline with most of
+[Scryfall's query
+syntax](docs/search.md).
+A tab holds a camera over a card and reads which printing it is against an
+index built from Scryfall's own artwork, though a scan lands nowhere yet. The
+lexicons are validated against atproto's own implementation in CI, along with
+the OAuth client metadata document.
 
-Not there yet: pricing, decks and Explore. See
-[the roadmap](docs/roadmap.md).
+Not there yet: pricing, decks and Explore. See [the roadmap](docs/roadmap.md).
 
 ## Stack
 
-- Rust workspace — `axum` API, SQLite and a Scryfall bulk-data sync, all in
-  one binary. The Jetstream firehose consumer arrives with Explore.
+- Rust workspace — `axum` API, SQLite and a Scryfall bulk-data sync, all in one
+  binary. The Jetstream firehose consumer arrives with Explore.
 - TypeScript PWA in `web/`, built with Bun and deployed to a CDN alongside the
   catalog artifact. Nothing a browser fetches comes from the binary.
 
@@ -53,8 +54,8 @@ lists what the binary and the tools read from the environment.
 
 ## Running it
 
-The server needs no arguments and reads its configuration from the
-environment — [`configuration.md`](docs/configuration.md) lists all of it.
+The server needs no arguments and reads its configuration from the environment
+— [`configuration.md`](docs/configuration.md) lists all of it.
 
 ```sh
 docker run --rm -v manaweb-data:/data ghcr.io/eth0net/manaweb
@@ -63,15 +64,15 @@ docker run --rm -v manaweb-data:/data ghcr.io/eth0net/manaweb
 Tagged `X.Y.Z`, `X.Y` and `latest`, published from the tag it was built at.
 `docker build -t manaweb .` builds the same image from a checkout.
 
-Nothing has to be published: it syncs Scryfall, exports the catalog and
-uploads it, and the app and that catalog are served from elsewhere. Port 8080
-carries `/health`, and the catalog for local development.
+Nothing has to be published: it syncs Scryfall, exports the catalog and uploads
+it, and the app and that catalog are served from elsewhere. Port 8080 carries
+`/health`, and the catalog for local development.
 
-`/data` holds the card cache and the exported catalog, owned by uid 10001, so
-a bind mount has to be owned by that id to be writable. `ENTRYPOINT` is the
+`/data` holds the card cache and the exported catalog, owned by uid 10001, so a
+bind mount has to be owned by that id to be writable. `ENTRYPOINT` is the
 binary and `serve` is the default command, so `docker run manaweb version`
-reaches a one-off without knowing where anything lives. `manaweb health` is
-the same door, and is what the container checks itself with.
+reaches a one-off without knowing where anything lives. `manaweb health` is the
+same door, and is what the container checks itself with.
 
 From a checkout, `just serve` does the same thing without the container.
 
@@ -89,11 +90,11 @@ you run a modified version as a network service, your users get the source.
 vocabulary, and copyleft on a schema file would discourage the adoption that's
 the whole point of publishing them.
 
-The icon is the spider web from [Noto Emoji](https://github.com/googlefonts/noto-emoji),
-Apache-2.0, recolored.
+The icon is the spider web from
+[Noto Emoji](https://github.com/googlefonts/noto-emoji), Apache-2.0, recolored.
 
 Card data and images come from [Scryfall](https://scryfall.com) under the
 Wizards of the Coast Fan Content Policy. Manaweb is unofficial Fan Content
 permitted under the Fan Content Policy. Not approved or endorsed by Wizards.
-Portions of the materials used are property of Wizards of the Coast.
-©Wizards of the Coast LLC.
+Portions of the materials used are property of Wizards of the Coast. ©Wizards
+of the Coast LLC.

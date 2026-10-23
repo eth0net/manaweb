@@ -1,24 +1,25 @@
 # Lexicons
 
-atproto record schemas for Manaweb, rooted at `app.manaweb.*`. MIT rather
-than AGPL like the rest of the repo — schemas are shared vocabulary. See
+atproto record schemas for Manaweb, rooted at `app.manaweb.*`. MIT rather than
+AGPL like the rest of the repo — schemas are shared vocabulary. See
 [LICENSE](LICENSE).
 
-| NSID | One record |
-|---|---|
-| `app.manaweb.card` | A card you own, in however many copies |
-| `app.manaweb.container` | A binder, box or deck box |
-| `app.manaweb.deck` | A design with deck metadata, contents embedded |
-| `app.manaweb.list` | A design without it — wishlist, trade pile, staging |
-| `app.manaweb.snapshot` | A complete named copy of a design |
-| `app.manaweb.import` | Part of an import, holding cards not yet written |
-| `app.manaweb.defs` | Shapes shared between designs — no records |
+| NSID                    | One record                                          |
+| ----------------------- | --------------------------------------------------- |
+| `app.manaweb.card`      | A card you own, in however many copies              |
+| `app.manaweb.container` | A binder, box or deck box                           |
+| `app.manaweb.deck`      | A design with deck metadata, contents embedded      |
+| `app.manaweb.list`      | A design without it — wishlist, trade pile, staging |
+| `app.manaweb.snapshot`  | A complete named copy of a design                   |
+| `app.manaweb.import`    | Part of an import, holding cards not yet written    |
+| `app.manaweb.defs`      | Shapes shared between designs — no records          |
 
 Deck, list, snapshot and import run ahead of their implementation; decks arrive
 in Phase 3. They stay freely changeable until records exist, and none of them
 is in the OAuth scope list until something writes it.
 
-Why the shapes are what they are: [`docs/data-model.md`](../docs/data-model.md).
+Why the shapes are what they are:
+[`docs/data-model.md`](../docs/data-model.md).
 
 ## Changing these
 

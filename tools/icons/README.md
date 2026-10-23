@@ -32,15 +32,15 @@ neither is what a browser tab wants.
 
 iOS takes its icon once, when the app is added, and reads no alternative: it
 was offered a light raster and a dark one behind a media query, and in dark
-mode it took the light one. It also composites anything transparent onto
-white, which every raster it could reach then was. So the home screen is one
-tile — the dark palette on a ground of its own, the same in both appearances,
-inset enough to keep clear of its corners — and the only thing still varying
-with a theme is the favicon a tab draws.
+mode it took the light one. It also composites anything transparent onto white,
+which every raster it could reach then was. So the home screen is one tile —
+the dark palette on a ground of its own, the same in both appearances, inset
+enough to keep clear of its corners — and the only thing still varying with a
+theme is the favicon a tab draws.
 
 **A composed app icon is a shipped one, not a chosen one.** iOS fixes a PWA's
 icon when it is added to the home screen, and a native app's alternates have to
 be in the bundle and picked from a fixed list; Android can take a manifest
-change but on its own schedule. So composing produces the set that ships, and
-a live choice only reaches the surfaces the app draws itself — the header, and
+change but on its own schedule. So composing produces the set that ships, and a
+live choice only reaches the surfaces the app draws itself — the header, and
 the SVG the browser reads. The rasters are where a theme is baked in.
