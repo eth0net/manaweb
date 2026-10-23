@@ -86,45 +86,52 @@ function Flip() {
 // What the picture is doing, the box it will fill being held either way.
 type Showing = "loading" | "shown" | "gone";
 
-// Whether the back is really there is answered by fetching it: a layout that
-// usually has one is a reason to offer the flip, not a promise of an image.
+// Both sides are mounted and one is shown, so a flip is a class changing
+// rather than a fetch: keyed on the side, every flip discarded the element
+// and asked for the picture again.
 function Face({ print }: { print: Print }) {
   const [side, turn] = useState<Side>("front");
   const [flippable, setFlippable] = useState(twoSided(print));
-  const [showing, setShowing] = useState<Showing>("loading");
+  const [here, setHere] = useState<Partial<Record<Side, boolean>>>({});
+  const [gone, setGone] = useState<Partial<Record<Side, boolean>>>({});
 
   if (!hasArt(print)) return <span className="noart" />;
 
+  const showing: Showing = gone[side]
+    ? "gone"
+    : here[side]
+      ? "shown"
+      : "loading";
+  const face = (which: Side) => (
+    <img
+      className={!gone[which] && which === side ? "here" : undefined}
+      src={image(print.id, "normal", which)}
+      alt=""
+      width={NORMAL.width}
+      height={NORMAL.height}
+      onLoad={() => setHere((was) => ({ ...was, [which]: true }))}
+      onError={() => {
+        // A back that is not there is the layout having been optimistic. A
+        // front that is not there is a picture Scryfall does not hold.
+        if (which === "back") {
+          setFlippable(false);
+          turn("front");
+        } else setGone((was) => ({ ...was, front: true }));
+      }}
+    />
+  );
+
   return (
     <span className={`face ${showing}`}>
-      <img
-        // Its own element per side, so turning starts the wait over.
-        key={side}
-        src={image(print.id, "normal", side)}
-        alt=""
-        width={NORMAL.width}
-        height={NORMAL.height}
-        onLoad={() => setShowing("shown")}
-        onError={() => {
-          // A back that is not there is the layout having been optimistic.
-          // A front that is not there is a picture Scryfall does not hold.
-          if (side === "back") {
-            setFlippable(false);
-            turn("front");
-            setShowing("loading");
-          } else setShowing("gone");
-        }}
-      />
+      {face("front")}
+      {flippable && face("back")}
       {showing === "loading" && <span className="spin" />}
       {flippable && (
         <button
           type="button"
           className="flip"
           aria-label="Flip the card"
-          onClick={() => {
-            turn(side === "front" ? "back" : "front");
-            setShowing("loading");
-          }}
+          onClick={() => turn(side === "front" ? "back" : "front")}
         >
           <Flip />
         </button>
