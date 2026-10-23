@@ -202,7 +202,7 @@ function SignIn({
 
   return (
     <>
-      <label className="field" htmlFor="handle">
+      <label className="asks" htmlFor="handle">
         Enter your handle or DID
       </label>
       <form

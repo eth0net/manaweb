@@ -489,11 +489,12 @@ nav a.here {
   font-variant-numeric: tabular-nums;
 }
 
-/* Above the row rather than in it: `.query` is a flex line, so a label
-   inside the form would sit beside the input it names. */
-.field {
+/* Above the row rather than in it: `.query` is a flex line, so a label inside
+   the form would sit beside the input it names. A name of its own because
+   `.field` is taken, by the wrapper a label and its control share. */
+.asks {
   display: block;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.75rem;
 }
 
 .query {
