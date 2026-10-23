@@ -9,7 +9,7 @@ import {
   words,
 } from "../catalog";
 import { shed } from "../import/runner";
-import { Modal } from "../Modal";
+import { Panel } from "../Modal";
 import { describe, hasArt, Language } from "../Printing";
 import { type Along, CardPanel } from "../Printings";
 import { Link } from "../router";
@@ -92,6 +92,13 @@ export function Place({
   const [showing, show] = useState<number | null>(null);
   const shut = useCallback(() => show(null), []);
 
+  // The same again for editing a stack, which is a second panel and not a
+  // second one per row. The stack is looked up rather than held, so removing
+  // it from under the panel closes it.
+  const [editing, edit] = useState<string | null>(null);
+  const shutEdit = useCallback(() => edit(null), []);
+  const edited = rows.find((row) => row.one.uri === editing);
+
   const total = filed.reduce((sum, one) => sum + shown(one), 0);
 
   return (
@@ -130,8 +137,8 @@ export function Place({
               name={row.name}
               at={places.get(row.one.uri)}
               onShow={show}
+              onEdit={edit}
               catalog={catalog}
-              containers={containers}
               owning={owning}
             />
           ))}
@@ -146,6 +153,25 @@ export function Place({
           onShut={shut}
         />
       )}
+
+      {edited && (
+        <Panel
+          title={edited.name}
+          onShut={shutEdit}
+          actions={
+            <button
+              type="button"
+              onClick={() =>
+                void owning.amend(edited.one.uri, { quantity: 0 })
+              }
+            >
+              Remove
+            </button>
+          }
+        >
+          <Fields one={edited.one} containers={containers} owning={owning} />
+        </Panel>
+      )}
     </>
   );
 }
@@ -156,20 +182,20 @@ function Row({
   print,
   name,
   catalog,
-  containers,
   owning,
   at,
   onShow,
+  onEdit,
 }: {
   one: Stack;
   card: Card | undefined;
   print: Print | undefined;
   name: string;
   catalog: Catalog | null;
-  containers: Containers;
   owning: Holdings;
   at?: number;
   onShow: (at: number) => void;
+  onEdit: (uri: string) => void;
 }) {
   const { quantity } = one.value;
   const landing = one.waiting ?? 0;
@@ -254,48 +280,19 @@ function Row({
                     +
                   </button>
                 </span>
-                <Edit
-                  one={one}
-                  name={name}
-                  containers={containers}
-                  owning={owning}
-                />
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => onEdit(one.uri)}
+                >
+                  Edit
+                </button>
               </>
             )}
           </div>
         </div>
       </div>
     </li>
-  );
-}
-
-function Edit({
-  one,
-  name,
-  containers,
-  owning,
-}: {
-  one: Stack;
-  name: string;
-  containers: Containers;
-  owning: Holdings;
-}) {
-  return (
-    <Modal
-      trigger="link"
-      title={name}
-      label="Edit"
-      actions={
-        <button
-          type="button"
-          onClick={() => void owning.amend(one.uri, { quantity: 0 })}
-        >
-          Remove
-        </button>
-      }
-    >
-      <Fields one={one} containers={containers} owning={owning} />
-    </Modal>
   );
 }
 
