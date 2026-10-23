@@ -498,8 +498,9 @@ export function useCollection(
 
   const printings = useMemo(() => [...totals.prints.keys()], [totals]);
 
-  // Stable while nothing moves: everything in it is already held steady, and
-  // a fresh object around them was enough to re-render every row there is.
+  // Stable while nothing moves: a fresh object around what is already held
+  // steady re-rendered every row there is. By hand, this being one of the
+  // hooks the compiler skips.
   return useMemo(
     () => ({
       ready,

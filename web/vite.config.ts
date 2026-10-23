@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { built } from "./vite/built.ts";
 import { captures } from "./vite/capture.ts";
@@ -73,5 +74,19 @@ export default defineConfig(({ command }) => ({
         }
       : {}),
   },
-  plugins: [react(), worker(), built(), headers(NONCE), captures(), client()],
+  // The compiler memoizes what a component rebuilt and did not change, so a
+  // list of thousands of rows does not re-render for a keystroke above it.
+  // The preset runs it ahead of anything else Babel would do. It skips a
+  // function whose syntax it does not handle yet and says nothing, so a hook
+  // that has to hand back the same object keeps its own `useMemo`; a `logger`
+  // on the preset names what was skipped.
+  plugins: [
+    react(),
+    babel({ presets: [reactCompilerPreset()] }),
+    worker(),
+    built(),
+    headers(NONCE),
+    captures(),
+    client(),
+  ],
 }));
