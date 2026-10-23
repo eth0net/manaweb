@@ -498,24 +498,46 @@ export function useCollection(
 
   const printings = useMemo(() => [...totals.prints.keys()], [totals]);
 
-  return {
-    ready,
-    fresh,
-    error,
-    owned,
-    copies,
-    filed,
-    stacks: shelf,
-    printings,
-    total: totals.total,
-    add,
-    take,
-    amend,
-    unfile,
-    reload,
-    landed,
-    snapshot,
-  };
+  // Stable while nothing moves: everything in it is already held steady, and
+  // a fresh object around them was enough to re-render every row there is.
+  return useMemo(
+    () => ({
+      ready,
+      fresh,
+      error,
+      owned,
+      copies,
+      filed,
+      stacks: shelf,
+      printings,
+      total: totals.total,
+      add,
+      take,
+      amend,
+      unfile,
+      reload,
+      landed,
+      snapshot,
+    }),
+    [
+      ready,
+      fresh,
+      error,
+      owned,
+      copies,
+      filed,
+      shelf,
+      printings,
+      totals.total,
+      add,
+      take,
+      amend,
+      unfile,
+      reload,
+      landed,
+      snapshot,
+    ],
+  );
 }
 
 // What a read found, with anything written since laid over it.

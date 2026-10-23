@@ -1,5 +1,5 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Main } from "../lexicons/app/manaweb/container";
 import {
   create,
@@ -78,7 +78,9 @@ export function useContainers(session: OAuthSession | null): Containers {
     [session],
   );
 
-  return { held, error, add, drop };
+  // Stable while nothing moves, so a list rendering thousands of rows can
+  // skip the ones this did not change.
+  return useMemo(() => ({ held, error, add, drop }), [held, error, add, drop]);
 }
 
 function reason(failure: unknown): string {
