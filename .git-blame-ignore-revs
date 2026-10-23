@@ -1,0 +1,5 @@
+# Revisions that changed layout and no words. Git reads this with
+# `blame.ignoreRevsFile`, which `just hooks` sets; GitHub reads it by name.
+
+# style: format the Markdown biome now owns
+72188bafe568cc8bbfb85c4a3a88b2954778dd18
