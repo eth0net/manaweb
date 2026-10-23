@@ -562,6 +562,14 @@ textarea {
   padding: 0.75rem 0;
 }
 
+/* The marker the list grows from is not a row: no rule above it, and none of
+   the height every other child is given before it has been laid out. */
+.results > li.foot {
+  border-top: 0;
+  contain-intrinsic-size: auto 0;
+  padding: 0;
+}
+
 /* Art beside text. Stretch is the flex default, and it was pulling the
    thumbnail to whatever height the text ran to. */
 .card {

@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { CardRow } from "./CardRow";
@@ -17,6 +18,12 @@ import { CardPanel, type Shown } from "./Printings";
 import { amend, useSettings } from "./router";
 
 export const SETS = "/cards/sets";
+
+// How many rows are added at a time. A set is unbounded where a search is
+// capped — The List holds 5,740 printings — and a row costs a tenth of a
+// millisecond to build, so the whole of that one is half a second before
+// anything is on screen.
+const PAGE = 600;
 
 export type Listed = { set: SetRow; printings: number };
 
@@ -108,6 +115,16 @@ function Printings({
     [catalog, shown],
   );
 
+  // Rows are added as the foot of the list is reached rather than all at
+  // once. Reset here rather than in an effect, so a different set never
+  // renders the row count the last one was grown to.
+  const [limit, grow] = useState(PAGE);
+  const [of, mark] = useState(rows);
+  if (of !== rows) {
+    mark(rows);
+    grow(PAGE);
+  }
+
   // One open panel for the page, so a row carries two buttons and no modals.
   const [showing, show] = useState<Shown | null>(null);
   const open = useCallback(
@@ -151,7 +168,7 @@ function Printings({
         <p>Nothing in {label(sets, codes)} matches.</p>
       ) : (
         <ol className="results">
-          {rows.map(({ card, print }, at) => (
+          {rows.slice(0, limit).map(({ card, print }, at) => (
             <CardRow
               key={print?.id}
               card={card}
@@ -160,6 +177,7 @@ function Printings({
               onShow={open}
             />
           ))}
+          {limit < rows.length && <Foot onReached={grow} />}
         </ol>
       )}
 
@@ -174,6 +192,35 @@ function Printings({
       )}
     </>
   );
+}
+
+// The end of what has been built, which asks for more when it comes into
+// view. Observed afresh on every growth: an observer that is still
+// intersecting afterwards reports nothing more, and one page of rows does not
+// always fill the box.
+function Foot({
+  onReached,
+}: {
+  onReached: (more: (was: number) => number) => void;
+}) {
+  const edge = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    const here = edge.current;
+    const box = here?.parentElement;
+    if (!here || !box) return;
+
+    const watch = new IntersectionObserver(
+      ([seen]) => {
+        if (seen?.isIntersecting) onReached((was) => was + PAGE);
+      },
+      { root: box, rootMargin: `${PAGE}px` },
+    );
+    watch.observe(here);
+    return () => watch.disconnect();
+  });
+
+  return <li ref={edge} className="foot" aria-hidden="true" />;
 }
 
 // Ranking is for a catalog-wide scan; inside one set a name either reads the
