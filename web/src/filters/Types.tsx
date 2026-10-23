@@ -139,20 +139,6 @@ function Subtypes({
   chosen: string[];
   onChoose: (next: string[]) => void;
 }) {
-  const [filter, setFilter] = useState("");
-  const wanted = filter.trim().toLowerCase();
-  const shown = useMemo(() => {
-    const picked = (one: string) =>
-      chosen.some((each) => each.toLowerCase() === one.toLowerCase());
-    const matching = subtypes.filter(
-      (one) => !wanted || one.toLowerCase().includes(wanted),
-    );
-    return [
-      ...matching.filter(picked),
-      ...matching.filter((one) => !picked(one)),
-    ];
-  }, [subtypes, chosen, wanted]);
-
   return (
     <Modal
       trigger="tool"
@@ -177,6 +163,38 @@ function Subtypes({
         )
       }
     >
+      <Listing subtypes={subtypes} chosen={chosen} onChoose={onChoose} />
+    </Modal>
+  );
+}
+
+// Its own component because a dialog's contents are built by whoever writes
+// them, shut or not, and there are 684 of these.
+function Listing({
+  subtypes,
+  chosen,
+  onChoose,
+}: {
+  subtypes: string[];
+  chosen: string[];
+  onChoose: (next: string[]) => void;
+}) {
+  const [filter, setFilter] = useState("");
+  const wanted = filter.trim().toLowerCase();
+  const shown = useMemo(() => {
+    const picked = (one: string) =>
+      chosen.some((each) => each.toLowerCase() === one.toLowerCase());
+    const matching = subtypes.filter(
+      (one) => !wanted || one.toLowerCase().includes(wanted),
+    );
+    return [
+      ...matching.filter(picked),
+      ...matching.filter((one) => !picked(one)),
+    ];
+  }, [subtypes, chosen, wanted]);
+
+  return (
+    <>
       <input
         className="filter"
         type="search"
@@ -211,6 +229,6 @@ function Subtypes({
           );
         })}
       </ul>
-    </Modal>
+    </>
   );
 }

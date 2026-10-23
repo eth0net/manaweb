@@ -25,6 +25,8 @@ export function Modal({
 
 // The panel on its own, for a page that shows one rather than a row that
 // opens one: a list of several thousand rows paid for a modal apiece.
+// Whoever writes the children builds them, shut or not, so a long list goes
+// in a component of its own rather than inline here.
 export function Panel({
   title,
   actions,
