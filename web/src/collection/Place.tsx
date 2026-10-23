@@ -11,7 +11,7 @@ import {
 import { shed } from "../import/runner";
 import { Modal } from "../Modal";
 import { describe, hasArt, Language } from "../Printing";
-import { Printings } from "../Printings";
+import { type Along, Printings } from "../Printings";
 import { Link } from "../router";
 import {
   CONDITIONS,
@@ -74,6 +74,20 @@ export function Place({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [filed, found, filter]);
 
+  // The walk is the rows that have a card to show, which is every row once
+  // the catalog is loaded and none before. Keyed by the record's own uri: a
+  // printing can be filed twice over, in two conditions.
+  const { along, places } = useMemo(() => {
+    const along: Along[] = [];
+    const places = new Map<string, number>();
+    for (const { one, card, print } of rows) {
+      if (!card || !print) continue;
+      places.set(one.uri, along.length);
+      along.push({ card, print });
+    }
+    return { along, places };
+  }, [rows]);
+
   const total = filed.reduce((sum, one) => sum + shown(one), 0);
 
   return (
@@ -110,6 +124,8 @@ export function Place({
               card={row.card}
               print={row.print}
               name={row.name}
+              along={along}
+              at={places.get(row.one.uri)}
               catalog={catalog}
               containers={containers}
               owning={owning}
@@ -129,6 +145,8 @@ function Row({
   catalog,
   containers,
   owning,
+  along,
+  at,
 }: {
   one: Stack;
   card: Card | undefined;
@@ -137,6 +155,8 @@ function Row({
   catalog: Catalog | null;
   containers: Containers;
   owning: Holdings;
+  along?: Along[];
+  at?: number;
 }) {
   const { quantity } = one.value;
   const landing = one.waiting ?? 0;
@@ -150,6 +170,8 @@ function Row({
             catalog={catalog}
             name={name}
             start={print}
+            along={along}
+            at={at}
             trigger="art"
             label={
               <img src={image(print.id, "small")} alt="" loading="lazy" />
