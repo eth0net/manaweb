@@ -15,21 +15,24 @@ function loopbackId(): string {
   return `http://localhost?${params}`;
 }
 
-// Which client a dev build is, and why it is not always the loopback one,
-// is `docs/configuration.md`.
+// Which client a build is, and why it is not always the loopback one, is
+// `docs/configuration.md`.
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
-function devId(): string {
-  return LOOPBACK.has(location.hostname)
-    ? loopbackId()
-    : `${location.origin}/oauth/dev-client-metadata.json`;
+// The address decides rather than the build mode, a production bundle served
+// on loopback being no more reachable than a development one.
+function which(): string {
+  if (LOOPBACK.has(location.hostname)) return loopbackId();
+  return import.meta.env.DEV
+    ? `${location.origin}/oauth/dev-client-metadata.json`
+    : CLIENT_ID;
 }
 
 let loading: Promise<BrowserOAuthClient> | undefined;
 
 export function oauth(): Promise<BrowserOAuthClient> {
   loading ??= BrowserOAuthClient.load({
-    clientId: import.meta.env.DEV ? devId() : CLIENT_ID,
+    clientId: which(),
     handleResolver: RESOLVER,
   });
   return loading;

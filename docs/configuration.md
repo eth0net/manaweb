@@ -126,7 +126,9 @@ here at all.
 **Signing in from a phone needs a client the PDS can fetch.** An OAuth
 server cannot read a metadata document off a laptop, so for `localhost` the
 client is the hard-coded loopback one and everything about it is read out of
-the id. That only answers for a loopback address: reached over a tunnel the
+the id. The address picks it, not whether the bundle was built for
+production: a release build previewed on loopback would otherwise be the
+deployed client and send the browser to the deployed site to sign in. That only answers for a loopback address: reached over a tunnel the
 page has a public name, the loopback client is refused, and the dev server
 serves a document of its own at `/oauth/dev-client-metadata.json` naming that
 origin. Its scope is read from the committed document rather than written
