@@ -113,7 +113,13 @@ hooks:
     prek install
     # Per-clone, so it cannot be committed: a reformat is a commit `git blame`
     # should pass over, and GitHub reads the file by name without being told.
-    git config blame.ignoreRevsFile .git-blame-ignore-revs
+    # Unset where the file is absent — blame is fatal when this names nothing,
+    # which every checkout older than it would otherwise hit.
+    @if [ -f .git-blame-ignore-revs ]; then \
+        git config blame.ignoreRevsFile .git-blame-ignore-revs; \
+    else \
+        git config --unset blame.ignoreRevsFile || true; \
+    fi
 
 # The drawing is the source and every appearance is a row of four colors in
 # it, so a raster is composed rather than drawn — see `docs/roadmap.md`.

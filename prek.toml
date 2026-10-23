@@ -56,7 +56,7 @@ hooks = [
 [[repos]]
 repo = "local"
 hooks = [
-  { id = "biome", name = "biome check", entry = "bun run lint", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true },
+  { id = "biome", name = "biome check", entry = "bun run lint", language = "system", files = '\.(ts|tsx|css|md|ya?ml|json)$', pass_filenames = false, require_serial = true },
   { id = "tsc", name = "tsc", entry = "bun run types", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
   { id = "bun-test", name = "bun test", entry = "bun test", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
 ]
