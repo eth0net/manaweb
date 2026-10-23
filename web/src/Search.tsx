@@ -1,4 +1,10 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { CardRow } from "./CardRow";
 import type { Card, Catalog, Print } from "./catalog";
 import { answering, parse, type Query } from "./catalog/query";
@@ -6,6 +12,7 @@ import { Colors } from "./filters/Colors";
 import { More } from "./filters/Filters";
 import { SetFilter } from "./filters/SetFilter";
 import { Modes } from "./Nav";
+import { CardPanel, type Shown } from "./Printings";
 import { amend, Link, useSettings } from "./router";
 import { SETS } from "./Sets";
 
@@ -50,6 +57,14 @@ export function Search({
     [catalog, found, parsed],
   );
 
+  // One open panel for the page, so a row carries two buttons and no modals.
+  const [showing, show] = useState<Shown | null>(null);
+  const open = useCallback(
+    (at: number, grid?: boolean) => show({ at, grid }),
+    [],
+  );
+  const shut = useCallback(() => show(null), []);
+
   return (
     <>
       <Modes path="/cards" />
@@ -91,13 +106,22 @@ export function Search({
             <CardRow
               key={card.oracleId}
               card={card}
-              catalog={catalog}
               print={print}
-              along={rows}
               at={at}
+              onShow={open}
             />
           ))}
         </ol>
+      )}
+
+      {showing && (
+        <CardPanel
+          catalog={catalog}
+          along={rows}
+          at={showing.at}
+          grid={showing.grid}
+          onShut={shut}
+        />
       )}
     </>
   );

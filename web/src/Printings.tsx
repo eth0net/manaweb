@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type Card,
   type Catalog,
@@ -8,7 +8,7 @@ import {
   type Side,
 } from "./catalog";
 import { Add } from "./collection/Add";
-import { Modal, Panel } from "./Modal";
+import { Panel } from "./Modal";
 import { describe, hasArt, Language, titled, twoSided } from "./Printing";
 
 // A row of the list that opened this, so the panel can walk the list the way
@@ -18,24 +18,35 @@ export interface Along {
   print: Print | undefined;
 }
 
+// Which row a page's panel opened on, and whether on that card's printings.
+export type Shown = { at: number; grid?: boolean };
+
 // One panel for a whole list, shown by the page rather than opened by a row:
 // a container holding thousands of cards mounted a modal for every one.
 export function CardPanel({
   catalog,
   along,
   at,
+  grid,
   onShut,
 }: {
   catalog: Catalog;
   along: Along[];
   at: number;
+  // Opened on everything the card was printed as rather than on the one the
+  // row showed, which is what the printing count opens.
+  grid?: boolean;
   onShut: () => void;
 }) {
   const [here, move] = useState(at);
+  const [all, showAll] = useState(grid ?? false);
   const one = along[here];
   const step =
     along.length > 1
-      ? (by: number) => move((was) => (was + by + along.length) % along.length)
+      ? (by: number) => {
+          showAll(false);
+          move((was) => (was + by + along.length) % along.length);
+        }
       : null;
 
   // Shut rather than slide to a neighbor when the row this was opened on
@@ -54,62 +65,10 @@ export function CardPanel({
         key={one.print?.id ?? one.card.oracleId}
         card={one.card}
         catalog={catalog}
-        start={one.print}
+        start={all ? undefined : one.print}
         step={step}
       />
     </Panel>
-  );
-}
-
-// Art is what a printing is chosen by.
-export function Printings({
-  card,
-  catalog,
-  name,
-  start,
-  trigger,
-  label,
-  along,
-  at,
-}: {
-  card: Card;
-  catalog: Catalog;
-  name: string;
-  // Opens on one printing rather than on the grid of them.
-  start?: Print;
-  trigger: string;
-  label: ReactNode;
-  // The whole list and this row's place in it. Absent where there is no list
-  // to walk, as from the count of a card's own printings.
-  along?: Along[];
-  at?: number;
-}) {
-  const from = at ?? 0;
-  const [here, move] = useState(from);
-  const one = along?.[here];
-  const step =
-    along && along.length > 1
-      ? (by: number) => move((was) => (was + by + along.length) % along.length)
-      : null;
-
-  return (
-    <Modal
-      wide
-      trigger={trigger}
-      title={one ? titled(one.card, one.print).text : name}
-      label={label}
-      // A panel reopened from this row starts on this row, wherever walking
-      // left it.
-      onOpen={() => move(from)}
-    >
-      <Gallery
-        key={here}
-        card={one ? one.card : card}
-        catalog={catalog}
-        start={one ? one.print : start}
-        step={step}
-      />
-    </Modal>
   );
 }
 

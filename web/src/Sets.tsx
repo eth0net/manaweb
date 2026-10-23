@@ -1,4 +1,10 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { CardRow } from "./CardRow";
 import type { Catalog, SetRow } from "./catalog";
 import { matches, parse } from "./catalog/query";
@@ -7,6 +13,7 @@ import { useOwning } from "./collection/context";
 import { Colors } from "./filters/Colors";
 import { More } from "./filters/Filters";
 import { Modes } from "./Nav";
+import { CardPanel, type Shown } from "./Printings";
 import { amend, useSettings } from "./router";
 
 export const SETS = "/cards/sets";
@@ -101,6 +108,14 @@ function Printings({
     [catalog, shown],
   );
 
+  // One open panel for the page, so a row carries two buttons and no modals.
+  const [showing, show] = useState<Shown | null>(null);
+  const open = useCallback(
+    (at: number, grid?: boolean) => show({ at, grid }),
+    [],
+  );
+  const shut = useCallback(() => show(null), []);
+
   return (
     <>
       <Modes
@@ -140,13 +155,22 @@ function Printings({
             <CardRow
               key={print?.id}
               card={card}
-              catalog={catalog}
               print={print}
-              along={rows}
               at={at}
+              onShow={open}
             />
           ))}
         </ol>
+      )}
+
+      {showing && (
+        <CardPanel
+          catalog={catalog}
+          along={rows}
+          at={showing.at}
+          grid={showing.grid}
+          onShut={shut}
+        />
       )}
     </>
   );

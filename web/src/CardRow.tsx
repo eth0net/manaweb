@@ -1,24 +1,21 @@
-import { type Card, type Catalog, image, type Print, words } from "./catalog";
+import { type Card, image, type Print, words } from "./catalog";
 import { Add } from "./collection/Add";
 import { Mana } from "./Mana";
 import { describe, hasArt, Language, titled } from "./Printing";
-import { type Along, Printings } from "./Printings";
 
 // One card and the printing on show for it. The printing is given rather than
 // chosen here, because a search picks it by language and a set is the printing.
 export function CardRow({
   card,
   print,
-  catalog,
-  along,
   at,
+  onShow,
 }: {
   card: Card;
   print: Print | undefined;
-  catalog: Catalog;
-  // What the list shows, so the panel walks that rather than this card.
-  along?: Along[];
-  at?: number;
+  // This row's place in the list, which is what the page's panel is opened on.
+  at: number;
+  onShow: (at: number, grid?: boolean) => void;
 }) {
   const tags = card.kind === "card" ? card.flags : [card.kind, ...card.flags];
   const name = titled(card, print);
@@ -27,18 +24,9 @@ export function CardRow({
     <li>
       <div className="card">
         {print && hasArt(print) && (
-          <Printings
-            card={card}
-            catalog={catalog}
-            name={name.text}
-            start={print}
-            along={along}
-            at={at}
-            trigger="art"
-            label={
-              <img src={image(print.id, "small")} alt="" loading="lazy" />
-            }
-          />
+          <button type="button" className="art" onClick={() => onShow(at)}>
+            <img src={image(print.id, "small")} alt="" loading="lazy" />
+          </button>
         )}
         <div>
           <h2>
@@ -62,15 +50,13 @@ export function CardRow({
           {print && <p className="print">{describe(print)}</p>}
           <div className="meta">
             {print && <Add print={print} />}
-            <Printings
-              card={card}
-              catalog={catalog}
-              name={name.text}
-              trigger="link"
-              label={`${card.printings} printing${
-                card.printings === 1 ? "" : "s"
-              }`}
-            />
+            <button
+              type="button"
+              className="link"
+              onClick={() => onShow(at, true)}
+            >
+              {card.printings} printing{card.printings === 1 ? "" : "s"}
+            </button>
             {card.edhrecRank && (
               <span>EDHREC #{card.edhrecRank.toLocaleString()}</span>
             )}

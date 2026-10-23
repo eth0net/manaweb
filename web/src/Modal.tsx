@@ -5,27 +5,16 @@ import { createPortal } from "react-dom";
 export function Modal({
   label,
   trigger,
-  onOpen,
   ...rest
 }: Omit<Parameters<typeof Panel>[0], "onShut"> & {
   label: ReactNode;
   trigger: string;
-  // Opening is the only moment a panel can be told to start over: what it
-  // holds outlives a close, the trigger staying mounted.
-  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button
-        type="button"
-        className={trigger}
-        onClick={() => {
-          onOpen?.();
-          setOpen(true);
-        }}
-      >
+      <button type="button" className={trigger} onClick={() => setOpen(true)}>
         {label}
       </button>
 
