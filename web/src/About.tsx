@@ -103,6 +103,11 @@ function Licenses() {
 
         <dt>React, React DOM</dt>
         <dd>MIT</dd>
+
+        <dt>Flip icon</dt>
+        <dd>
+          <a href="https://github.com/akveo/eva-icons">Eva Icons</a>, MIT
+        </dd>
       </dl>
     </>
   );

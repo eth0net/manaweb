@@ -33,8 +33,9 @@ export function hasArt(print: Print): boolean {
 }
 
 // Counted over the cache rather than taken from Scryfall's layout list, and
-// `art_series` is in it on a majority — see `docs/scryfall.md`.
-const TURNS = new Set([
+// `art_series` is in it on a majority — see `docs/scryfall.md`. `flip` is a
+// layout of its own and not one of them: it turns in the plane of the card.
+const SIDED = new Set([
   "transform",
   "modal_dfc",
   "double_faced_token",
@@ -43,7 +44,7 @@ const TURNS = new Set([
 ]);
 
 export function twoSided(print: Print): boolean {
-  return TURNS.has(print.layout);
+  return SIDED.has(print.layout);
 }
 
 // One printing, as much of it as it has. Language is a tag of its own.

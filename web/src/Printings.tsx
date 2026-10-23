@@ -70,14 +70,27 @@ export function Printings({
   );
 }
 
+// Two arrows passing, which is a card going over rather than a page
+// reloading — what a single circular arrow was being read as. The layout
+// named `flip` is a different thing and not one of these; `licenses/README.md`
+// says where the drawing came from.
+function Flip() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M6.09 19h12l-1.3 1.29a1 1 0 0 0 1.42 1.42l3-3a1 1 0 0 0 0-1.42l-3-3a1 1 0 0 0-1.42 0 1 1 0 0 0 0 1.42l1.3 1.29h-12a1.56 1.56 0 0 1-1.59-1.53V13a1 1 0 0 0-2 0v2.47A3.56 3.56 0 0 0 6.09 19z" />
+      <path d="M5.79 9.71a1 1 0 1 0 1.42-1.42L5.91 7h12a1.56 1.56 0 0 1 1.59 1.53V11a1 1 0 0 0 2 0V8.53A3.56 3.56 0 0 0 17.91 5h-12l1.3-1.29a1 1 0 0 0 0-1.42 1 1 0 0 0-1.42 0l-3 3a1 1 0 0 0 0 1.42z" />
+    </svg>
+  );
+}
+
 // What the picture is doing, the box it will fill being held either way.
 type Showing = "loading" | "shown" | "gone";
 
 // Whether the back is really there is answered by fetching it: a layout that
-// usually has one is a reason to offer the turn, not a promise of an image.
+// usually has one is a reason to offer the flip, not a promise of an image.
 function Face({ print }: { print: Print }) {
   const [side, turn] = useState<Side>("front");
-  const [turnable, setTurnable] = useState(twoSided(print));
+  const [flippable, setFlippable] = useState(twoSided(print));
   const [showing, setShowing] = useState<Showing>("loading");
 
   if (!hasArt(print)) return <span className="noart" />;
@@ -96,24 +109,24 @@ function Face({ print }: { print: Print }) {
           // A back that is not there is the layout having been optimistic.
           // A front that is not there is a picture Scryfall does not hold.
           if (side === "back") {
-            setTurnable(false);
+            setFlippable(false);
             turn("front");
             setShowing("loading");
           } else setShowing("gone");
         }}
       />
       {showing === "loading" && <span className="spin" />}
-      {turnable && (
+      {flippable && (
         <button
           type="button"
-          className="turn"
-          aria-label="Turn the card over"
+          className="flip"
+          aria-label="Flip the card"
           onClick={() => {
             turn(side === "front" ? "back" : "front");
             setShowing("loading");
           }}
         >
-          ⟳
+          <Flip />
         </button>
       )}
     </span>
