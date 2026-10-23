@@ -33,6 +33,9 @@ export function Collection({
     // as an empty place rather than an error.
     return (
       <Place
+        // What a panel is open on is an index into one place's rows, so a
+        // different place starts over rather than carrying them across.
+        key={here?.uri ?? "unfiled"}
         catalog={catalog}
         containers={containers}
         owning={owning}

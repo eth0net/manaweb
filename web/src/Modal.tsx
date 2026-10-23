@@ -5,33 +5,57 @@ import { createPortal } from "react-dom";
 export function Modal({
   label,
   trigger,
-  title,
-  actions,
-  wide,
   onOpen,
-  children,
-}: {
+  ...rest
+}: Omit<Parameters<typeof Panel>[0], "onShut"> & {
   label: ReactNode;
   trigger: string;
-  title: string;
-  actions?: ReactNode;
-  wide?: boolean;
   // Opening is the only moment a panel can be told to start over: what it
   // holds outlives a close, the trigger staying mounted.
   onOpen?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        className={trigger}
+        onClick={() => {
+          onOpen?.();
+          setOpen(true);
+        }}
+      >
+        {label}
+      </button>
+
+      {open && <Panel {...rest} onShut={() => setOpen(false)} />}
+    </>
+  );
+}
+
+// The panel on its own, for a page that shows one rather than a row that
+// opens one: a list of several thousand rows paid for a modal apiece.
+export function Panel({
+  title,
+  actions,
+  wide,
+  onShut,
+  children,
+}: {
+  title: string;
+  actions?: ReactNode;
+  wide?: boolean;
+  onShut: () => void;
   children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
 
   // Everything the element needs, once it exists. `closedby` because React's
   // types don't carry it yet, and a listener beside it because Safari does
   // not implement it.
   useEffect(() => {
-    // Runs when the dialog is built rather than when the trigger mounts,
-    // there being no element to wire up until then.
-    if (!open) return;
     const on = dialog.current;
     if (!on) return;
     on.setAttribute("closedby", "any");
@@ -56,50 +80,32 @@ export function Modal({
       on.removeEventListener("pointerdown", down);
       on.removeEventListener("click", up);
     };
-  }, [open]);
+  }, []);
 
-  return (
-    <>
-      <button
-        type="button"
-        className={trigger}
-        onClick={() => {
-          onOpen?.();
-          setOpen(true);
-        }}
-      >
-        {label}
-      </button>
-
-      {/* Nothing until it is opened: the dialog goes to the body, so a list
-          windowing its rows cannot skip one per row — and a collection has
-          thousands. Out of the triggering tree because a dialog is flow
-          content, and a trigger inside a sentence would end its paragraph. */}
-      {open &&
-        createPortal(
-          <dialog
-            ref={dialog}
-            className={wide ? "wide" : undefined}
-            onClose={() => setOpen(false)}
+  // Out of the tree that showed it: a dialog is flow content, and a trigger
+  // inside a sentence would end the paragraph holding it.
+  return createPortal(
+    <dialog
+      ref={dialog}
+      className={wide ? "wide" : undefined}
+      onClose={onShut}
+    >
+      <div className="panel" ref={panel} tabIndex={-1}>
+        <div className="panel-head">
+          <h2>{title}</h2>
+          <button
+            type="button"
+            className="shut"
+            aria-label="Close"
+            onClick={() => dialog.current?.close()}
           >
-            <div className="panel" ref={panel} tabIndex={-1}>
-              <div className="panel-head">
-                <h2>{title}</h2>
-                <button
-                  type="button"
-                  className="shut"
-                  aria-label="Close"
-                  onClick={() => dialog.current?.close()}
-                >
-                  ×
-                </button>
-              </div>
-              {children}
-              {actions && <p className="actions">{actions}</p>}
-            </div>
-          </dialog>,
-          document.body,
-        )}
-    </>
+            ×
+          </button>
+        </div>
+        {children}
+        {actions && <p className="actions">{actions}</p>}
+      </div>
+    </dialog>,
+    document.body,
   );
 }

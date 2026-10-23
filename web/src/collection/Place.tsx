@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   appLanguage,
   type Card,
@@ -11,7 +11,7 @@ import {
 import { shed } from "../import/runner";
 import { Modal } from "../Modal";
 import { describe, hasArt, Language } from "../Printing";
-import { type Along, Printings } from "../Printings";
+import { type Along, CardPanel } from "../Printings";
 import { Link } from "../router";
 import {
   CONDITIONS,
@@ -88,6 +88,10 @@ export function Place({
     return { along, places };
   }, [rows]);
 
+  // One open panel for the page, so a row carries a button and not a modal.
+  const [showing, show] = useState<number | null>(null);
+  const shut = useCallback(() => show(null), []);
+
   const total = filed.reduce((sum, one) => sum + shown(one), 0);
 
   return (
@@ -124,14 +128,23 @@ export function Place({
               card={row.card}
               print={row.print}
               name={row.name}
-              along={along}
               at={places.get(row.one.uri)}
+              onShow={show}
               catalog={catalog}
               containers={containers}
               owning={owning}
             />
           ))}
         </ol>
+      )}
+
+      {catalog && showing !== null && (
+        <CardPanel
+          catalog={catalog}
+          along={along}
+          at={showing}
+          onShut={shut}
+        />
       )}
     </>
   );
@@ -145,8 +158,8 @@ function Row({
   catalog,
   containers,
   owning,
-  along,
   at,
+  onShow,
 }: {
   one: Stack;
   card: Card | undefined;
@@ -155,8 +168,8 @@ function Row({
   catalog: Catalog | null;
   containers: Containers;
   owning: Holdings;
-  along?: Along[];
   at?: number;
+  onShow: (at: number) => void;
 }) {
   const { quantity } = one.value;
   const landing = one.waiting ?? 0;
@@ -164,19 +177,10 @@ function Row({
   return (
     <li>
       <div className="card">
-        {catalog && card && print && hasArt(print) && (
-          <Printings
-            card={card}
-            catalog={catalog}
-            name={name}
-            start={print}
-            along={along}
-            at={at}
-            trigger="art"
-            label={
-              <img src={image(print.id, "small")} alt="" loading="lazy" />
-            }
-          />
+        {catalog && card && print && hasArt(print) && at !== undefined && (
+          <button type="button" className="art" onClick={() => onShow(at)}>
+            <img src={image(print.id, "small")} alt="" loading="lazy" />
+          </button>
         )}
         <div>
           <h2>

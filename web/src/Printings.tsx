@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   type Card,
   type Catalog,
@@ -8,7 +8,7 @@ import {
   type Side,
 } from "./catalog";
 import { Add } from "./collection/Add";
-import { Modal } from "./Modal";
+import { Modal, Panel } from "./Modal";
 import { describe, hasArt, Language, titled, twoSided } from "./Printing";
 
 // A row of the list that opened this, so the panel can walk the list the way
@@ -16,6 +16,49 @@ import { describe, hasArt, Language, titled, twoSided } from "./Printing";
 export interface Along {
   card: Card;
   print: Print | undefined;
+}
+
+// One panel for a whole list, shown by the page rather than opened by a row:
+// a container holding thousands of cards mounted a modal for every one.
+export function CardPanel({
+  catalog,
+  along,
+  at,
+  onShut,
+}: {
+  catalog: Catalog;
+  along: Along[];
+  at: number;
+  onShut: () => void;
+}) {
+  const [here, move] = useState(at);
+  const one = along[here];
+  const step =
+    along.length > 1
+      ? (by: number) => move((was) => (was + by + along.length) % along.length)
+      : null;
+
+  // Shut rather than slide to a neighbor when the row this was opened on
+  // goes: removing the element fires no close, so the page would otherwise
+  // still believe a panel is open and show one again unasked.
+  useEffect(() => {
+    if (!one) onShut();
+  }, [one, onShut]);
+  if (!one) return null;
+
+  return (
+    <Panel wide title={titled(one.card, one.print).text} onShut={onShut}>
+      <Gallery
+        // Keyed on what is shown and not on where it is: a row inserted above
+        // leaves the heading reading one card and the picture another.
+        key={one.print?.id ?? one.card.oracleId}
+        card={one.card}
+        catalog={catalog}
+        start={one.print}
+        step={step}
+      />
+    </Panel>
+  );
 }
 
 // Art is what a printing is chosen by.
