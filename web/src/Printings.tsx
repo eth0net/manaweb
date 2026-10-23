@@ -83,42 +83,40 @@ function Face({ print }: { print: Print }) {
   if (!hasArt(print)) return <span className="noart" />;
 
   return (
-    <>
-      <span className={`face ${showing}`}>
-        <img
-          // Its own element per side, so turning starts the wait over.
-          key={side}
-          src={image(print.id, "normal", side)}
-          alt=""
-          width={NORMAL.width}
-          height={NORMAL.height}
-          onLoad={() => setShowing("shown")}
-          onError={() => {
-            // A back that is not there is the layout having been optimistic.
-            // A front that is not there is a picture Scryfall does not hold.
-            if (side === "back") {
-              setTurnable(false);
-              turn("front");
-              setShowing("loading");
-            } else setShowing("gone");
-          }}
-        />
-        {showing === "loading" && <span className="spin" />}
-      </span>
+    <span className={`face ${showing}`}>
+      <img
+        // Its own element per side, so turning starts the wait over.
+        key={side}
+        src={image(print.id, "normal", side)}
+        alt=""
+        width={NORMAL.width}
+        height={NORMAL.height}
+        onLoad={() => setShowing("shown")}
+        onError={() => {
+          // A back that is not there is the layout having been optimistic.
+          // A front that is not there is a picture Scryfall does not hold.
+          if (side === "back") {
+            setTurnable(false);
+            turn("front");
+            setShowing("loading");
+          } else setShowing("gone");
+        }}
+      />
+      {showing === "loading" && <span className="spin" />}
       {turnable && (
-        <p className="actions">
-          <button
-            type="button"
-            onClick={() => {
-              turn(side === "front" ? "back" : "front");
-              setShowing("loading");
-            }}
-          >
-            Turn over
-          </button>
-        </p>
+        <button
+          type="button"
+          className="turn"
+          aria-label="Turn the card over"
+          onClick={() => {
+            turn(side === "front" ? "back" : "front");
+            setShowing("loading");
+          }}
+        >
+          ⟳
+        </button>
       )}
-    </>
+    </span>
   );
 }
 

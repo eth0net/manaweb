@@ -1166,6 +1166,24 @@ dialog.wide {
   visibility: hidden;
 }
 
+/* Over the card rather than under it: a control that comes and goes with the
+   layout moved the panel every time a two-sided card did. */
+.turn {
+  background: rgb(0 0 0 / 55%);
+  border: 0;
+  border-radius: 50%;
+  bottom: 0.5rem;
+  color: #fff;
+  font-size: 1rem;
+  height: 2rem;
+  left: 50%;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 2rem;
+}
+
 .spin {
   animation: spin 0.8s linear infinite;
   border: 2px solid var(--edge);
@@ -1185,6 +1203,24 @@ dialog.wide {
 
 /* A ring that says the same thing without turning. */
 @media (prefers-reduced-motion: reduce) {
+  /* Over the card rather than under it: a control that comes and goes with the
+   layout moved the panel every time a two-sided card did. */
+  .turn {
+    background: rgb(0 0 0 / 55%);
+    border: 0;
+    border-radius: 50%;
+    bottom: 0.5rem;
+    color: #fff;
+    font-size: 1rem;
+    height: 2rem;
+    left: 50%;
+    line-height: 1;
+    padding: 0;
+    position: absolute;
+    transform: translateX(-50%);
+    width: 2rem;
+  }
+
   .spin {
     animation: none;
   }
