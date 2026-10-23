@@ -1,6 +1,6 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useCallback, useEffect, useState } from "react";
-import { oauth, restore } from "./client";
+import { callback, oauth, restore } from "./client";
 
 export type State =
   // Reading the session back on page load, before anything can be shown.
@@ -41,7 +41,11 @@ export function useSession() {
     setState({ status: "signing" });
     try {
       const client = await oauth();
-      await client.signIn(handle.trim());
+      const back = callback(
+        client.clientMetadata.redirect_uris,
+        location.origin,
+      );
+      await client.signIn(handle.trim(), back ? { redirect_uri: back } : {});
     } catch (error) {
       setState({ status: "out", error: reason(error) });
     }
