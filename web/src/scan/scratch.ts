@@ -183,6 +183,22 @@ export function refinish(
   );
 }
 
+// The next finish the printing was made in, wrapping — a press rather than a
+// list, which comes to a toggle where it was made two ways.
+export function cycled(
+  list: Entry[],
+  id: string,
+  finishes: Finishes,
+): Entry[] {
+  return list.map((one) => {
+    if (one.id !== id) return one;
+    const made = finishes(one.scryfallId);
+    if (made.length < 2) return one;
+    const at = made.indexOf(one.finish);
+    return { ...one, finish: made[(at + 1) % made.length] as string };
+  });
+}
+
 export function regraded(
   list: Entry[],
   id: string,

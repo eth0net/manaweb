@@ -9,6 +9,7 @@ import {
   among,
   cards,
   choose,
+  cycled,
   drop,
   type Entry,
   joinable,
@@ -257,6 +258,32 @@ test("a stack the ceiling closed does not stop the next one joining", () => {
 
   expect(joinable(list)).toBe(1);
   expect(merged(list).map((held) => held.quantity)).toEqual([10000, 6000]);
+});
+
+// Two finishes is the common printing, so one press has to be the toggle.
+test("a press is the next finish the printing was made in", () => {
+  const made = () => ["nonfoil", "foil"];
+  const list = [one()];
+
+  expect(cycled(list, "a", made)[0]?.finish).toBe("foil");
+  expect(cycled(cycled(list, "a", made), "a", made)[0]?.finish).toBe(
+    "nonfoil",
+  );
+});
+
+test("three finishes come round rather than stopping", () => {
+  const made = () => ["nonfoil", "foil", "etched"];
+  const once = cycled([one()], "a", made);
+
+  expect(once[0]?.finish).toBe("foil");
+  expect(cycled(once, "a", made)[0]?.finish).toBe("etched");
+  expect(cycled(cycled(once, "a", made), "a", made)[0]?.finish).toBe(
+    "nonfoil",
+  );
+});
+
+test("a printing made one way has nothing a press could do", () => {
+  expect(cycled([one()], "a", () => ["nonfoil"])[0]?.finish).toBe("nonfoil");
 });
 
 test("a plus stops at the ceiling", () => {

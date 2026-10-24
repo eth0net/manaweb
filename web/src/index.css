@@ -386,11 +386,56 @@ nav a.here {
   min-width: 0;
 }
 
-/* Sits under the finish, not beside a label. */
+.scratch-badges {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0.25rem 0 0;
+}
+
+/* A `tag` that answers to a press: the same label the rest of the app draws,
+   in the text color to say it is live and held to the 24px a target wants. */
+.badge {
+  align-items: center;
+  background: none;
+  border: 1px solid var(--edge);
+  border-radius: 0.25rem;
+  color: inherit;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.6875rem;
+  justify-content: center;
+  min-height: 1.5rem;
+  /* Wide enough for `nonfoil`, the longest of the three, so pressing one
+     does not resize it and shift what is beside it. */
+  min-width: 7ch;
+  padding: 0.1875rem 0.375rem;
+  text-transform: lowercase;
+}
+
+/* The one finish it was made in, which leaves it a plain label again. */
+.badge.locked {
+  color: var(--quiet);
+}
+
+/* The caret the control draws is sized for a field, so it gives that up and
+   one is painted here instead. */
 .scratch-grade {
-  font-size: 0.8125rem;
-  margin-top: 0.25rem;
-  max-width: 14rem;
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, currentcolor 50%)
+    calc(100% - 0.6rem) 55% / 0.3rem 0.3rem no-repeat,
+    linear-gradient(135deg, currentcolor 50%, transparent 50%)
+    calc(100% - 0.3rem) 55% / 0.3rem 0.3rem no-repeat;
+  border: 1px solid var(--edge);
+  border-radius: 0.25rem;
+  color: inherit;
+  font-size: 0.6875rem;
+  min-height: 1.5rem;
+  padding: 0.1875rem 1.1rem 0.1875rem 0.375rem;
+  text-transform: lowercase;
+  width: auto;
 }
 
 .scratch-count {

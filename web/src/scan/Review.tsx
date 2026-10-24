@@ -27,6 +27,7 @@ import {
   cards,
   choose,
   copies,
+  cycled,
   drop,
   type Entry,
   type Finishes,
@@ -388,26 +389,32 @@ function Stack({
         )}
         <div className="scratch-what">
           <Title held={held} short />
-          <small className="quiet">
-            {one.finish}
-            {one.reported && " · reported"}
-          </small>
-          <select
-            className="scratch-grade"
-            aria-label="Condition"
-            value={one.condition}
-            onChange={(event) =>
-              change((list) => regraded(list, one.id, event.target.value))
-            }
-            disabled={frozen}
-          >
-            <option value="">Ungraded</option>
-            {CONDITIONS.map((grade) => (
-              <option key={grade} value={grade}>
-                {words(grade)}
-              </option>
-            ))}
-          </select>
+          <p className="scratch-badges">
+            <Finish
+              one={one}
+              made={made}
+              finishes={finishes}
+              change={change}
+              frozen={frozen}
+            />
+            <select
+              className="scratch-grade"
+              aria-label="Condition"
+              value={one.condition}
+              onChange={(event) =>
+                change((list) => regraded(list, one.id, event.target.value))
+              }
+              disabled={frozen}
+            >
+              <option value="">ungraded</option>
+              {CONDITIONS.map((grade) => (
+                <option key={grade} value={grade}>
+                  {words(grade)}
+                </option>
+              ))}
+            </select>
+            {one.reported && <small className="quiet">reported</small>}
+          </p>
           {!sure(one) && !one.picked && (
             <small className="warn">
               {one.margin >= FLOOR
@@ -531,6 +538,37 @@ function Stack({
 
 // `short` is the list row, where the set's name wraps to three lines and the
 // artist settles nothing; the fold tells printings apart and wants both.
+// One press is the next finish the printing was made in, so two of them are
+// a toggle. Always shown, so the tags line up down the list.
+function Finish({
+  one,
+  made,
+  finishes,
+  change,
+  frozen,
+}: {
+  one: Entry;
+  made: string[];
+  finishes: Finishes;
+  change: Change;
+  frozen: boolean;
+}) {
+  if (made.length < 2) {
+    return <span className="badge locked">{one.finish}</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      className="badge"
+      onClick={() => change((list) => cycled(list, one.id, finishes))}
+      disabled={frozen}
+    >
+      {one.finish}
+    </button>
+  );
+}
+
 function Title({ held, short }: { held: Found | null; short?: boolean }) {
   if (!held) {
     return (
