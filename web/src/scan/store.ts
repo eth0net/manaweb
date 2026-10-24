@@ -197,6 +197,10 @@ export function useScratch(): Scratch {
   const [ready, setReady] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const held = useRef<Entry[]>([]);
+  // Whether what was stored has been taken. The effect runs again on a hot
+  // reload with the ref still holding every card, and the join below would
+  // then put the stored copy in front of the same cards a second time.
+  const joined = useRef(false);
   // A read that never answered is one nothing may be written over.
   const sealed = useRef(false);
 
@@ -214,7 +218,11 @@ export function useScratch(): Scratch {
     let live = true;
     recall()
       .then((found) => {
-        if (!live || !found) return;
+        // Set before the empty case returns: a scan landing after a read that
+        // found nothing is already in the ref, and the next read finds it.
+        if (!live || joined.current) return;
+        joined.current = true;
+        if (!found) return;
         // Behind whatever was scanned while the read was still going: those
         // cards were seen first, and neither list may take the other's place.
         const scanned = held.current;
