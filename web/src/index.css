@@ -386,6 +386,14 @@ nav a.here {
   min-width: 0;
 }
 
+/* The answer stands where the question was asked, rather than over the page. */
+.scratch-clear {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .scratch-badges {
   align-items: center;
   display: flex;

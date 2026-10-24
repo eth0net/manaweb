@@ -93,6 +93,7 @@ export function Review({
 
   const running = useImport();
   const [keeping, setKeeping] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [problem, setProblem] = useState("");
 
   // What keeping the list does to the collection, which is the arithmetic a
@@ -140,6 +141,18 @@ export function Review({
       setProblem(failed instanceof Error ? failed.message : String(failed));
     } finally {
       setKeeping(false);
+    }
+  }
+
+  // The list is the only copy of these cards, so the press that throws them
+  // away is a quiet one and it asks first.
+  async function away() {
+    setClearing(false);
+    setProblem("");
+    try {
+      await scratch.clear();
+    } catch (failed: unknown) {
+      setProblem(failed instanceof Error ? failed.message : String(failed));
     }
   }
 
@@ -216,6 +229,32 @@ export function Review({
         )
       ) : (
         <p className="quiet">Sign in to keep these.</p>
+      )}
+
+      {clearing ? (
+        <p className="scratch-clear">
+          <span className="warn">
+            Throw away {held.toLocaleString()} card{held === 1 ? "" : "s"}?
+            They are not written anywhere else.
+          </span>
+          <button type="button" onClick={() => void away()} disabled={keeping}>
+            Throw them away
+          </button>
+          <button type="button" onClick={() => setClearing(false)}>
+            Keep the list
+          </button>
+        </p>
+      ) : (
+        <p>
+          <button
+            type="button"
+            className="link"
+            onClick={() => setClearing(true)}
+            disabled={keeping}
+          >
+            Clear the list
+          </button>
+        </p>
       )}
 
       {weight && weight.joined > 0 && (
