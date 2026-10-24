@@ -50,6 +50,17 @@ hooks = [
   { id = "cargo-test", name = "cargo test", entry = "cargo test --all-targets", language = "system", files = '\.rs$|(^|/)Cargo\.(toml|lock)$|^crates/core/migrations/', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
 ]
 
+# Deliberately unscoped, and the one hook here that is: an advisory is
+# published against a lockfile nobody has touched, so a `files` pattern would
+# make this fire exactly when it has nothing to find. The 1.4s is mostly the
+# advisory fetch, and that is its own reach for GitHub rather than the one the
+# push makes: with no network it fails here instead of at the remote.
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "deny", name = "supply chain (just deny)", entry = "just deny", language = "system", always_run = true, pass_filenames = false, require_serial = true, stages = ["pre-push"] },
+]
+
 # Scoped to `web/`, and `system` for the same reason the cargo hooks are: bun
 # is needed to work on the client at all. `tsc` waits for pre-push, being the
 # slow one.

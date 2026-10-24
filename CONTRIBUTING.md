@@ -8,7 +8,8 @@ that's the part expensive to change later.
 ## Getting set up
 
 Rust (stable, 2024 edition), and [Bun](https://bun.sh) if you're touching
-`web/` or `tools/`.
+`web/` or `tools/`. Also `cargo install cargo-deny`, which the pre-push hooks
+run against every push whatever it touches.
 
 ```sh
 git clone https://github.com/eth0net/manaweb
@@ -19,11 +20,11 @@ cargo test
 
 [prek](https://github.com/j178/prek) runs what CI runs — `cargo fmt`, a
 warning-free `cargo clippy --all-targets --all-features`, `cargo test`,
-`biome`, `tsc`, `bun test`, `typos`, the prose check and the sign-off check —
-on commit and push, so a red build costs no round trip. The Rust and TypeScript
-hooks are scoped by path, so touching one side never asks for the other's
-toolchain. CI runs what a checkout cannot: the macOS and Windows matrix and the
-oldest Rust we support.
+`biome`, `tsc`, `bun test`, `typos`, `cargo deny`, the prose check and the
+sign-off check — on commit and push, so a red build costs no round trip. The
+Rust and TypeScript hooks are scoped by path, so touching one side never asks
+for the other's toolchain. CI runs what a checkout cannot: the macOS and
+Windows matrix and the oldest Rust we support.
 
 `rust-toolchain.toml` names the compiler both of them use, so rustup fetches it
 on your first build and a new release lands on whoever bumped the file rather
