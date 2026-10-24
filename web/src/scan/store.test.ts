@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { broken, database } from "../testing/idb";
 import type { Entry } from "./scratch";
-import { forget, keep, recall } from "./store";
+import { forget, keep, keepGrade, recall, recallGrade } from "./store";
 
 // A fresh database per test: these all write the one key.
 afterEach(() => void database());
@@ -16,6 +16,7 @@ function one(over: Partial<Entry> = {}): Entry {
     matched: [{ distance: 0, prints: ["p1"] }],
     scryfallId: "p1",
     finish: "nonfoil",
+    condition: "nearMint",
     quantity: 1,
     ...over,
   };
@@ -26,25 +27,16 @@ test("nothing kept reads as nothing rather than as a failure", async () => {
 });
 
 test("a list survives being written and read back", async () => {
-  const list = [one({ id: "a" }), one({ id: "b", quantity: 3 })];
-  await keep({ list, grade: "played" });
+  await keep([one({ id: "a" }), one({ id: "b", quantity: 3 })]);
 
   const found = await recall();
-  expect(found?.list).toHaveLength(2);
-  expect(found?.list[1]).toMatchObject({ id: "b", quantity: 3 });
-  expect(found?.grade).toBe("played");
+  expect(found).toHaveLength(2);
+  expect(found?.[1]).toMatchObject({ id: "b", quantity: 3 });
 });
 
-// The list outlives the tab and the grade governs what it is written as, so
-// one of them coming back without the other writes a grade nobody chose.
-test("the grade comes back with the list it was set over", async () => {
-  await keep({ list: [one()], grade: "lightPlayed" });
-  expect((await recall())?.grade).toBe("lightPlayed");
-});
-
-// The list on its own, under the key the store uses, which is what a build
-// from before the grade existed left behind.
-async function seed(list: Entry[]): Promise<void> {
+// A build before the stacks carried a grade, which is one object store and
+// one version behind: the upgrade has to run on the way to reading it.
+async function seed(list: Entry[], grade?: string): Promise<void> {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const asked = indexedDB.open("manaweb-scan", 1);
     asked.onupgradeneeded = () => asked.result.createObjectStore("scratch");
@@ -54,42 +46,102 @@ async function seed(list: Entry[]): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const held = db.transaction("scratch", "readwrite");
     held.objectStore("scratch").put(list, "list");
+    if (grade !== undefined) held.objectStore("scratch").put(grade, "grade");
     held.oncomplete = () => resolve();
     held.onabort = () => reject(held.error);
   });
   db.close();
 }
 
-// Which is not a list graded at nothing: it was scanned under a build that
-// wrote no condition at all.
-test("a list stored without a grade reads back at the usual one", async () => {
-  await seed([one()]);
-  expect((await recall())?.grade).toBe("nearMint");
+// What those stacks would have been written at, so the pile does not change
+// grade underneath somebody on the strength of an upgrade.
+test("stacks saved before they carried a grade take the list's", async () => {
+  await seed([one({ condition: undefined as unknown as string })], "played");
+  expect((await recall())?.[0]?.condition).toBe("played");
 });
 
-// Ungraded is a grade somebody picked, so it has to survive a reload as
-// itself rather than falling back to the one a blank means.
-test("a list set to ungraded comes back ungraded", async () => {
-  await keep({ list: [one()], grade: "" });
-  expect((await recall())?.grade).toBe("");
+test("stacks saved under no grade at all take the usual one", async () => {
+  await seed([one({ condition: undefined as unknown as string })]);
+  expect((await recall())?.[0]?.condition).toBe("nearMint");
+});
+
+// Ungraded is a grade somebody picked, so it survives a reload as itself
+// rather than being read as a stack that said nothing.
+test("a stack set to ungraded comes back ungraded", async () => {
+  await keep([one({ condition: "" })]);
+  expect((await recall())?.[0]?.condition).toBe("");
 });
 
 test("a later write replaces the whole list", async () => {
-  await keep({ list: [one({ id: "a" }), one({ id: "b" })], grade: "" });
-  await keep({ list: [one({ id: "c" })], grade: "" });
+  await keep([one({ id: "a" }), one({ id: "b" })]);
+  await keep([one({ id: "c" })]);
 
-  expect((await recall())?.list.map((held) => held.id)).toEqual(["c"]);
+  expect((await recall())?.map((held) => held.id)).toEqual(["c"]);
 });
 
 test("forget leaves nothing behind", async () => {
-  await keep({ list: [one()], grade: "mint" });
+  await keep([one()]);
   await forget();
   expect(await recall()).toBeNull();
+});
 
-  // The grade too, which `keep` would hide: it writes both keys, so only a
-  // list put back on its own can show what forget left behind.
-  await seed([one()]);
-  expect((await recall())?.grade).toBe("nearMint");
+test("the grade a scan is taken at starts at the usual one", async () => {
+  expect(await recallGrade()).toBe("nearMint");
+});
+
+test("the grade a scan is taken at survives being written and read", async () => {
+  await keepGrade("lightPlayed");
+  expect(await recallGrade()).toBe("lightPlayed");
+});
+
+// The whole point of moving it out of the list: a box scanned as played goes
+// on being scanned as played once those cards have been kept.
+test("the grade outlives the pile it was set over", async () => {
+  await keepGrade("played");
+  await keep([one()]);
+  await forget();
+
+  expect(await recallGrade()).toBe("played");
+});
+
+test("ungraded survives as the grade to scan at", async () => {
+  await keepGrade("");
+  expect(await recallGrade()).toBe("");
+});
+
+// Carried across rather than reset, the old key being the last thing anybody
+// said about what they were scanning.
+test("the grade a stored list followed seeds the one to scan at", async () => {
+  await seed([one()], "excellent");
+  expect(await recallGrade()).toBe("excellent");
+});
+
+// The read has to move it, not lean on it: it is stored beside the list, so
+// keeping those cards takes it away and the next box goes in near mint.
+test("a seeded grade survives the list it was seeded from", async () => {
+  await seed([one()], "excellent");
+  expect(await recallGrade()).toBe("excellent");
+  await forget();
+
+  expect(await recallGrade()).toBe("excellent");
+});
+
+// A tab left open on the version before the settings store existed. The
+// request would otherwise sit there answering neither way, and a scan would
+// go on filling a list nothing was writing down.
+test("an upgrade another tab is holding off fails rather than waiting", async () => {
+  const holding = await new Promise<IDBDatabase>((resolve, reject) => {
+    const asked = indexedDB.open("manaweb-scan", 1);
+    asked.onupgradeneeded = () => asked.result.createObjectStore("scratch");
+    asked.onsuccess = () => resolve(asked.result);
+    asked.onerror = () => reject(asked.error);
+  });
+
+  try {
+    await expect(recall()).rejects.toThrow("Close it and reload");
+  } finally {
+    holding.close();
+  }
 });
 
 // The distinction the review turned up: a read that failed and an empty list
@@ -101,5 +153,5 @@ test("a read that cannot open the database throws rather than reading empty", ()
 
 test("a write that cannot open the database throws", () => {
   broken("no room");
-  expect(keep({ list: [one()], grade: "" })).rejects.toThrow("no room");
+  expect(keep([one()])).rejects.toThrow("no room");
 });

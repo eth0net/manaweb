@@ -68,6 +68,7 @@ const corrected: Entry = {
   scryfallId: "corrected",
   picked: true,
   finish: "nonfoil",
+  condition: "nearMint",
   quantity: 1,
 };
 

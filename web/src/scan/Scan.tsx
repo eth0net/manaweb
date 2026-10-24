@@ -14,7 +14,9 @@ import {
   image,
   type Manifest,
   type Print,
+  words,
 } from "../catalog";
+import { CONDITIONS } from "../collection/cards";
 import { describe } from "../Printing";
 import { Link } from "../router";
 import { frame, open } from "./camera";
@@ -32,7 +34,7 @@ import {
   settled,
   sure,
 } from "./scratch";
-import type { Scratch } from "./store";
+import type { Grading, Scratch } from "./store";
 
 // Development only. The import sits inside the branch, so the module and
 // the route it posts to are dropped with it.
@@ -86,12 +88,15 @@ export function Scan({
   catalog,
   manifest,
   scratch,
+  grading,
 }: {
   catalog: Catalog | null;
   manifest: Manifest | null;
   scratch: Scratch;
+  grading: Grading;
 }) {
   const { change } = scratch;
+  const { grade, regrade } = grading;
   const [camera, setCamera] = useState<"off" | "opening" | "on">("off");
   const [answer, setAnswer] = useState<Answer>({ at: "none" });
   const [problem, setProblem] = useState<string | null>(null);
@@ -198,7 +203,7 @@ export function Scan({
       const found = read(held, catalog, artworks, picture);
       const at = new Date().toISOString();
       const id = crypto.randomUUID();
-      const made = found ? scanned(found, id, at) : null;
+      const made = found ? scanned(found, id, at, grade) : null;
       // Below the floor it waits: a card read twice because the first look
       // was poor is one card, and the count has to say so while scanning
       // rather than after.
@@ -230,7 +235,7 @@ export function Scan({
       setAnswer({ at: "none" });
       setProblem(said(failed));
     }
-  }, [catalog, change, manifest]);
+  }, [catalog, change, grade, manifest]);
 
   if (!catalog || !manifest) {
     return <p className="quiet">The catalog is still loading.</p>;
@@ -339,6 +344,21 @@ export function Scan({
           )}
           {scratch.list.length > 0 && <Waiting list={scratch.list} />}
           {problem && <p className="warn">{problem}</p>}
+          <p className="field scan-setting">
+            <label htmlFor="scan-grade">Scanning as</label>
+            <select
+              id="scan-grade"
+              value={grade}
+              onChange={(event) => regrade(event.target.value)}
+            >
+              <option value="">Ungraded</option>
+              {CONDITIONS.map((one) => (
+                <option key={one} value={one}>
+                  {words(one)}
+                </option>
+              ))}
+            </select>
+          </p>
         </div>
       )}
 

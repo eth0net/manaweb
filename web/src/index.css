@@ -205,6 +205,13 @@ nav a.here {
   padding: 1rem;
 }
 
+/* The parent's gap stands in for the margin a field carries, and the label
+   centers with everything else on this screen. */
+.scan-setting {
+  align-items: center;
+  margin: 0;
+}
+
 /* Everything you touch is at the bottom, where a thumb already is: the
    buttons are pressed once a card and the panel is what a mistake is undone
    from. */

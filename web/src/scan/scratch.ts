@@ -27,8 +27,8 @@ export type Entry = {
   // than in a component, so it survives the fold closing and the tab dying.
   reported?: string;
   finish: string;
-  // `""` is ungraded and absent follows the list's own — `docs/scanner.md`.
-  condition?: string;
+  // What the stack is kept at, `""` being ungraded — `docs/scanner.md`.
+  condition: string;
   quantity: number;
 };
 
@@ -52,7 +52,12 @@ export function among(one: Entry): string[] {
 
 // One scan, one stack. Null where nothing it matched is a printing the
 // catalog holds, there being no card to put in a list.
-export function scanned(found: Read, id: string, at: string): Entry | null {
+export function scanned(
+  found: Read,
+  id: string,
+  at: string,
+  condition: string,
+): Entry | null {
   const matched: Matched[] = [];
   const made = new Map<string, string[]>();
 
@@ -76,6 +81,7 @@ export function scanned(found: Read, id: string, at: string): Entry | null {
     matched,
     scryfallId: first,
     finish: settled(made.get(first) ?? []),
+    condition,
     quantity: 1,
   };
 }
@@ -95,11 +101,6 @@ function gap(found: Read, matched: Matched[]): number {
 export function settled(finishes: string[]): string {
   if (finishes.length === 1) return finishes[0] as string;
   return finishes.includes(NONFOIL) ? NONFOIL : (finishes[0] ?? NONFOIL);
-}
-
-// The grade a stack is kept at, given what the list is set to.
-export function graded(one: Entry, grade: string): string {
-  return one.condition ?? grade;
 }
 
 export function plus(list: Entry[], id: string): Entry[] {
@@ -182,41 +183,28 @@ export function refinish(
   );
 }
 
-// `null` puts the stack back to following the list, which is not ungraded.
 export function regraded(
   list: Entry[],
   id: string,
-  condition: string | null,
+  condition: string,
 ): Entry[] {
-  return list.map((one) => {
-    if (one.id !== id) return one;
-    if (condition === null) {
-      const { condition: _dropped, ...rest } = one;
-      return rest;
-    }
-    return { ...one, condition };
-  });
+  return list.map((one) => (one.id === id ? { ...one, condition } : one));
 }
 
 // Stacks of one printing become one, on request. Scanning records what
 // somebody saw, and arrival is the wrong moment to tidy that away.
-export function merged(list: Entry[], grade: string): Entry[] {
+export function merged(list: Entry[]): Entry[] {
   const into = new Map<string, Entry>();
   const kept: Entry[] = [];
 
   for (const one of list) {
-    // What the grade comes to rather than what was said about it: ungraded
-    // and following a list that is ungraded are the same card to write.
-    const key = `${one.scryfallId}\t${one.finish}\t${graded(one, grade)}`;
+    const key = `${one.scryfallId}\t${one.finish}\t${one.condition}`;
     const held = into.get(key);
     if (held) {
       // A stack the ceiling has closed stays the one to try, so what follows
       // still joins it where there is room.
       if (held.quantity + one.quantity <= COPIES) {
         held.quantity += one.quantity;
-        // Pinned, there being nothing left for a joined stack to follow.
-        if (held.condition !== one.condition)
-          held.condition = graded(one, grade);
       } else kept.push({ ...one });
       continue;
     }
@@ -230,8 +218,8 @@ export function merged(list: Entry[], grade: string): Entry[] {
 
 // Stacks a merge would take away, so it is offered only where it does
 // something.
-export function joinable(list: Entry[], grade: string): number {
-  return list.length - merged(list, grade).length;
+export function joinable(list: Entry[]): number {
+  return list.length - merged(list).length;
 }
 
 export function copies(list: Entry[]): number {
@@ -239,20 +227,13 @@ export function copies(list: Entry[]): number {
 }
 
 // The list as cards, for the path that writes them.
-export function cards(
-  list: Entry[],
-  container: string | null,
-  grade: string,
-): Owned[] {
-  return list.map((one) => {
-    const condition = graded(one, grade);
-    return {
-      scryfallId: one.scryfallId,
-      finish: one.finish,
-      quantity: one.quantity,
-      createdAt: one.at,
-      ...(condition ? { condition } : {}),
-      ...(container ? { container } : {}),
-    };
-  });
+export function cards(list: Entry[], container: string | null): Owned[] {
+  return list.map((one) => ({
+    scryfallId: one.scryfallId,
+    finish: one.finish,
+    quantity: one.quantity,
+    createdAt: one.at,
+    ...(one.condition ? { condition: one.condition } : {}),
+    ...(container ? { container } : {}),
+  }));
 }

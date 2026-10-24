@@ -19,7 +19,7 @@ import { SETS, SetView } from "./Sets";
 import { Soon } from "./Soon";
 import { Review } from "./scan/Review";
 import { REVIEW, SCAN, Scan } from "./scan/Scan";
-import { useScratch } from "./scan/store";
+import { useGrade, useScratch } from "./scan/store";
 import { useCatalog } from "./useCatalog";
 
 export function App() {
@@ -32,6 +32,7 @@ export function App() {
   const [chosen, choose] = useState<string | null>(null);
   const waiting = useWaiting();
   const scratch = useScratch();
+  const grading = useGrade();
   const collection = useCollection(signedIn, chosen, waiting);
   const path = usePath();
   const here = tab(path);
@@ -121,6 +122,7 @@ export function App() {
                   catalog={load.status === "ready" ? load.catalog : null}
                   manifest={load.status === "ready" ? load.manifest : null}
                   scratch={scratch}
+                  grading={grading}
                 />
               ))}
 

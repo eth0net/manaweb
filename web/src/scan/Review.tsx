@@ -49,10 +49,6 @@ const APP = appLanguage();
 // an import came from.
 const SOURCE = "Scan";
 
-// What a stack following the list is shown as. Not `""`: that is a grade in
-// its own right, and the two have to be different presses.
-const FOLLOW = "-";
-
 // A receipt is keyed by its digest, and two scans of one card are two real
 // piles rather than the same list twice — so the moment goes in, where a file
 // would want the opposite.
@@ -78,7 +74,7 @@ export function Review({
   container: string | null;
   tools: ReactNode;
 }) {
-  const { list, change, grade, regrade } = scratch;
+  const { list, change } = scratch;
 
   // Changes only when a scan or a removal moves them, so a press on a count
   // does not send the catalog looking again.
@@ -102,10 +98,10 @@ export function Review({
   // file is asked for before it lands.
   const weight = useMemo(() => {
     if (!owning.ready || list.length === 0) return null;
-    const owned = cards(list, container, grade);
+    const owned = cards(list, container);
     const at = new Date().toISOString();
     return weigh(plan(owned, owning.stacks, at), owning.stacks);
-  }, [container, grade, list, owning.ready, owning.stacks]);
+  }, [container, list, owning.ready, owning.stacks]);
 
   // Stacks whose printing the collection already holds but which the plan
   // did not join. A grade apart is the usual reason, and nothing else on this
@@ -122,7 +118,7 @@ export function Review({
     setKeeping(true);
     setProblem("");
     try {
-      const owned = cards(list, container, grade);
+      const owned = cards(list, container);
       const at = new Date().toISOString();
       const weighed = weigh(plan(owned, owning.stacks, at), owning.stacks);
       // The list is the only copy of these cards, so it goes only once the
@@ -164,7 +160,7 @@ export function Review({
   }
 
   const held = copies(list);
-  const joins = joinable(list, grade);
+  const joins = joinable(list);
 
   return (
     <>
@@ -181,7 +177,7 @@ export function Review({
         <p>
           <button
             type="button"
-            onClick={() => change((held) => merged(held, grade))}
+            onClick={() => change((held) => merged(held))}
             disabled={keeping}
           >
             Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
@@ -190,23 +186,6 @@ export function Review({
       )}
 
       {tools}
-
-      <p className="field">
-        <label htmlFor="scan-grade">Condition</label>
-        <select
-          id="scan-grade"
-          value={grade}
-          onChange={(event) => regrade(event.target.value)}
-          disabled={keeping}
-        >
-          <option value="">Ungraded</option>
-          {CONDITIONS.map((one) => (
-            <option key={one} value={one}>
-              {words(one)}
-            </option>
-          ))}
-        </select>
-      </p>
 
       {session ? (
         // An import in flight owns the same job record, so keeping now would
@@ -267,7 +246,6 @@ export function Review({
             one={one}
             prints={prints}
             finishes={finishes}
-            grade={grade}
             change={change}
             frozen={keeping}
           />
@@ -350,7 +328,6 @@ function Stack({
   one,
   prints,
   finishes,
-  grade,
   change,
   frozen,
 }: {
@@ -358,7 +335,6 @@ function Stack({
   one: Entry;
   prints: Map<string, Found>;
   finishes: Finishes;
-  grade: string;
   change: Change;
   frozen: boolean;
 }) {
@@ -419,21 +395,12 @@ function Stack({
           <select
             className="scratch-grade"
             aria-label="Condition"
-            value={one.condition ?? FOLLOW}
+            value={one.condition}
             onChange={(event) =>
-              change((list) =>
-                regraded(
-                  list,
-                  one.id,
-                  event.target.value === FOLLOW ? null : event.target.value,
-                ),
-              )
+              change((list) => regraded(list, one.id, event.target.value))
             }
             disabled={frozen}
           >
-            <option value={FOLLOW}>
-              {grade ? words(grade) : "Ungraded"} · as set above
-            </option>
             <option value="">Ungraded</option>
             {CONDITIONS.map((grade) => (
               <option key={grade} value={grade}>

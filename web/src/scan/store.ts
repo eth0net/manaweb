@@ -6,14 +6,14 @@ import type { Entry } from "./scratch";
 // pile, and nothing is owed to a repo until somebody keeps it.
 const DATABASE = "manaweb-scan";
 const STORE = "scratch";
+// Preferences outlive the pile they were set over, so they are not kept in
+// the store a kept list empties — `docs/scanner.md`.
+const SETTINGS = "settings";
 const LIST = "list";
 const GRADE = "grade";
 
-// What a list starts out graded at — `docs/scanner.md`.
+// What a scan is graded at until somebody says otherwise — `docs/scanner.md`.
 const USUALLY = "nearMint";
-
-// The list and what it is graded at — `docs/scanner.md`.
-export type Held = { list: Entry[]; grade: string };
 
 function settle<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -33,18 +33,31 @@ function committed(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+const BLOCKED =
+  "Another tab has this open on an older version. Close it and reload.";
+
+// Both stores named every time rather than only on the version that added
+// one: an upgrade runs from whatever is on the device, including nothing.
 function open(): Promise<IDBDatabase> {
-  const request = indexedDB.open(DATABASE, 1);
-  request.onupgradeneeded = () => {
-    request.result.createObjectStore(STORE);
-  };
-  return settle(request);
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DATABASE, 2);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      for (const name of [STORE, SETTINGS])
+        if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    // A tab on the version before this one holds the upgrade off, and the
+    // request then neither succeeds nor fails — so it is made to fail.
+    request.onblocked = () => reject(new Error(BLOCKED));
+  });
 }
 
 // Throws rather than answering null, because a read that failed and a list
 // that is not there differ by everything: one of them must not be written
 // over.
-export async function recall(): Promise<Held | null> {
+export async function recall(): Promise<Entry[] | null> {
   const db = await open();
   try {
     // Both asked before either is awaited: a transaction goes inactive at
@@ -53,7 +66,13 @@ export async function recall(): Promise<Held | null> {
     const asking = settle<Entry[] | undefined>(store.get(LIST));
     const graded = settle<string | undefined>(store.get(GRADE));
     const [list, grade] = await Promise.all([asking, graded]);
-    return list ? { list, grade: grade ?? USUALLY } : null;
+    if (!list) return null;
+    // A stack saved before it carried a grade of its own followed the list's,
+    // so that is the one it was always going to be kept at.
+    return list.map((one) => ({
+      ...one,
+      condition: one.condition ?? grade ?? USUALLY,
+    }));
   } finally {
     db.close();
   }
@@ -61,13 +80,48 @@ export async function recall(): Promise<Held | null> {
 
 // Throws where the catalog's cache resolves: a scan nothing wrote down is a
 // card somebody has to find and photograph again.
-export async function keep(held: Held): Promise<void> {
+export async function keep(list: Entry[]): Promise<void> {
   const db = await open();
   try {
     const transaction = db.transaction(STORE, "readwrite");
-    const store = transaction.objectStore(STORE);
-    store.put(held.list, LIST);
-    store.put(held.grade, GRADE);
+    transaction.objectStore(STORE).put(list, LIST);
+    await committed(transaction);
+  } finally {
+    db.close();
+  }
+}
+
+// Seeded from the grade the last list followed, so the split does not quietly
+// reset what somebody was already part way through.
+export async function recallGrade(): Promise<string> {
+  const db = await open();
+  try {
+    const reading = db.transaction([SETTINGS, STORE], "readonly");
+    const asking = settle<string | undefined>(
+      reading.objectStore(SETTINGS).get(GRADE),
+    );
+    const was = settle<string | undefined>(
+      reading.objectStore(STORE).get(GRADE),
+    );
+    const [grade, followed] = await Promise.all([asking, was]);
+    if (grade !== undefined) return grade;
+    if (followed === undefined) return USUALLY;
+    // Written across rather than read again each time: it is stored beside
+    // the list, so it would go the first time a pile is kept.
+    const writing = db.transaction(SETTINGS, "readwrite");
+    writing.objectStore(SETTINGS).put(followed, GRADE);
+    await committed(writing);
+    return followed;
+  } finally {
+    db.close();
+  }
+}
+
+export async function keepGrade(grade: string): Promise<void> {
+  const db = await open();
+  try {
+    const transaction = db.transaction(SETTINGS, "readwrite");
+    transaction.objectStore(SETTINGS).put(grade, GRADE);
     await committed(transaction);
   } finally {
     db.close();
@@ -90,9 +144,6 @@ export async function forget(): Promise<void> {
 export type Scratch = {
   ready: boolean;
   list: Entry[];
-  // What a stack saying nothing of its own is kept at, `""` being ungraded.
-  grade: string;
-  regrade: (grade: string) => void;
   // Every move in `scratch.ts` is the list in and another out, so this takes
   // one rather than a new list: two presses in a tick then compose.
   change: (move: (list: Entry[]) => Entry[]) => void;
@@ -101,19 +152,51 @@ export type Scratch = {
   problem: string | null;
 };
 
+// The grade a scan is stamped with, and the press that moves it.
+export type Grading = {
+  grade: string;
+  regrade: (grade: string) => void;
+};
+
 const UNREAD =
   "The scanned cards saved here could not be read, so nothing new is being saved either. Reload the page.";
 
+// Read once and written through, the store being the only other reader: a
+// preference nobody else edits does not need watching.
+export function useGrade(): Grading {
+  const [grade, setGrade] = useState(USUALLY);
+  // Whether a grade was picked before the read answered, that one being the
+  // later word.
+  const picked = useRef(false);
+
+  useEffect(() => {
+    let live = true;
+    recallGrade()
+      .then((found) => {
+        if (live && !picked.current) setGrade(found);
+      })
+      // A preference that cannot be read is one to carry on without, the
+      // cards being what the store is there for.
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const regrade = useCallback((next: string) => {
+    picked.current = true;
+    setGrade(next);
+    void keepGrade(next).catch(() => {});
+  }, []);
+
+  return { grade, regrade };
+}
+
 export function useScratch(): Scratch {
   const [list, setList] = useState<Entry[]>([]);
-  const [grade, setGrade] = useState(USUALLY);
   const [ready, setReady] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const held = useRef<Entry[]>([]);
-  const mark = useRef(USUALLY);
-  // Whether a grade was picked before the read answered, that one being the
-  // later word on the same pile.
-  const picked = useRef(false);
   // A read that never answered is one nothing may be written over.
   const sealed = useRef(false);
 
@@ -122,9 +205,8 @@ export function useScratch(): Scratch {
   const write = useCallback(() => {
     if (sealed.current) return;
     setProblem(null);
-    keep({ list: held.current, grade: mark.current }).catch(
-      (failed: unknown) =>
-        setProblem(failed instanceof Error ? failed.message : String(failed)),
+    keep(held.current).catch((failed: unknown) =>
+      setProblem(failed instanceof Error ? failed.message : String(failed)),
     );
   }, []);
 
@@ -136,12 +218,8 @@ export function useScratch(): Scratch {
         // Behind whatever was scanned while the read was still going: those
         // cards were seen first, and neither list may take the other's place.
         const scanned = held.current;
-        held.current = [...found.list, ...scanned];
+        held.current = [...found, ...scanned];
         setList(held.current);
-        if (!picked.current) {
-          mark.current = found.grade;
-          setGrade(found.grade);
-        }
         // Such a scan has already stored itself over what was saved, so the
         // join has to go back down before the next reload reads it.
         if (scanned.length > 0) write();
@@ -166,26 +244,13 @@ export function useScratch(): Scratch {
     [write],
   );
 
-  const regrade = useCallback(
-    (next: string) => {
-      mark.current = next;
-      picked.current = true;
-      setGrade(next);
-      write();
-    },
-    [write],
-  );
-
   const clear = useCallback(async () => {
     held.current = [];
-    mark.current = USUALLY;
-    picked.current = false;
     setList([]);
-    setGrade(USUALLY);
     if (sealed.current) return;
     setProblem(null);
     await forget();
   }, []);
 
-  return { ready, list, grade, regrade, change, clear, problem };
+  return { ready, list, change, clear, problem };
 }
