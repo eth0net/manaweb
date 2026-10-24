@@ -47,7 +47,7 @@ spell:
 # advisories, licenses, duplicate versions and crate sources (needs cargo-deny)
 [group('checks')]
 deny:
-    cargo deny check
+    cargo deny --all-features check --deny warnings
 
 # prose said twice: a comment restating a doc, or a doc another (needs bun)
 [group('checks')]
