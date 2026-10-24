@@ -19,7 +19,7 @@ import { IMPORT } from "../import/Import";
 import { plan, weigh } from "../import/plan";
 import { digest, sha } from "../import/receipt";
 import { begin, useImport } from "../import/runner";
-import { describe, hasArt } from "../Printing";
+import { brief, describe, hasArt } from "../Printing";
 import { Link } from "../router";
 import type { Said } from "./frames";
 import { SCAN } from "./Scan";
@@ -411,7 +411,7 @@ function Stack({
           />
         )}
         <div className="scratch-what">
-          <Title held={held} />
+          <Title held={held} short />
           <small className="quiet">
             {one.finish}
             {one.reported && " · reported"}
@@ -562,7 +562,9 @@ function Stack({
   );
 }
 
-function Title({ held }: { held: Found | null }) {
+// `short` is the list row, where the set's name wraps to three lines and the
+// artist settles nothing; the fold tells printings apart and wants both.
+function Title({ held, short }: { held: Found | null; short?: boolean }) {
   if (!held) {
     return (
       <span className="quiet">No printing in this catalog carries it</span>
@@ -574,7 +576,9 @@ function Title({ held }: { held: Found | null }) {
     <span>
       <span lang={named.lang}>{named.text}</span>
       <br />
-      <small className="quiet">{describe(held.print)}</small>
+      <small className="quiet">
+        {short ? brief(held.print) : describe(held.print)}
+      </small>
     </span>
   );
 }

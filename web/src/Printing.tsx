@@ -58,3 +58,15 @@ export function describe(print: Print) {
     .filter(Boolean)
     .join(" · ");
 }
+
+// The same printing for a list row: rarity takes the letter a collector line
+// carries, and Scryfall's six rarities each start with a different one.
+export function brief(print: Print) {
+  return [
+    `${print.set.toUpperCase()} #${print.collectorNumber}`,
+    print.rarity.slice(0, 1).toUpperCase(),
+    ...print.flags.map(words),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
