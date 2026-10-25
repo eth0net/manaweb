@@ -386,12 +386,39 @@ nav a.here {
   min-width: 0;
 }
 
-/* The answer stands where the question was asked, rather than over the page. */
+/* One bar: where you came from, what is in the list, and the way to empty
+   it. The count is its own column so the sides cannot move it. */
+.scratch-head {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr auto 1fr;
+  margin: 0 0 0.5rem;
+}
+
+.scratch-head .tally {
+  margin: 0;
+  text-align: center;
+}
+
+.scratch-head > :last-child {
+  justify-self: end;
+}
+
+/* The one thing to do with the list, under the bar that says what it is. */
+.scratch-does {
+  margin: 0 0 0.75rem;
+  text-align: center;
+}
+
+/* Asked below the bar rather than in it, so pressing Clear moves nothing. */
 .scratch-clear {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  justify-content: center;
+  margin: 0 0 0.75rem;
 }
 
 .scratch-badges {

@@ -156,19 +156,20 @@ export function Review({
     }
   }
 
-  const back = (
-    <p className="quiet">
-      <Link className="link" to={SCAN}>
-        Back to the camera
-      </Link>
-    </p>
-  );
-
   if (list.length === 0) {
     return (
       <>
-        {back}
-        <p className="quiet">Nothing scanned yet.</p>
+        <p className="quiet">
+          <Link className="link" to={SCAN}>
+            Back to the camera
+          </Link>
+        </p>
+        {scratch.problem && <p className="warn">{scratch.problem}</p>}
+        {problem ? (
+          <p className="warn">{problem}</p>
+        ) : (
+          <p className="quiet">Nothing scanned yet.</p>
+        )}
       </>
     );
   }
@@ -178,34 +179,47 @@ export function Review({
 
   return (
     <>
-      {back}
-      <p className="tally">
-        {held.toLocaleString()} card{held === 1 ? "" : "s"}
-        <span className="quiet">
-          {" "}
-          · {list.length} stack{list.length === 1 ? "" : "s"}
-        </span>
-      </p>
-
-      {joins > 0 && (
-        <p>
-          <button
-            type="button"
-            onClick={() => change((held) => merged(held))}
-            disabled={keeping}
-          >
-            Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
-          </button>
+      <div className="scratch-head">
+        <Link className="link" to={SCAN}>
+          Back
+        </Link>
+        <p className="tally">
+          {held.toLocaleString()} card{held === 1 ? "" : "s"}
+          <span className="quiet">
+            {" "}
+            · {list.length} stack{list.length === 1 ? "" : "s"}
+          </span>
         </p>
-      )}
+        <button
+          type="button"
+          className="link"
+          onClick={() => setClearing(true)}
+          disabled={keeping}
+        >
+          Clear
+        </button>
+      </div>
 
       {tools}
 
-      {session ? (
+      {clearing ? (
+        <p className="scratch-clear" aria-live="polite">
+          <span className="warn">
+            Throw away {held.toLocaleString()} card{held === 1 ? "" : "s"}?{" "}
+            {held === 1 ? "It is" : "They are"} not written anywhere else.
+          </span>
+          <button type="button" onClick={() => void away()} disabled={keeping}>
+            Throw them away
+          </button>
+          <button type="button" onClick={() => setClearing(false)}>
+            Leave them here
+          </button>
+        </p>
+      ) : session ? (
         // An import in flight owns the same job record, so keeping now would
         // take the place of one already half written.
         running.at !== "none" && running.at !== "done" ? (
-          <p className="warn">
+          <p className="warn scratch-does">
             An import holds the place these would go.{" "}
             <Link className="link" to={IMPORT}>
               Finish or discard it
@@ -215,9 +229,9 @@ export function Review({
         ) : !owning.ready ? (
           // Planned against an empty collection, every copy reads as new and
           // the receipt records a count nothing supports.
-          <p className="quiet">Reading what you already own…</p>
+          <p className="quiet scratch-does">Reading what you already own…</p>
         ) : (
-          <p>
+          <p className="scratch-does">
             <button
               type="button"
               onClick={() => void keep()}
@@ -228,31 +242,17 @@ export function Review({
           </p>
         )
       ) : (
-        <p className="quiet">Sign in to keep these.</p>
+        <p className="quiet scratch-does">Sign in to keep</p>
       )}
 
-      {clearing ? (
-        <p className="scratch-clear">
-          <span className="warn">
-            Throw away {held.toLocaleString()} card{held === 1 ? "" : "s"}?
-            They are not written anywhere else.
-          </span>
-          <button type="button" onClick={() => void away()} disabled={keeping}>
-            Throw them away
-          </button>
-          <button type="button" onClick={() => setClearing(false)}>
-            Keep the list
-          </button>
-        </p>
-      ) : (
+      {joins > 0 && (
         <p>
           <button
             type="button"
-            className="link"
-            onClick={() => setClearing(true)}
+            onClick={() => change((held) => merged(held))}
             disabled={keeping}
           >
-            Clear the list
+            Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
           </button>
         </p>
       )}
