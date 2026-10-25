@@ -36,9 +36,15 @@ export function remember(to: string): void {
 }
 
 // Where a tab's own button goes: back where you left it, except from inside
-// that tab, where the same press is how you get out of a drill-down.
-export function entry(to: string, here: string): string {
-  return here === to ? to : (seen.get(to) ?? to);
+// that tab, where the same press is how you get out of a drill-down. One step
+// at a time — a set is a setting on the list of them rather than a page below
+// it, so leaving the set and leaving the list are two presses.
+export function entry(to: string, at: string): string {
+  const path = at.split("?")[0] ?? at;
+  // `tab` answers HOME for a path no tab owns, so being inside a tab is asked
+  // separately: the callback is one of those and its query is the sign-in.
+  if (!known(path) || tab(path) !== to) return seen.get(to) ?? to;
+  return at === path ? to : path;
 }
 
 // What a search was narrowed to is part of where you are, so the address is
@@ -90,6 +96,13 @@ export function usePath(): string {
   useEffect(() => remember(path + search), [path, search]);
 
   return path;
+}
+
+// Where you are, whole: a tab's own button reads the query as well, the set
+// being held there.
+export function useAddress(): string {
+  const path = useSyncExternalStore(subscribe, pathname);
+  return path + useSyncExternalStore(subscribe, query);
 }
 
 export function useSettings(): URLSearchParams {

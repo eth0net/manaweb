@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { entry, HOME, Link, TABS, tab } from "./router";
+import { entry, HOME, Link, TABS, tab, useAddress } from "./router";
 import { SETS } from "./Sets";
 
 // A name you already know, or a set to look through: different enough to be
@@ -26,13 +26,14 @@ export function Modes({ path, crumb }: { path: string; crumb?: ReactNode }) {
 
 export function Nav({ path }: { path: string }) {
   const here = tab(path);
+  const at = useAddress();
 
   return (
     <nav>
       {TABS.map(({ path: to, label }) => (
         <Link
           key={to}
-          to={entry(to, here)}
+          to={entry(to, at)}
           className={to === here ? "here" : undefined}
         >
           {label}
