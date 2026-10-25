@@ -344,6 +344,8 @@ export function Scan({
           )}
           {scratch.list.length > 0 && <Waiting list={scratch.list} />}
           {problem && <p className="warn">{problem}</p>}
+          {/* todo(settings): a panel behind a button in the viewfinder's
+              corner, once this is not the only one — `docs/scanner.md`. */}
           <p className="field scan-setting">
             <label htmlFor="scan-grade">Scanning as</label>
             <select

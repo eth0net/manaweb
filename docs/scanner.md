@@ -811,6 +811,12 @@ has none of this.
   same artwork, set and number, so counting it as another copy writes a finish
   nobody read. It stays a fresh scan until the bottom line is read, which makes
   a foil a different answer and this question nothing.
+- **Where the settings go once there is more than one.** The grade a scan is
+  taken at sits on the screen the camera opens from, which is right while it is
+  the only one and wrong as soon as it has company — a column of pickers in
+  front of the camera button is a worse answer than a button in the corner of
+  the viewfinder opening a panel. The see-through toggle and whatever a tester
+  is given of the readout go the same way.
 - **What belongs behind a build flag rather than a setting.** The readout is
   development-only because it began as an instrument, which also means a tester
   holding their own phone cannot reach it. Some of it may be worth a preference
