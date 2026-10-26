@@ -610,7 +610,9 @@ and differ at byte 203. The comparison still earns its place where both sides
 are built in one place, which is the pre-push hook: the push is what deploys,
 so that is also the last moment anything can stop a drifted module going live.
 CI asks the question the other way, of the bytes themselves rather than of a
-rebuild, which no host can disagree about.
+rebuild, which no host can disagree about. It rebuilds beside that and reports
+the differing bytes, or both sizes, without gating on the answer: one green run
+would say nothing about the next.
 
 **Pinning the build rather than the runner is what would give it back**, and it
 is worth doing for its own sake. Build the module in a container and the host

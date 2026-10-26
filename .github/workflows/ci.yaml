@@ -1,4 +1,4 @@
-# Action majors verified 2026-09-07 against
+# Action majors verified 2026-10-26 against
 # `gh api repos/<owner>/<repo>/releases/latest --jq .tag_name`.
 
 name: CI
@@ -79,12 +79,38 @@ jobs:
       - run: rustup show
       - uses: Swatinem/rust-cache@v2
       - uses: oven-sh/setup-bun@v2
+      # The comparison below builds with the hook's own recipe, not a copy.
+      - uses: extractions/setup-just@v4
       - run: bun install --frozen-lockfile
       # Reads the committed module beside one built here, so the bytes a
-      # browser is served are what this answers for. Comparing those bytes to
-      # a rebuild is the pre-push hook's job — see `docs/scanner.md`.
+      # browser is served are what this answers for.
       - run: bun run check
         working-directory: tools/scanner-check
+      # Reports only: the gate this would be failed every run in October with
+      # the compiler already pinned — `docs/scanner.md`.
+      - name: engine bytes
+        run: |
+          built=target/wasm32-unknown-unknown/wasm/manaweb_scanner.wasm
+          shipped=web/src/scan/engine.wasm
+          size() { wc -c <"$1" | tr -d ' '; }
+          # The step above builds to this same path under other flags, so
+          # without this a failed build here is compared as though it were ours.
+          rm -f "$built"
+          if ! just engine-build; then
+            said="nothing built here to compare the committed module against"
+          elif cmp -s "$built" "$shipped"; then
+            said="the rebuild matches the committed module"
+          elif [ "$(size "$built")" != "$(size "$shipped")" ]; then
+            # Counting below stops at the shorter file, so it would answer
+            # zero here and a differing module would read as an equal one.
+            said="$(size "$built") bytes built against $(size "$shipped") committed"
+          else
+            # `cmp -l` exits 1 on any difference and the job's shell is
+            # `-e -o pipefail`, so counting one has to swallow its status.
+            differ=$(cmp -l "$built" "$shipped" | wc -l | tr -d ' ') || true
+            said="$differ of $(size "$shipped") bytes differ"
+          fi
+          printf 'engine bytes: %s\n' "$said" | tee -a "$GITHUB_STEP_SUMMARY"
 
   typescript:
     name: typescript
