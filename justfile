@@ -248,6 +248,12 @@ upload prefix="catalog" dir="catalog":
 verify-catalog origin="https://static.manaweb.app/catalog":
     cargo run --release -p manaweb-objects --bin manaweb-verify -- catalog {{ origin }}
 
+[private]
+unbump:
+    git checkout -- Cargo.toml Cargo.lock web/src/scan/engine.wasm
+    @echo "release stopped; the bump and the module are put back"
+    @exit 1
+
 # The manifest is the one place a version is written; CI holds the tag to it.
 # The title is an argument because it was a default before, and a default
 # nobody edits is how v0.6.0 and v0.7.0 came to be named after themselves.
@@ -262,9 +268,11 @@ release version title body="":
         Cargo.toml > Cargo.toml.next && mv Cargo.toml.next Cargo.toml
     # A bump moves the module sometimes and not others — `docs/scanner.md`.
     # Without this, `check` refuses those releases and passes the rest.
-    just engine
-    cargo check --quiet --all-targets
-    just check
+    just engine || just unbump
+    # Everything from the bump down is undone rather than left half applied:
+    # a bumped manifest beside the previous module is what line one refuses.
+    cargo check --quiet --all-targets || just unbump
+    just check || just unbump
     git add Cargo.toml Cargo.lock web/src/scan/engine.wasm
     # Nothing to commit where the manifest already reads this, which is the
     # normal shape when the bump landed with the work.
