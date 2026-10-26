@@ -617,11 +617,16 @@ is worth doing for its own sake. Build the module in a container and the host
 stops being whichever laptop is open: a checkout, a runner and a machine bought
 next year all answer alike, and the exact comparison goes back into CI with
 nothing brittle holding it up. What it costs is a container runtime wherever
-`just engine` runs, which today is a Mac with none. The mechanism behind the
-divergence was never identified — the compiler, its flags, the crate metadata
-and the symbol mangling were each ruled out by varying them one at a time — so
-pinning the whole environment is also the only fix that does not depend on
-knowing which part of it matters.
+`just engine` runs, which today is a Mac with none. What makes two hosts
+disagree is still unidentified, and the checkout path is not it: a second
+worktree elsewhere on disk builds the same bytes. Looking for it turned up
+something else, which is that crate metadata is not inert. Cargo hashes the
+package version into `-C metadata`, and with the manifest set by hand to 0.21.0
+— not released, only edited — the module moves, where 0.19.0 and 0.20.0 build
+the same bytes. So a bump moves it sometimes and not others, which is a
+release's problem rather than this one, the hash never seeing the host. Pinning
+the whole environment is still the only fix that does not depend on knowing
+which part of it matters.
 
 A margin reaches it too: the reader answers with the nearest five, so a scan
 carries how much further the runner-up was. So does a camera: the scan page
