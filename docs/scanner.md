@@ -60,6 +60,19 @@ switching for.
   this, so a foil's cast, a treatment and the frame's own color go unread — and
   where the candidates are printings of one artwork, that is the cheapest thing
   left to tell them apart. What it would cost is below.
+- **A line that cannot be read leaves the scanner where it already stands.**
+  Nothing reads one today, so every scan takes that path now: the printings
+  carrying the matched artwork, offered to choose between, or the first of them
+  where somebody has said to stop asking. Reading the line only narrows that
+  list, which is why a partial read is worth keeping — a number without its set
+  code still cuts the candidates, and the premium mark alone divides the
+  printings made more than one way.
+- **A glyph it is unsure of is one to drop, not to guess.** A number read
+  wrongly is a printing somebody owns a copy of, so it lands in a collection
+  looking exactly like a reading that went right; a number not read at all
+  falls through to the question that is already being asked. Which of those two
+  the fallback is depends on the panel, asking being the answer until somebody
+  turns it off.
 - Proxies and alters defeat any scanner and always will. Accepted limitation.
 
 **One implementation of the hash, in `crates/scanner`.** The build fills the
