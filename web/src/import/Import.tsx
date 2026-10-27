@@ -127,6 +127,15 @@ export function Import({
       (paid ? asPaid(format) : null) ?? format,
       new Date().toISOString(),
       catalog ? (keys) => catalog.locate(keys) : undefined,
+      catalog
+        ? (ids) =>
+            new Map(
+              [...catalog.resolve(ids)].map(([id, { print }]) => [
+                id,
+                print.finishes,
+              ]),
+            )
+        : undefined,
     );
     return { format, paid, got, file, text, digest: await digest(got.stacks) };
   }

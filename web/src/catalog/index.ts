@@ -191,6 +191,9 @@ export function printKey(set: string, collectorNumber: string): string {
 // One pass of the catalog answering every key an import is waiting on.
 export type Locate = (keys: Set<string>) => Map<string, string>;
 
+// The same, for which finishes each of those printings was made in.
+export type Made = (ids: Set<string>) => Map<string, string[]>;
+
 export type Side = "front" | "back";
 
 // What `normal` measures, whatever the layout — `docs/scryfall.md`. Given to

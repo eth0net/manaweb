@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { Locate } from "../catalog";
+import type { Locate, Made } from "../catalog";
 import { NOTE, NOTE_BYTES } from "../collection/cards";
 import { BATCH, BYTES } from "../oauth/repo";
 import { asPaid, type Format, MANABOX } from "./formats";
@@ -186,6 +186,65 @@ test("a finish nothing recognizes is skipped rather than guessed", () => {
   expect(one(row({ foil: "shiny" })).skipped).toEqual([
     { line: 2, reason: "unknown finish shiny" },
   ]);
+});
+
+// What each printing was made in, standing in for a loaded catalog.
+function made(finishes: Record<string, string[]>): Made {
+  return (ids) => {
+    const found = new Map<string, string[]>();
+    for (const id of ids) {
+      const came = finishes[id];
+      if (came) found.set(id, came);
+    }
+    return found;
+  };
+}
+
+function withCatalog(rows: string[], finishes: Record<string, string[]>) {
+  return read(
+    [HEAD, ...rows].join("\n"),
+    MANABOX,
+    NOW,
+    undefined,
+    made(finishes),
+  );
+}
+
+test("a finish the printing was never made in is skipped", () => {
+  const { stacks, skipped } = withCatalog([row({ foil: "etched" })], {
+    [ONE]: ["nonfoil", "foil"],
+  });
+  expect(stacks).toEqual([]);
+  expect(skipped).toEqual([
+    { line: 2, reason: "FDN 64 is nonfoil and foil only, not etched" },
+  ]);
+});
+
+test("a finish the printing came in is kept", () => {
+  const { stacks, skipped } = withCatalog([row({ foil: "foil" })], {
+    [ONE]: ["nonfoil", "foil"],
+  });
+  expect(stacks).toHaveLength(1);
+  expect(skipped).toEqual([]);
+});
+
+// The catalog is optional here, and so therefore is the check.
+test("a file read with no catalog refuses nothing", () => {
+  expect(one(row({ foil: "etched" })).stacks).toHaveLength(1);
+});
+
+test("a printing the catalog has not heard of is left alone", () => {
+  const { stacks, skipped } = withCatalog([row({ foil: "etched" })], {});
+  expect(stacks).toHaveLength(1);
+  expect(skipped).toEqual([]);
+});
+
+test("a refused finish keeps the file's order in the receipt", () => {
+  const { skipped } = withCatalog(
+    [row({ foil: "etched" }), row({ quantity: "0" })],
+    { [ONE]: ["nonfoil", "foil"] },
+  );
+  expect(skipped.map((each) => each.line)).toEqual([2, 3]);
 });
 
 test("a file missing a column it is read by yields nothing", () => {

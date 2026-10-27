@@ -1,4 +1,4 @@
-import { type Locate, printKey } from "../catalog";
+import { type Locate, type Made, printKey } from "../catalog";
 import {
   COPIES,
   clip,
@@ -54,6 +54,7 @@ export function read(
   format: Format,
   now = new Date().toISOString(),
   locate?: Locate,
+  made?: Made,
 ): Read {
   const rows = lined(text);
   const head = rows.shift();
@@ -77,6 +78,9 @@ export function read(
   let stacks: Owned[] = [];
   const skipped: Skipped[] = [];
   const waiting: Waiting[] = [];
+  // Which row each stack came off, for a reason naming it after the catalog
+  // has answered. Keyed by the stack itself, which `collapse` has yet to fold.
+  const where = new Map<Owned, { line: number; said: string }>();
 
   rows.forEach(({ fields, line }) => {
     const cell = (field: Field) =>
@@ -95,8 +99,6 @@ export function read(
       return;
     }
 
-    // todo(eth0net): whether the catalog is asked that this printing came that
-    // way is open — `docs/scryfall.md`.
     const how = finish(cell("finish"));
     if (!how) {
       skipped.push({ line, reason: `unknown finish ${cell("finish")}` });
@@ -136,6 +138,7 @@ export function read(
     if (!one.scryfallId) {
       waiting.push({ one, line, key: named.key, said: named.said });
     }
+    where.set(one, { line, said: named.said });
     stacks.push(one);
   });
 
@@ -158,6 +161,28 @@ export function read(
     skipped.sort((a, b) => a.line - b.line);
   }
 
+  if (made) {
+    const finishes = made(new Set(stacks.map((one) => one.scryfallId)));
+    const wrong = new Set<Owned>();
+
+    for (const one of stacks) {
+      const came = finishes.get(one.scryfallId);
+      const at = where.get(one);
+      // An id the catalog does not know is passed over — `docs/scryfall.md`.
+      if (!at || !came || came.includes(one.finish)) continue;
+      wrong.add(one);
+      skipped.push({
+        line: at.line,
+        reason: `${at.said} is ${came.join(" and ")} only, not ${one.finish}`,
+      });
+    }
+
+    if (wrong.size > 0) {
+      stacks = stacks.filter((one) => !wrong.has(one));
+      skipped.sort((a, b) => a.line - b.line);
+    }
+  }
+
   return { stacks: collapse(stacks), skipped };
 }
 
@@ -169,7 +194,12 @@ function naming(
 ): { id: string; key: string; said: string } | undefined {
   if (binding.scryfallId) {
     const id = cell("scryfallId");
-    return id ? { id, key: "", said: id } : undefined;
+    if (!id) return undefined;
+    // The id names the printing; the set and number are what a person reading
+    // the receipt can find on the card in their hand.
+    const set = cell("setCode");
+    const number = cell("collectorNumber");
+    return { id, key: "", said: set && number ? `${set} ${number}` : id };
   }
 
   const set = cell("setCode");

@@ -318,6 +318,23 @@ format is recognized by them — that is a fact about the reader. `Signed` and
 format would have quietly stopped our own format requiring a column it has
 carried since the day it was written.
 
+### A finish the card never came in is refused
+
+An import maps a vendor's spelling onto ours and until now asked nothing
+further, so a row claiming an etched Theros card wrote a stack matching no
+object anybody owns and reached a PDS looking like any other — while the same
+edit by hand in a scanned list was turned down flat. The row is skipped and
+named in the receipt rather than corrected: `finish` is part of what makes a
+stack that stack, so guessing writes a record nobody can tell afterwards from
+one somebody meant, where a skipped row costs one line a person can fix and
+import again.
+
+**It needs a catalog and so does not demand one.** A ManaBox file names its
+printings by id, which is why importing one has never required one; the check
+takes the same kind of callback the set-and-number lookup does, and is absent
+without it. A printing the catalog has not heard of is passed over, a file
+being free to name one this browser's copy has yet to hear of.
+
 ### The one place our file is righter than theirs
 
 ManaBox refused six rows of an export in October 2026 for a language it would
@@ -888,17 +905,6 @@ it.
 `/back/` rather than `/front/` of the same id, and the detail view draws one
 side and offers no way to turn a card over. That is a second `todo(faces)`, at
 the function deriving the URL.
-
-**A finish nothing came in is read as written.** An import maps a vendor's
-spelling onto ours and asks nothing further, so a row claiming an etched Theros
-card writes a stack matching no object anybody owns, and it reaches the PDS
-looking like any other. The same edit by hand in a scanned list is turned down
-flat, which is the inconsistency rather than the argument for settling it one
-way. What makes it a question is that a ManaBox file names its printings by id,
-so importing one needs no catalog at all today: refusing the row would make a
-catalog the price of reading any file. Refusing it, keeping it against a count
-in the receipt, and leaving it alone are the three answers, and `todo(eth0net)`
-sits where a row's finish is read.
 
 **Repeated tokens.** Tokens from different sets carry different oracle ids, so
 grouping doesn't collapse them: searching "goblin" still returns five rows of
