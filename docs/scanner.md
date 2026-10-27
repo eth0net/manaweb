@@ -37,6 +37,19 @@ switching for.
   between set code and language on that same line: `BLB • EN` nonfoil,
   `BLB ★ EN` foil. Traditional foils share collector numbers with nonfoils, so
   this marker is the only differentiator.
+- **The star says premium, not foil.** An etched card carries one too: CMR
+  #525, CLB #525 and MH2 #267 all read `★`, 2020 through 2022, taken off the
+  cards. So where a single collector number was made both foil and etched the
+  line says the same thing twice, leaving 285 paper printings no reading of the
+  card can decide — the 245 made all three ways, almost all of them Strixhaven
+  Mystical Archive and Modern Horizons 2, plus 40 made only those two ways.
+- **Those 285 are what color is for**, once a line is read at all. Etched
+  differs from the printing beside it in the frame rather than the art: gold
+  against yellow on CLB #534, an engraved border where CMR #525 carries a plain
+  legendary one. A band outside the art separates a pair the index has already
+  named, which is a binary rather than a classification. Everywhere else the
+  number has answered first, including all 892 printings carrying etched on a
+  number of their own.
 - Era caveats: the 2015 frame puts it there; the frames before it put a star
   next to the collector number. Older cards have no collector line, but foils
   didn't exist before Urza's Legacy (1999), so absence is itself a reliable
