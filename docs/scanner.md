@@ -8,9 +8,16 @@ cost. Where it sits in the plan is [`roadmap.md`](roadmap.md).
 precomputed index shipped with the catalog. No server in the per-scan path,
 works offline, nothing leaves the device.
 
-**Beat ManaBox on printing identification.** ManaBox matches art only, so the
-user picks set and finish by hand every time. Exact printing ID is the feature
-worth switching for.
+**Beat ManaBox on printing identification.** ManaBox matches art and nothing
+else, in greyscale, reading neither set symbol nor collector line — observed in
+use, October 2026. Settings carry what the reading does not: lock one or more
+sets and a card whose art none of them holds is passed over, and what matched
+comes up as a strip of printings to pick from, or quick mode takes the first.
+Finish follows the catalog wherever a printing was made one way, and a
+prefer-foil switch wherever it was made both, so a press is owed only by the
+copy that contradicts it. What it leaves to the hand is choosing among
+printings of one artwork, and reading the card itself is the feature worth
+switching for.
 - Constrain, don't classify. Art match narrows to the printings sharing that
   art; set symbol and collector number pick among those, which is a handful-way
   decision rather than a thousand-way classification.
@@ -36,6 +43,10 @@ worth switching for.
   nonfoil signal.
 - Usually it doesn't arise — `finishes` narrows most pinned printings to one
   possibility.
+- Color is signal both of them throw away. ManaBox hashes greyscale and so does
+  this, so a foil's cast, a treatment and the frame's own color go unread — and
+  where the candidates are printings of one artwork, that is the cheapest thing
+  left to tell them apart. What it would cost is below.
 - Proxies and alters defeat any scanner and always will. Accepted limitation.
 
 **One implementation of the hash, in `crates/scanner`.** The build fills the
@@ -267,6 +278,13 @@ That second figure is the one to notice. An artwork is reprinted, which is why
 set an artwork is one printing in 58.2% of cases and already unique in a
 further 28.7%, leaving an eighth where two treatments of the same art sit in
 the same set and a person has to look at them.
+
+**A locked set narrows the index, not the answer.** A card whose artwork no
+printing in that set carries is passed over rather than matched to the nearest
+thing inside it, which is what makes a lock safe to leave on for a box. The
+wrong answer it can still give needs the art to sit in both the locked set and
+the one the card came out of, so that is the promise the lock asked for being
+broken rather than a reading going astray.
 
 **How close a match it was is a real thing to show, and only about
 artworks.**
@@ -827,6 +845,11 @@ has none of this.
   same artwork, set and number, so counting it as another copy writes a finish
   nobody read. It stays a fresh scan until the bottom line is read, which makes
   a foil a different answer and this question nothing.
+- **What a lock does with a card it passes over.** Nothing is the honest
+  answer, and nothing is also what a miss looks like, so a box scanned under
+  the wrong locked set reads as a scanner that has quietly stopped working. A
+  reason has to reach the screen without arriving as a verdict about a card
+  that was never matched in the first place.
 - **What belongs behind a build flag rather than a setting.** The readout is
   development-only because it began as an instrument, which also means a tester
   holding their own phone cannot reach it. Some of it may be worth a preference
