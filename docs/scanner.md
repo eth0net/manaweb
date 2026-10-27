@@ -280,6 +280,19 @@ The list is kept in a database of its own rather than under whoever is signed
 in. The pile in front of the camera belongs to the device holding it, and an
 account only comes into it once there is a reason for one.
 
+**A list holds either a session or a file, so it carries which.** A box being
+worked through and an import under review are both piles nobody has committed
+yet, and a device holds one at a time; what differs is what the receipt says
+they were read out of, and whether a row has a line behind it —
+[`scryfall.md`](scryfall.md).
+
+Nothing caps it. A thousand scans weigh about a megabyte and fold in well under
+a millisecond, so an afternoon spent emptying a box costs nothing worth
+imposing a limit over. Nearly all of that weight is the artworks each scan
+matched, which a row read off a file carries none of. The ceiling that may
+exist is a thousand rows drawn at once, which wants a phone to answer and not a
+laptop.
+
 It asks nothing of the lexicons: `container` is already a field a card may
 carry, `source` already says what the cards were read out of, and the file a
 CSV names is already optional. What it does ask is that the review settle a

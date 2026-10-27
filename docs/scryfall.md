@@ -335,6 +335,29 @@ takes the same kind of callback the set-and-number lookup does, and is absent
 without it. A printing the catalog has not heard of is passed over, a file
 being free to name one this browser's copy has yet to hear of.
 
+### A file is read into a list before it is written
+
+A skipped row names a line and nothing else, which suits a file with six bad
+rows and not a migration somebody is doing by hand. What the reader kept is a
+number on a button, so the only way to see what an import made of a file is to
+run it and read the collection back.
+
+So a file lands in the list a scan lands in — see [`scanner.md`](scanner.md),
+whose rules about ordering and merging were written for a pile in front of a
+camera and settle this too. Rows keep the file's order and each carries the
+line it came off, a line being what somebody fixes in the file still open
+beside them.
+
+**What reads goes in; what does not stays behind.** A handful of bad rows is no
+reason to refuse the thousands around them, and once they are the only rows
+left the list has already narrowed to the work remaining. A second pass carries
+them once they are fixed, which the receipts tell apart on their own, each
+digest being its own.
+
+**`read` stops folding and `plan` starts.** `plan` merges an imported stack
+into one the repo holds and never into another the same file brought, so moving
+the fold without moving that would write two records for one stack.
+
 ### The one place our file is righter than theirs
 
 ManaBox refused six rows of an export in October 2026 for a language it would
