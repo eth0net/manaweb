@@ -1,0 +1,8 @@
+{
+  "name": "manaweb-fixture-gen",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "bun run gen.ts"
+  }
+}

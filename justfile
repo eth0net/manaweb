@@ -62,12 +62,13 @@ prose: deps
 scryfall-search: deps
     cd tools/scryfall-check && bun run check
 
-# Out of `check` for a reason of its own: a fixture is read against a built
-# catalog, which CI has no way to make.
-[doc('hold the import fixtures to the catalog (needs bun, a catalog)')]
+# Out of `check` for a reason of its own: one half reads a built catalog and
+# the other the cache behind it, neither of which CI has a way to make.
+[doc('hold the import fixtures to the catalog and to the seed behind one (needs bun, a catalog, a card cache)')]
 [group('checks')]
 fixtures: deps
     cd tools/fixture-check && bun run check
+    cd tools/fixture-gen && bun run gen --check
 
 # The crate is split out to reach targets CI's test job does not, and a hash
 # that differed on one of them would retrieve nothing and say nothing.
@@ -134,6 +135,11 @@ hooks:
 [group('dev')]
 write-icons: deps
     cd tools/icons && bun run icons
+
+[doc('rewrite the generated import fixture from its seed (needs bun, a card cache)')]
+[group('dev')]
+write-fixtures: deps
+    cd tools/fixture-gen && bun run gen
 
 # rewrite the record types the client reads records with (needs bun)
 [group('dev')]

@@ -415,6 +415,17 @@ test("a collection-sized export reads into stacks", async () => {
   );
 });
 
+// Drawn over the whole cache by `just write-fixtures`, so a layout, language or
+// finish nobody has met arrives here rather than in a bug report.
+test("the generated spread reads with nothing left over", async () => {
+  const { stacks, skipped } = read(await fixture("manabox-spread"), MANABOX);
+
+  expect(skipped).toEqual([]);
+  expect(new Set(stacks.map((held) => held.finish))).toEqual(
+    new Set(["nonfoil", "foil", "etched"]),
+  );
+});
+
 // The body limit is what bounds a batch once records carry history, so the
 // measured size is worth holding onto.
 test("a batch of real records sits well inside one body", async () => {

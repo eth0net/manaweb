@@ -131,6 +131,26 @@ nothing guarantees a line ending or rules out a leading BOM across five tools
 and the browsers and systems they run on. The fixtures are stored LF, and a
 test varies the ending rather than a second file carrying it.
 
+### A handcrafted fixture stops being representative without saying so
+
+The ManaBox files here were built from the proportions of a real export rather
+than from its rows, and ten of them claimed a finish no such printing ever came
+in — a card is `nonfoil` and `foil` or it is not, and a file saying otherwise
+is one no vendor would ever write. Nothing noticed, because nothing on either
+side of an import reads `finishes`.
+
+So they are held to the cache now, from both directions. `fixture-check` asks
+the catalog whether each row's printing exists and was made the way the row
+says. `fixture-gen` writes one more fixture by walking the cache for every
+value it holds of layout, rarity, frame, border color, language and the flags a
+printing carries, taking a few printings of each: a set introducing a shape
+nobody has met then arrives as a row in the test data. Its seed and the cache
+version it drew from sit beside it, so what is committed can be reproduced and
+a hand-edit cannot pass.
+
+Neither runs in CI. One wants a built catalog and the other the 78MB cache
+behind it, and a checkout carries neither.
+
 ### A format is a binding, not a reader of its own
 
 Every supported format is a table of field against column name, and one reader

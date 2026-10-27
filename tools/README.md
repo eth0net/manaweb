@@ -30,18 +30,24 @@ needs their service to answer at all.
 `fixture-check` (`just fixtures`) holds the import fixtures to the catalog: the
 printing a row names has to exist and the finish it claims has to be one that
 printing was made in. `edges.csv` is left out, every row of it being one a
-reader must refuse.
+reader must refuse. The same recipe runs `fixture-gen --check`, which asks
+whether the generated fixture is still what its seed writes.
 
 ## Generators
 
 These write files into the repo. Run one when its source moves, commit what it
 wrote, and never hand-edit the output — a check will not catch you.
 
-|           | what it writes                                                 | recipe                     |
-| --------- | -------------------------------------------------------------- | -------------------------- |
-| `icons`   | every raster and the `.ico`, from `web/public/icon.svg`        | `just write-icons`         |
-| `lex-gen` | the record types the client reads records with                 | `just write-lexicon-types` |
-| `seed`    | fixture records, into a dev account's PDS rather than the repo | `just seed <handle>`       |
+|               | what it writes                                                 | recipe                     |
+| ------------- | -------------------------------------------------------------- | -------------------------- |
+| `fixture-gen` | an import fixture spread over every value the cache holds      | `just write-fixtures`      |
+| `icons`       | every raster and the `.ico`, from `web/public/icon.svg`        | `just write-icons`         |
+| `lex-gen`     | the record types the client reads records with                 | `just write-lexicon-types` |
+| `seed`        | fixture records, into a dev account's PDS rather than the repo | `just seed <handle>`       |
+
+`fixture-gen` is the odd one: it draws from the card cache, so what it writes
+moves with Scryfall. `generated.json` carries the seed and the cache version
+behind the committed file, and `--check` reproduces one from the other.
 
 ## Not a tool
 
