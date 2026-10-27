@@ -19,12 +19,18 @@ Green here means green there. `just check` runs all four.
 | `scanner-check`   | does the wasm engine answer what the native one does                   | `just scanner`  |
 | `lex-gen --check` | do the generated record types still match the lexicons                 | `just lexicons` |
 
-## The check nothing runs for you
+## The checks nothing runs for you
+
+Both want something a checkout does not carry, so neither is in `just check`.
 
 `scryfall-check` (`just scryfall-search`) holds our search to Scryfall's own
-answers. It is out of `just check` deliberately: it asks about the
-implementation rather than about a commit, and it needs their service to answer
-at all.
+answers. It asks about the implementation rather than about a commit, and it
+needs their service to answer at all.
+
+`fixture-check` (`just fixtures`) holds the import fixtures to the catalog: the
+printing a row names has to exist and the finish it claims has to be one that
+printing was made in. `edges.csv` is left out, every row of it being one a
+reader must refuse.
 
 ## Generators
 

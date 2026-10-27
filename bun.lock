@@ -11,6 +11,9 @@
         "typescript": "^7.0.2",
       },
     },
+    "tools/fixture-check": {
+      "name": "manaweb-fixture-check",
+    },
     "tools/icons": {
       "name": "manaweb-icons",
       "dependencies": {
@@ -377,6 +380,8 @@
     "lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.33.0", "", { "os": "win32", "cpu": "x64" }, "sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA=="],
 
     "lru-cache": ["lru-cache@10.4.3", "", {}, "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="],
+
+    "manaweb-fixture-check": ["manaweb-fixture-check@workspace:tools/fixture-check"],
 
     "manaweb-icons": ["manaweb-icons@workspace:tools/icons"],
 

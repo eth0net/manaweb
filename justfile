@@ -62,6 +62,13 @@ prose: deps
 scryfall-search: deps
     cd tools/scryfall-check && bun run check
 
+# Out of `check` for a reason of its own: a fixture is read against a built
+# catalog, which CI has no way to make.
+[doc('hold the import fixtures to the catalog (needs bun, a catalog)')]
+[group('checks')]
+fixtures: deps
+    cd tools/fixture-check && bun run check
+
 # The crate is split out to reach targets CI's test job does not, and a hash
 # that differed on one of them would retrieve nothing and say nothing.
 [doc('hold a wasm build of the scanner to what a native one answers (needs bun, the wasm32 target)')]
