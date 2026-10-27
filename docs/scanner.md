@@ -301,6 +301,22 @@ for a session, and a switch for showing the numbers, are the same one store in
 the browser and none of it is worth a record. The cards have their own already,
 being cards rather than a preference.
 
+**Two surfaces, and what a setting is about decides which.** A button in the
+corner of the viewfinder opens the scanner's: the torch and the lens, the
+priors above, the grade a scan is taken at, and whatever of the readout a
+tester is handed — everything describing the pile in front of the camera or the
+device being held over it. What describes the person instead, a price source or
+a theme, belongs under the account menu with the rest of the app's, and is the
+half that eventually wants a record rather than this browser.
+
+**A session setting is a default, and every scan shows it applied.** A read
+answers with the stack it would make — the printing, and the finish, grade and
+set stamped on it — so what the panel holds is in front of somebody on every
+card rather than only inside the panel. Changing one there changes that card
+alone; the next scan is stamped from the panel again, which is what a rogue
+nonfoil in a foil box asks for. That preview is the scratch list's row built
+one scan early, so there is one set of controls rather than two.
+
 **A scan is graded as it is taken**, near mint until somebody says otherwise,
 that being what most of a collection is. Nothing reads a grade off the
 photograph, so the number is an assumption either way; one that is usually
@@ -308,15 +324,15 @@ right and visibly changed beats a collection carrying no grades at all.
 
 **The scanner holds it and the stack keeps what it was given**, including
 ungraded, which is a grade somebody picked rather than the absence of one. The
-picker is on the screen the camera opens from, so a box is answered for while
-it is being set up rather than once its cards are already in a list, and a
-stack corrected afterwards is corrected alone. Two of them join only where they
-already agree, no list grade being left for either to follow.
+picker is in the panel with the rest of the session's, so a box is answered for
+while it is being set up rather than once its cards are already in a list, and
+a stack corrected afterwards is corrected alone. Two of them join only where
+they already agree, no list grade being left for either to follow.
 
 **It outlives the pile**, which is what makes it a preference rather than part
 of the list, and is the half worth watching: the next box inherits the last
-one's answer. So the picker sits in front of the camera button rather than
-behind a fold, where a grade nobody changes is still a grade they have seen.
+one's answer. So whatever the panel is shut over still has to be legible from
+outside it: a grade nobody changes is one they have to have seen.
 
 **A prior never overrides what was read.** A finish the catalog rules out is
 not offered whatever the session says; a card found to be from another set is
@@ -811,12 +827,6 @@ has none of this.
   same artwork, set and number, so counting it as another copy writes a finish
   nobody read. It stays a fresh scan until the bottom line is read, which makes
   a foil a different answer and this question nothing.
-- **Where the settings go once there is more than one.** The grade a scan is
-  taken at sits on the screen the camera opens from, which is right while it is
-  the only one and wrong as soon as it has company — a column of pickers in
-  front of the camera button is a worse answer than a button in the corner of
-  the viewfinder opening a panel. The see-through toggle and whatever a tester
-  is given of the readout go the same way.
 - **What belongs behind a build flag rather than a setting.** The readout is
   development-only because it began as an instrument, which also means a tester
   holding their own phone cannot reach it. Some of it may be worth a preference
