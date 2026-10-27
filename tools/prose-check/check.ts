@@ -17,7 +17,13 @@ process.chdir(dirname(dirname(import.meta.dir)));
 // sentence that changed a word.
 const RUN = 8;
 
-const MARKDOWN = ["*.md", "docs/*.md", "web/*.md", "lexicons/*.md"];
+const MARKDOWN = [
+  "*.md",
+  "docs/*.md",
+  "tools/*.md",
+  "web/*.md",
+  "lexicons/*.md",
+];
 
 // Condensed by design — `AGENTS.md` says as much — so these repeat `docs/`
 // legitimately. They still count as somewhere a comment shouldn't restate.

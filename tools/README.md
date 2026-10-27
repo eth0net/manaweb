@@ -35,8 +35,9 @@ whether the generated fixture is still what its seed writes.
 
 ## Generators
 
-These write files into the repo. Run one when its source moves, commit what it
-wrote, and never hand-edit the output — a check will not catch you.
+These write files into the repo. Run one when its source moves and commit what
+it wrote. Hand-editing the output is caught for `fixture-gen` and `lex-gen`,
+and silent for the rest.
 
 |               | what it writes                                                 | recipe                     |
 | ------------- | -------------------------------------------------------------- | -------------------------- |

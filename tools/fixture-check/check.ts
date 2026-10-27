@@ -1,5 +1,4 @@
-// Holds the import fixtures to the catalog: the printing a row names has to
-// exist, and the finish it claims has to be one that printing was made in.
+// Holds the import fixtures to the catalog — `tools/README.md`.
 //
 //     bun run check
 //
