@@ -889,6 +889,17 @@ it.
 side and offers no way to turn a card over. That is a second `todo(faces)`, at
 the function deriving the URL.
 
+**A finish nothing came in is read as written.** An import maps a vendor's
+spelling onto ours and asks nothing further, so a row claiming an etched Theros
+card writes a stack matching no object anybody owns, and it reaches the PDS
+looking like any other. The same edit by hand in a scanned list is turned down
+flat, which is the inconsistency rather than the argument for settling it one
+way. What makes it a question is that a ManaBox file names its printings by id,
+so importing one needs no catalog at all today: refusing the row would make a
+catalog the price of reading any file. Refusing it, keeping it against a count
+in the receipt, and leaving it alone are the three answers, and `todo(eth0net)`
+sits where a row's finish is read.
+
 **Repeated tokens.** Tokens from different sets carry different oracle ids, so
 grouping doesn't collapse them: searching "goblin" still returns five rows of
 Goblin token. Grouping them wants a key that isn't `oracle_id` — name plus type

@@ -95,6 +95,8 @@ export function read(
       return;
     }
 
+    // todo(eth0net): whether the catalog is asked that this printing came that
+    // way is open — `docs/scryfall.md`.
     const how = finish(cell("finish"));
     if (!how) {
       skipped.push({ line, reason: `unknown finish ${cell("finish")}` });
