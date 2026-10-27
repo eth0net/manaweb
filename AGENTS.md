@@ -48,6 +48,11 @@ whatever they are checking. Prefer Rust where a check is slow or settled,
 TypeScript where it moves with the client. A third toolchain is the thing to
 avoid: nobody should install one to run a check on work that never touches it.
 
+A check that renders needs a browser, so `web/src/testing/dom.ts` registers one
+and only the files importing it are in it. `bun test --isolate` is what holds
+that line: two fakes of a browser disagree where one would not, a faked
+`IndexedDB` handing back a `Blob` the faked `FileReader` will not take.
+
 Spelling is American, matching the vocabulary the code already uses. `typos`
 enforces it; `typos.toml` says what it skips.
 
