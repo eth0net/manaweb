@@ -525,6 +525,20 @@ than keeping a list it would have to be right about. A layout added later shows
 no control until someone counts again, which costs a feature nobody sees rather
 than a broken image everyone does.
 
+**Three fields arrive with a card and nothing parsed them.** `frame_effects`,
+`promo_types` and `security_stamp` were left out while nothing asked for them,
+which is the same rule the rest of the columns follow. The scanner asks. None
+comes down with every card, Scryfall omitting each where it is empty: of the
+fourteen in `crates/scryfall/tests/fixtures/layouts.jsonl`, five carry the
+first and seven each of the rest. Counted over the cache, 26,701 of the 109,261
+paper printings carrying an illustration share one with another printing of the
+same set and language, and 8,092 of those agree on every axis a treatment would
+move — frame, border, rarity, the promo flag, finishes and full art.
+`frame_effects` is where most of what separates them lives, `inverted` among
+its values, so most of the gap closes on a parse rather than a measurement.
+Open taxonomies like the others, so strings in the cache and codes in the
+artifact.
+
 Three things share a word otherwise, so each gets its own: a **card image** is
 a face rendered by Scryfall, six sizes of it, hotlinked and never re-served; an
 **artwork** is the illustration alone and the printings that share it, which
