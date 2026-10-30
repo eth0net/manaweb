@@ -183,6 +183,8 @@ export function read(
     }
   }
 
+  // todo(review): folding here is what costs a list the order its file had,
+  // and moving it wants `plan` folding what one file brought — `scryfall.md`.
   return { stacks: collapse(stacks), skipped };
 }
 
