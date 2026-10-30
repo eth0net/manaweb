@@ -123,7 +123,9 @@ jobs:
       # own modules, so a change to those has to typecheck against both.
       - run: bun run lint
       - run: bun run types
-      - run: bun test
+      # Not optional: a runner orders the files differently from a laptop, and
+      # one of them puts the rendering tests before what they would reach.
+      - run: bun test --isolate
       - run: bun run build
 
   msrv:
