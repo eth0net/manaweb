@@ -10,6 +10,7 @@ function print(over: Partial<Print> = {}): Print {
   return {
     set: "msh",
     setName: "Marvel Super Heroes",
+    setKind: "expansion",
     collectorNumber: "121",
     rarity: "uncommon",
     artist: "Alexander Gering",
@@ -26,6 +27,15 @@ test("the long form is left alone for telling printings apart", () => {
   expect(full(print())).toBe(
     "Marvel Super Heroes · MSH #121 · uncommon · Alexander Gering",
   );
+});
+
+// A code says which set; what kind of thing it was says where to look for a
+// copy, and an expansion is the answer nobody needed.
+test("a printing from a product says which kind it was", () => {
+  expect(full(print({ setKind: "duel_deck" }))).toContain("· duel deck ·");
+  expect(full(print({ setKind: "masterpiece" }))).toContain("· masterpiece ·");
+  expect(full(print({ setKind: "expansion" }))).not.toContain("expansion");
+  expect(full(print({ setKind: "core" }))).not.toContain("core");
 });
 
 test("every rarity Scryfall writes takes a letter of its own", () => {

@@ -13,6 +13,7 @@ const PRINT = {
   id: "aaa",
   set: "10e",
   setName: "Tenth Edition",
+  setKind: "core",
   collectorNumber: "100",
   rarity: "common",
   finishes: ["nonfoil", "foil"],

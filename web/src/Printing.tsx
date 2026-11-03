@@ -47,10 +47,20 @@ export function twoSided(print: Print): boolean {
   return SIDED.has(print.layout);
 }
 
+// The sets nobody needs told about: a card is in an expansion unless it is
+// somewhere more particular, and the particular ones are the answer to where
+// a copy can be found.
+const PLAIN = new Set(["expansion", "core"]);
+
+export function product(print: Print): string | null {
+  return PLAIN.has(print.setKind) ? null : words(print.setKind);
+}
+
 // One printing, as much of it as it has. Language is a tag of its own.
 export function describe(print: Print) {
   return [
     `${print.setName} · ${print.set.toUpperCase()} #${print.collectorNumber}`,
+    product(print),
     print.rarity,
     print.artist,
     ...print.flags.map(words),
