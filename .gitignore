@@ -71,3 +71,6 @@ $RECYCLE.BIN/
 *.swo
 .vscode/*
 !.vscode/extensions.json
+
+# Their answers, kept a day so iterating on our half costs no request.
+tools/scryfall-check/.answers.json
