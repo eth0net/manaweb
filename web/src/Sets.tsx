@@ -7,9 +7,10 @@ import {
   useState,
 } from "react";
 import { CardRow } from "./CardRow";
-import type { Catalog, SetRow } from "./catalog";
+import type { Catalog } from "./catalog";
 import { matches, parse } from "./catalog/query";
 import { normalize } from "./catalog/search";
+import { type Listed, label, narrow } from "./catalog/sets";
 import { useOwning } from "./collection/context";
 import { Colors } from "./filters/Colors";
 import { More } from "./filters/Filters";
@@ -24,8 +25,6 @@ export const SETS = "/sets";
 // millisecond to build, so the whole of that one is half a second before
 // anything is on screen.
 const PAGE = 600;
-
-export type Listed = { set: SetRow; printings: number };
 
 // Browsing answers "what did this set hold", which a name you have to know
 // first cannot. Searching is the other half, and its own place.
@@ -248,24 +247,6 @@ export function useSets(catalog: Catalog): Listed[] {
         .sort((a, b) => b.set[3].localeCompare(a.set[3])),
     [catalog],
   );
-}
-
-// By name or by code, so "inv" finds Invasion and "lea" finds Alpha.
-export function narrow(sets: Listed[], filter: string): Listed[] {
-  const wanted = filter.trim().toLowerCase();
-  if (!wanted) return sets;
-  return sets.filter(
-    ({ set }) =>
-      set[1].toLowerCase().includes(wanted) || set[0].includes(wanted),
-  );
-}
-
-// One set is worth naming; a handful is only worth counting.
-export function label(sets: Listed[], chosen: string[]): string {
-  if (chosen.length === 0) return "All sets";
-  if (chosen.length > 1) return `${chosen.length} sets`;
-  const only = chosen[0] as string;
-  return sets.find(({ set }) => set[0] === only)?.set[1] ?? only.toUpperCase();
 }
 
 // Browsed or picked from, which is the same list either way: what one press

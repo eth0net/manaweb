@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import type { Catalog } from "../catalog";
+import { label, narrow } from "../catalog/sets";
 import { Modal } from "../Modal";
 import { amend, useSettings } from "../router";
-import { label, narrow, SetList, useSets } from "../Sets";
+import { SetList, useSets } from "../Sets";
 import { KEY, read, write } from "../terms";
 
 // Which sets the search is narrowed to, written into the query as the `s:`

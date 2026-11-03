@@ -276,6 +276,15 @@ export function words(name: string): string {
     .toLowerCase();
 }
 
+// The sets nobody needs told about: a card is in an expansion unless it is
+// somewhere more particular, and the particular ones are where to look for a
+// copy. Null for the two that go without saying.
+const PLAIN = new Set(["expansion", "core"]);
+
+export function product(kind: string): string | null {
+  return PLAIN.has(kind) ? null : words(kind);
+}
+
 // A bitmask against the list the file names it with.
 function decode(mask: number, names: string[]): string[] {
   return names.filter((_, bit) => mask & (1 << bit));
