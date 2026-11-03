@@ -276,6 +276,12 @@ export function words(name: string): string {
     .toLowerCase();
 }
 
+// Their spelling is snake_case, and no set type holds a space or a hyphen, so
+// either is read as the underscore somebody meant.
+export function kind(value: string): string {
+  return value.toLowerCase().replace(/[\s-]+/g, "_");
+}
+
 // The sets nobody needs told about: a card is in an expansion unless it is
 // somewhere more particular, and the particular ones are where to look for a
 // copy. Null for the two that go without saying.

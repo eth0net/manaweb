@@ -38,6 +38,15 @@ test("a printing from a product says which kind it was", () => {
   expect(full(print({ setKind: "core" }))).not.toContain("core");
 });
 
+// Every printing in a promo set carries the promo flag, so saying the kind
+// as well would print it twice.
+test("a kind the flags already carry is not said twice", () => {
+  const shown = full(print({ setKind: "promo", flags: ["promo"] }));
+  expect(shown.split(" · ").filter((part) => part === "promo")).toHaveLength(
+    1,
+  );
+});
+
 test("every rarity Scryfall writes takes a letter of its own", () => {
   const letters = [
     "common",
