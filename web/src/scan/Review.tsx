@@ -2,7 +2,13 @@
 // that put a wrong read right — `docs/scanner.md`.
 
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   appLanguage,
   type Card,
@@ -106,8 +112,18 @@ export function Review({
   );
 
   // Where the list came from, which decides what is behind it and what the
-  // way back out of here is.
-  const file = scratch.source.at === "file" ? scratch.source : null;
+  // way back out of here is. Held rather than read each render: keeping a
+  // file's list empties it, and the screen still has to say where it went.
+  const [came, setCame] = useState(scratch.source);
+  useEffect(() => {
+    // A scan only takes it back once there are cards, or clearing a file
+    // would relabel the empty screen that follows.
+    if (scratch.source.at === "file" || list.length > 0) {
+      setCame(scratch.source);
+    }
+  }, [scratch.source, list.length]);
+
+  const file = came.at === "file" ? came : null;
   const back = file ? IMPORT : SCAN;
 
   const running = useImport();

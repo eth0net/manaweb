@@ -95,7 +95,9 @@ export function Scan({
   scratch: Scratch;
   grading: Grading;
 }) {
-  const { change } = scratch;
+  const { change, ready } = scratch;
+  // A file open for review is already the list — `docs/scanner.md`.
+  const reviewing = scratch.source.at === "file";
   const { grade, regrade } = grading;
   const [camera, setCamera] = useState<"off" | "opening" | "on">("off");
   const [answer, setAnswer] = useState<Answer>({ at: "none" });
@@ -182,6 +184,15 @@ export function Scan({
 
   const take = useCallback(async () => {
     if (!catalog || !manifest || !video.current) return;
+    // `reviewing` cannot see a stored file until the read answers.
+    if (!ready) {
+      setProblem("Still looking for a list already open.");
+      return;
+    }
+    if (reviewing) {
+      setProblem("A file is open for review. Keep or clear it to scan.");
+      return;
+    }
     setAnswer({ at: "reading" });
     setProblem(null);
     setExpanded(false);
@@ -235,7 +246,7 @@ export function Scan({
       setAnswer({ at: "none" });
       setProblem(said(failed));
     }
-  }, [catalog, change, grade, manifest]);
+  }, [catalog, change, grade, manifest, ready, reviewing]);
 
   if (!catalog || !manifest) {
     return <p className="quiet">The catalog is still loading.</p>;
@@ -342,7 +353,9 @@ export function Scan({
               Open the camera
             </button>
           )}
-          {scratch.list.length > 0 && <Waiting list={scratch.list} />}
+          {scratch.list.length > 0 && (
+            <Waiting list={scratch.list} read={reviewing} />
+          )}
           {problem && <p className="warn">{problem}</p>}
           {/* todo(settings): a panel behind a button in the viewfinder's
               corner, once this is not the only one — `docs/scanner.md`. */}
@@ -500,7 +513,7 @@ export function Scan({
                       onMore={() => change((list) => plus(list, stack.id))}
                     />
                   )}
-                  <Waiting list={scratch.list} />
+                  <Waiting list={scratch.list} read={reviewing} />
                 </p>
               )}
             </div>
@@ -603,12 +616,13 @@ function Counted({
 }
 
 // How much is in the list, and the way into it.
-function Waiting({ list }: { list: Entry[] }) {
+function Waiting({ list, read }: { list: Entry[]; read: boolean }) {
   const held = copies(list);
 
   return (
     <Link className="link" to={REVIEW}>
-      {held.toLocaleString()} card{held === 1 ? "" : "s"} scanned
+      {held.toLocaleString()} card{held === 1 ? "" : "s"}{" "}
+      {read ? "read in" : "scanned"}
     </Link>
   );
 }
