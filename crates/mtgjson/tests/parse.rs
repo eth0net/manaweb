@@ -122,7 +122,7 @@ async fn card_contents_carry_their_own_flags() {
 #[tokio::test]
 async fn every_board_keys_by_uuid_alone() {
     let decks: Vec<Deck> = collect(DECKS).await;
-    assert_eq!(decks.len(), 5);
+    assert_eq!(decks.len(), 6);
 
     // A token sheet is a decklist here, so a mainboard is not a given: 5 of
     // the 3,135 have none and carry only tokens.
@@ -180,7 +180,7 @@ async fn tokens_are_absent_from_the_card_identifiers() {
     let wanted: Vec<Uuid> = decks
         .iter()
         .flat_map(|deck| &deck.tokens)
-        .map(|card| card.uuid)
+        .filter_map(|card| card.uuid)
         .collect();
     assert!(!wanted.is_empty(), "the fixture should hold token entries");
 
@@ -218,4 +218,21 @@ fn the_build_stamp_parses() {
     let meta = Meta::parse(META).expect("fixture should parse");
     assert_eq!(meta.date.len(), "2026-11-03".len());
     assert!(meta.version.contains('+'), "{}", meta.version);
+}
+
+/// The whole table fails on a strict uuid, and a lenient one has to say so
+/// rather than hand back something that reads as an ordinary card.
+#[tokio::test]
+async fn a_board_entry_may_name_nothing_mtgjson_knows() {
+    let decks: Vec<Deck> = collect(DECKS).await;
+    let absent = decks
+        .iter()
+        .flat_map(|deck| &deck.tokens)
+        .filter(|card| card.uuid.is_none())
+        .count();
+
+    assert!(
+        absent > 0,
+        "the fixture should hold a `not_in_mtgjson` entry"
+    );
 }

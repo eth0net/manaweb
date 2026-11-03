@@ -49,8 +49,27 @@ pub struct Deck {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Board {
-    pub uuid: Uuid,
+    /// `None` where MTGJSON wrote `not_in_mtgjson` instead of an id — 24
+    /// token entries, and nowhere else in either table. Any other value that
+    /// isn't an id still fails, rather than quietly becoming nothing.
+    #[serde(deserialize_with = "absent_or_uuid")]
+    pub uuid: Option<Uuid>,
     pub count: u32,
     #[serde(default)]
     pub is_foil: bool,
+}
+
+/// What MTGJSON writes when a board names something it has no id for.
+const ABSENT: &str = "not_in_mtgjson";
+
+fn absent_or_uuid<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Uuid>, D::Error> {
+    use serde::de::Error as _;
+
+    let raw = String::deserialize(deserializer)?;
+    if raw == ABSENT {
+        return Ok(None);
+    }
+    raw.parse().map(Some).map_err(D::Error::custom)
 }
