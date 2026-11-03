@@ -238,6 +238,8 @@ const KEYS = new Set([
   "set",
   "e",
   "edition",
+  "st",
+  "settype",
   "cn",
   "number",
   "a",
@@ -358,6 +360,8 @@ const PRINTED = new Set([
   "set",
   "e",
   "edition",
+  "st",
+  "settype",
   "cn",
   "number",
   "a",
@@ -428,6 +432,9 @@ function holds(
     case "e":
     case "edition":
       return print?.set === value.toLowerCase();
+    case "st":
+    case "settype":
+      return print?.setKind === kind(value);
     case "cn":
     case "number":
       return print?.collectorNumber === value;
@@ -443,6 +450,12 @@ function holds(
     default:
       return false;
   }
+}
+
+// Their spelling is snake_case, and no set type holds a space or a hyphen, so
+// either is read as the underscore somebody meant.
+function kind(value: string): string {
+  return value.toLowerCase().replace(/[\s-]+/g, "_");
 }
 
 // `in:` takes a set, a rarity or a language, and none of the three shares a

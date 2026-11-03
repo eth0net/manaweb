@@ -202,7 +202,7 @@ Three things fall out of that:
 ### What runs against the pair today
 
 Everything the artifact carries, which is most of it: `c:` and `id:` with their
-comparisons, `mv:`, `m:`, `t:`, `pow:`, `tou:`, `r:`, `s:`, `cn:`, `a:`,
+comparisons, `mv:`, `m:`, `t:`, `pow:`, `tou:`, `r:`, `s:`, `st:`, `cn:`, `a:`,
 `lang:`, `layout:`, `year:`, the flag predicates as `is:` and `not:`, and
 names. Mana pips are parsed out of the cost string, so per-color filtering
 needs no new column.
@@ -226,6 +226,14 @@ means the same thing in both places.
 under test; `in:rare` asks whether the card was ever printed that way,
 whichever printing is being tested. `in:` also takes a set or a language, and
 `in:paper` is always true because paper is all the artifact carries.
+
+**`st:` is what a set was, which is how a product is asked for.** A code is a
+thing to remember and a kind is not: of the 1,000 sets the catalog holds, 46
+are precons, 26 boxed products, 26 duel decks and 18 masterpiece series, so
+`st:commander t:creature` is the question somebody actually has. The value is
+Scryfall's own snake_case and the taxonomy is theirs to extend, so it stays a
+string and an unknown one simply matches nothing. A hyphen or a space is read
+as the underscore it stands for, no set type containing either.
 
 **`is:commander` is a bit, not a derivation.** A deck is headed by a legendary
 creature or a legendary Spacecraft, and by anything whose text says so — 49
