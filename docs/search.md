@@ -10,8 +10,9 @@ Filtering was the wrong first instinct: almost everything is a real card
 someone can own. Only digital printings can't be, which makes them a category
 error rather than a preference, so they are excluded outright and no toggle
 reaches them. Un-sets, special editions and oversized cards stay searchable —
-Unfinity acorn cards are Legacy-legal, and someone with a 30th Anniversary Mox
-searching and finding nothing is a worse failure than a noisy result.
+Unfinity's non-acorn cards are Legacy-legal, and someone with a 30th
+Anniversary Mox searching and finding nothing is a worse failure than a noisy
+result.
 
 The noise was mostly a grouping problem. Paper alone runs to six figures of
 printings across tens of thousands of cards, so "Forest" returned hundreds of
