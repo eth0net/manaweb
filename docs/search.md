@@ -9,10 +9,20 @@ the device, so the only limit is which parts of it someone chose to hold.
 Filtering was the wrong first instinct: almost everything is a real card
 someone can own. Only digital printings can't be, which makes them a category
 error rather than a preference, so they are excluded outright and no toggle
-reaches them. Un-sets, special editions and oversized cards stay searchable —
-Unfinity's non-acorn cards are Legacy-legal, and someone with a 30th
-Anniversary Mox searching and finding nothing is a worse failure than a noisy
-result.
+reaches them.
+
+**Extras take Scryfall's line rather than one of our own** — `funny` sets,
+playtest cards and the handful they delist for their content. Theirs is the
+answer the community already expects, and adopting it spends none of our own
+judgment on a question we would otherwise re-decide per set; where it turns out
+wrong we diverge from a known baseline rather than from nothing. Decided
+2026-11-03, and not built: it belongs with the filter UI, syntax nobody can
+find being no way to offer anything.
+
+**A default and never a floor.** Unfinity's non-acorn cards are Legacy-legal,
+and someone with a 30th Anniversary Mox searching and finding nothing is a
+worse failure than a noisy result — so whatever hides them has to be one press
+from showing them again.
 
 The noise was mostly a grouping problem. Paper alone runs to six figures of
 printings across tens of thousands of cards, so "Forest" returned hundreds of
