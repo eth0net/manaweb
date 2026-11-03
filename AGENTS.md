@@ -232,8 +232,9 @@ backend:
    The OAuth client metadata document is committed at
    `web/public/oauth/client-metadata.json`, not generated.
 5. **Done** — the web client: OAuth, reads from own PDS, writes back, and
-   imports a CSV, parsed and planned against what is held, then landed whole
-   and drained into records at whatever the PDS will take. Measured end to end
+   imports a CSV, read into a list of its own and reviewed there before
+   anything is written, then planned against what is held, landed whole and
+   drained into records at whatever the PDS will take. Measured end to end
    against a limited one. Deployed to Pages, reading the catalog from the
    bucket it is uploaded to. Search speaks most of Scryfall's syntax, held to
    their own answers by `just scryfall-search`; a service worker holds the
