@@ -292,15 +292,54 @@ test("a plus stops at the ceiling", () => {
 });
 
 test("a merge keeps what the first of them was read as", () => {
+  const first = "2026-09-29T10:00:00.000Z";
   const list = [
-    one({ id: "a", at: "first", detected: false, quantity: 1 }),
-    one({ id: "b", at: "second", detected: true, quantity: 1 }),
+    one({ id: "a", at: first, detected: false, quantity: 1 }),
+    one({
+      id: "b",
+      at: "2026-09-29T11:00:00.000Z",
+      detected: true,
+      quantity: 1,
+    }),
   ];
   const [joined] = merged(list);
 
-  expect(joined?.at).toBe("first");
+  expect(joined?.at).toBe(first);
   expect(joined?.detected).toBe(false);
   expect(joined?.quantity).toBe(2);
+});
+
+// A file's rows differ in ways a scan's never do, and a join that ignored
+// them would drop a lot, a note or a tag with nothing on screen saying so.
+test("two rows a write would keep apart are not joined", () => {
+  const lot = { quantity: 1, price: "10.00", currency: "GBP" };
+  const list = [
+    one({ id: "a", quantity: 1, rest: { acquisitions: [lot] } }),
+    one({
+      id: "b",
+      quantity: 1,
+      rest: { acquisitions: [{ ...lot, price: "99.00" }], note: "signed" },
+    }),
+  ];
+
+  expect(merged(list)).toHaveLength(2);
+  expect(joinable(list)).toBe(0);
+});
+
+test("two that a write would join keep both their histories", () => {
+  const lot = { quantity: 1, price: "10.00", currency: "GBP" };
+  const list = [
+    one({ id: "a", quantity: 1, rest: { acquisitions: [lot] } }),
+    one({
+      id: "b",
+      quantity: 1,
+      rest: { acquisitions: [{ ...lot, price: "99.00" }] },
+    }),
+  ];
+  const [joined] = merged(list);
+
+  expect(joined?.quantity).toBe(2);
+  expect(joined?.rest?.acquisitions).toHaveLength(2);
 });
 
 test("the list comes to cards a file would have named", () => {
