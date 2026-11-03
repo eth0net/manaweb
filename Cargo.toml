@@ -22,6 +22,7 @@ repository = "https://github.com/eth0net/manaweb"
 manaweb-api = { path = "crates/api" }
 manaweb-artwork = { path = "crates/artwork" }
 manaweb-core = { path = "crates/core" }
+manaweb-mtgjson = { path = "crates/mtgjson" }
 chrono = { version = "0.4.45", default-features = false, features = ["now"] }
 manaweb-objects = { path = "crates/objects" }
 manaweb-scanner = { path = "crates/scanner" }
@@ -35,6 +36,9 @@ axum = { version = "0.8.9", default-features = false, features = [
   "tokio",
   "tracing",
 ] }
+# `tokio` for the async reader; `with_serde` is the default and is what
+# turns a row into a type rather than a `Vec<String>`.
+csv-async = { version = "1.3.1", features = ["tokio"] }
 futures-util = { version = "0.3.34", default-features = false }
 # `charset` decodes a response body by its declared encoding, which only
 # `text()` does and nothing here calls. `system-proxy` reads the OS proxy
