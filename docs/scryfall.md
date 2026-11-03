@@ -924,10 +924,8 @@ those six sit on colorless cards, so falling through to the card is what they
 want anyway. Only `flip` needs the fallback and only `flip` and those six reach
 it.
 
-**Carrying them is not showing them.** A back face has its own image, under
-`/back/` rather than `/front/` of the same id, and the detail view draws one
-side and offers no way to turn a card over. That is a second `todo(faces)`, at
-the function deriving the URL.
+**A back face has its own image**, under `/back/` rather than `/front/` of the
+same id, which is what the detail view turns a card over with.
 
 **Repeated tokens.** Tokens from different sets carry different oracle ids, so
 grouping doesn't collapse them: searching "goblin" still returns five rows of

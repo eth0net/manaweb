@@ -274,17 +274,20 @@ slower than that and ours is a built artifact anyway — but it would cost the
 whole point of the tool to finish on a kept answer, so finish on `--live`.
 
 The first run, over eighteen queries, put every divergence in one of three
-piles:
+piles. **This is what that run found, not where it stands** — for that, see
+[What we still answer differently](#what-we-still-answer-differently).
 - **Faces.** Scryfall matches a face; we hold one row per card.
-  `Kytheon, Hero   of Akros // Gideon, Battle-Forged` is a one-mana white
-  creature on its front and neither to us, and every `A // B` miss is this.
-  Closing it wants face data in the artifact — the same column-or-part decision
-  as oracle text, and the largest single thing between us and their results.
+  `Kytheon, Hero of Akros // Gideon, Battle-Forged` was a one-mana white
+  creature on its front and neither to us, and every `A // B` miss was this.
+  **Spent**: faces ride in the base pair and a term the card cannot answer is
+  put to them.
 - **A stale artifact.** `is:commander` found nothing against a catalog built
   before the flag existed. Worth knowing the check catches that.
 - **Cards they omit.** Crusade, Imprison, Invoke Prejudice and Jihad are
   withdrawn as offensive and Scryfall leaves them out of search; we return
-  them. A divergence to decide on rather than fix by accident.
+  them. A divergence to decide on rather than fix by accident, and
+  **the one
+  of the three still open**.
 
 ## Card languages
 
@@ -369,7 +372,7 @@ English with cards in Japanese is a real preference and so is the reverse.
 
 ## What we still answer differently
 
-Measured 2026-09-22 with `check-scryfall-search`, which puts the same query to
+Measured 2026-09-22 with `just scryfall-search`, which puts the same query to
 both. Before faces, eleven of its queries were missing results and every
 missing card was two-sided; after, one query is, and four cards.
 
