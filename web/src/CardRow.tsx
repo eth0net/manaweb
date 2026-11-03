@@ -1,4 +1,4 @@
-import { type Card, image, type Print, words } from "./catalog";
+import { across, type Card, image, type Print, words } from "./catalog";
 import { Add } from "./collection/Add";
 import { Mana } from "./Mana";
 import { describe, hasArt, Language, titled } from "./Printing";
@@ -19,6 +19,10 @@ export function CardRow({
 }) {
   const tags = card.kind === "card" ? card.flags : [card.kind, ...card.flags];
   const name = titled(card, print);
+  // Both are on the faces for most two-sided cards, and a row reading the
+  // card alone showed a blank where the search had just matched.
+  const stats = across(card, "stats");
+  const cost = across(card, "manaCost");
 
   return (
     <li>
@@ -44,8 +48,8 @@ export function CardRow({
           </h2>
           <p>
             {card.typeLine}
-            {card.stats && <span className="stats">{card.stats}</span>}
-            {card.manaCost && <Mana cost={card.manaCost} />}
+            {stats && <span className="stats">{stats}</span>}
+            {cost && <Mana cost={cost} />}
           </p>
           {print && <p className="print">{describe(print)}</p>}
           <div className="meta">

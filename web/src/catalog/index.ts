@@ -155,7 +155,7 @@ export interface Card {
   edhrecRank: number | null;
   // `3/3`, or a loyalty or defense alone. The type line says which.
   stats: string | null;
-  // Absent unless the card has two sides, which 1,025 of them do.
+  // Absent unless the card has two sides, which 1,028 of them do.
   faces: Face[] | null;
   // Named by the file, so a flag the artifact gains needs nothing here.
   flags: string[];
@@ -274,6 +274,20 @@ export function words(name: string): string {
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/_/g, " ")
     .toLowerCase();
+}
+
+// A card's own, or what its faces carry joined the way its name and type line
+// already are. Scryfall leaves the cost null where only one face has one and
+// never joins the stats at all — see `docs/search.md`.
+export function across(
+  card: Pick<Card, "manaCost" | "stats" | "faces">,
+  field: "manaCost" | "stats",
+): string | null {
+  const own = card[field];
+  if (own) return own;
+  // An empty string, not null, is how a back face with no cost arrives.
+  const said = (card.faces ?? []).map((one) => one[field]).filter(Boolean);
+  return said.length > 0 ? said.join(" // ") : null;
 }
 
 // Their spelling is snake_case, and no set type holds a space or a hyphen, so
