@@ -84,12 +84,14 @@ export function Import({
   const state = useImport();
   const taken = useReceipts(session);
 
+  // Not while a job is running: the file stays here until it is discarded,
+  // and `owning.stacks` moves with every batch the drain lands.
   const steps = useMemo(
     () =>
-      found && owning.ready
+      found && owning.ready && state.at === "none"
         ? plan(found.stacks, owning.stacks, new Date().toISOString())
         : null,
-    [found, owning.ready, owning.stacks],
+    [found, owning.ready, owning.stacks, state.at],
   );
 
   const weight = useMemo(
