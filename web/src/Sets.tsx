@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { CardRow } from "./CardRow";
-import type { Catalog } from "./catalog";
+import { type Catalog, product } from "./catalog";
 import { matches, parse } from "./catalog/query";
 import { normalize } from "./catalog/search";
 import { type Listed, label, narrow } from "./catalog/sets";
@@ -284,6 +284,7 @@ export function SetList({
           </button>
           <span>
             {set[0].toUpperCase()} · {set[3].slice(0, 4)} ·{" "}
+            {product(set[2]) && <>{product(set[2])} · </>}
             {/* What is owned against what exists, once either is worth
                 comparing: an empty collection would read 0 of everything.
                 todo(settings): counting treatments as well as printings. */}
