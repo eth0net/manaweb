@@ -122,7 +122,7 @@ async fn card_contents_carry_their_own_flags() {
 #[tokio::test]
 async fn every_board_keys_by_uuid_alone() {
     let decks: Vec<Deck> = collect(DECKS).await;
-    assert_eq!(decks.len(), 6);
+    assert_eq!(decks.len(), 7);
 
     // A token sheet is a decklist here, so a mainboard is not a given: 5 of
     // the 3,135 have none and carry only tokens.
@@ -235,4 +235,22 @@ async fn a_board_entry_may_name_nothing_mtgjson_knows() {
         absent > 0,
         "the fixture should hold a `not_in_mtgjson` entry"
     );
+}
+
+/// The two flags are not alternatives, so whichever is read first decides
+/// the answer and only one order is right.
+#[tokio::test]
+async fn an_etched_entry_is_foil_as_well() {
+    let decks: Vec<Deck> = collect(DECKS).await;
+    let etched: Vec<_> = decks
+        .iter()
+        .flat_map(|deck| deck.main_board.iter().chain(&deck.display_commander))
+        .filter(|card| card.is_etched)
+        .collect();
+
+    assert!(
+        !etched.is_empty(),
+        "the fixture should hold an etched entry"
+    );
+    assert!(etched.iter().all(|card| card.is_foil));
 }

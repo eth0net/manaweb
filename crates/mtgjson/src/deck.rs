@@ -57,6 +57,11 @@ pub struct Board {
     pub count: u32,
     #[serde(default)]
     pub is_foil: bool,
+    /// Set with [`Self::is_foil`] every time, never instead of it, so taking
+    /// that flag at face value files an etched printing as foil — a different
+    /// finish rather than a shade of one.
+    #[serde(default)]
+    pub is_etched: bool,
 }
 
 /// What MTGJSON writes when a board names something it has no id for.
