@@ -37,3 +37,10 @@ c:u t:human t:wizard mv=1 r:common
 pow>=4 t:werewolf
 c:r t:vampire mv=3 t:legendary
 m={1}{U} t:creature t:human mv=2 r:common
+
+# Set types, which is how a product is asked for rather than a set code.
+# Held to sets that have shipped: an upcoming one gains printings daily and
+# would report our catalog's age as a difference.
+st:masterpiece t:creature mv=1 year<=2020
+st:duel_deck t:planeswalker
+st:from_the_vault t:instant

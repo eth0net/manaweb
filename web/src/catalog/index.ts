@@ -165,6 +165,9 @@ export interface Print {
   id: string;
   set: string;
   setName: string;
+  // What kind of thing the set is — an expansion, a precon, a Secret Lair.
+  // A taxonomy Scryfall adds to, so it stays a string.
+  setKind: string;
   // The set's day, which is the only date a printing has.
   released: string;
   collectorNumber: string;
@@ -267,7 +270,10 @@ export function language(code: string): string {
 
 // A camelCase name from the artifact as something to put on screen.
 export function words(name: string): string {
-  return name.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  return name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .toLowerCase();
 }
 
 // A bitmask against the list the file names it with.
@@ -640,6 +646,7 @@ export class Catalog {
       id: cols.id(at),
       set: set[0],
       setName: set[1],
+      setKind: set[2],
       released: set[3],
       collectorNumber: cols.number(at),
       finishes: decode(cols.finishes[at] as number, tables.finishes),

@@ -130,6 +130,7 @@ describe("a catalog read from its two files", () => {
       id: ID("0102"),
       set: "m10",
       setName: "Magic 2010",
+      setKind: "core",
       released: "2009-07-17",
       collectorNumber: "329★",
       finishes: ["nonfoil", "foil"],

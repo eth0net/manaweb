@@ -35,6 +35,7 @@ function print(fields: Partial<Print> = {}): Print {
     id: "p",
     set: "lea",
     setName: "Limited Edition Alpha",
+    setKind: "core",
     released: "1993-08-05",
     collectorNumber: "161",
     finishes: ["nonfoil"],
@@ -88,6 +89,7 @@ describe("parse", () => {
   test("only printing terms ask for the printings", () => {
     expect(printed(parse("c:r mv<=3"))).toBe(false);
     expect(printed(parse("c:r s:lea"))).toBe(true);
+    expect(printed(parse("c:r st:commander"))).toBe(true);
   });
 });
 
@@ -225,6 +227,35 @@ describe("printings", () => {
     expect(keeps("s:m10", bolt, prints)).toBe(true);
     expect(keeps("r:rare", bolt, prints)).toBe(true);
     expect(keeps("s:war", bolt, prints)).toBe(false);
+  });
+
+  // What a card was printed in rather than which set it was: 46 sets are
+  // precons and 26 are boxed products, and neither is a code to remember.
+  test("`st:` asks what kind of thing the set was", () => {
+    const prints = [
+      print({ set: "lea", setKind: "core" }),
+      print({ set: "c14", setKind: "commander" }),
+    ];
+    expect(keeps("st:commander", bolt, prints)).toBe(true);
+    expect(keeps("st:masterpiece", bolt, prints)).toBe(false);
+    expect(keeps("-st:core st:commander", bolt, prints)).toBe(true);
+  });
+
+  test("a set type is read however its two words are joined", () => {
+    const prints = [print({ set: "dd1", setKind: "duel_deck" })];
+    expect(keeps("st:duel_deck", bolt, prints)).toBe(true);
+    expect(keeps("st:duel-deck", bolt, prints)).toBe(true);
+    expect(keeps('st:"duel deck"', bolt, prints)).toBe(true);
+    expect(keeps("st:DUEL_DECK", bolt, prints)).toBe(true);
+  });
+
+  test("a set type asks the printing under test, as a set does", () => {
+    const prints = [
+      print({ set: "lea", setKind: "core" }),
+      print({ set: "c14", setKind: "commander", rarity: "rare" }),
+    ];
+    expect(keeps("st:core r:rare", bolt, prints)).toBe(false);
+    expect(keeps("st:commander r:rare", bolt, prints)).toBe(true);
   });
 
   test("two printing terms want one printing, not two", () => {
