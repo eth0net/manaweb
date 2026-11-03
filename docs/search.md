@@ -265,6 +265,14 @@ compares the names. Outside `check`, because it needs their service and answers
 a question about the implementation rather than about a commit. It is how
 "borrow the syntax" stays true rather than becoming approximately true.
 
+**Their half is kept for a day, and `--live` is the run that counts.** Asking
+them 25 times is fine; asking them 25 times an hour while our own half is being
+changed is what earns a 429, and a penalty outlasts the hour. So an answer
+under a day old is reused, every line says how old theirs was, and the summary
+says how many were. A day behind costs nothing mid-iteration — their data moves
+slower than that and ours is a built artifact anyway — but it would cost the
+whole point of the tool to finish on a kept answer, so finish on `--live`.
+
 The first run, over eighteen queries, put every divergence in one of three
 piles:
 - **Faces.** Scryfall matches a face; we hold one row per card.
