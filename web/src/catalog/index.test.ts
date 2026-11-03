@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Catalog, printKey } from ".";
+import { across, type Card, Catalog, type Face, printKey } from ".";
 
 const ID = (one: string) => `0000579f-7b35-4ed3-b44c-db2a5380${one}`;
 
@@ -202,5 +202,45 @@ describe("a catalog read from its two files", () => {
     expect(() => Catalog.read(bytes(CARDS), bytes(short))).toThrow(
       "claims 3 printings and holds 2",
     );
+  });
+});
+
+describe("two sides", () => {
+  const card = (over: Partial<Card> = {}): Card =>
+    ({ manaCost: null, stats: null, faces: null, ...over }) as Card;
+
+  const face = (manaCost: string | null, stats: string | null) =>
+    ({ manaCost, stats }) as Face;
+
+  test("the card's own answers where it has one", () => {
+    // Split and adventure cards carry the join already made.
+    const fire = card({
+      manaCost: "{1}{R} // {1}{U}",
+      faces: [face("{1}{R}", null), face("{1}{U}", null)],
+    });
+    expect(across(fire, "manaCost")).toBe("{1}{R} // {1}{U}");
+  });
+
+  // A back face with no cost arrives as an empty string, not as nothing.
+  test("a cost only the front carries is shown alone", () => {
+    const delver = card({ faces: [face("{U}", "1/1"), face("", "3/2")] });
+    expect(across(delver, "manaCost")).toBe("{U}");
+  });
+
+  test("stats both faces carry are joined as the type line is", () => {
+    const delver = card({ faces: [face("{U}", "1/1"), face("", "3/2")] });
+    expect(across(delver, "stats")).toBe("1/1 // 3/2");
+  });
+
+  test("neither side saying anything is nothing to show", () => {
+    const agadeem = card({
+      faces: [face("{X}{B}{B}{B}", null), face("", null)],
+    });
+    expect(across(agadeem, "stats")).toBeNull();
+  });
+
+  test("a one-sided card is unchanged", () => {
+    expect(across(card({ stats: "2/2" }), "stats")).toBe("2/2");
+    expect(across(card(), "stats")).toBeNull();
   });
 });
