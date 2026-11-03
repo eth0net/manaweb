@@ -34,8 +34,12 @@ test("a filter matches what kind of thing the set is", () => {
   ]);
 });
 
-test("a kind spelled in two words is found as two words", () => {
-  expect(narrow(SETS, "duel deck").map(({ set }) => set[0])).toEqual(["ddg"]);
+// What `st:` takes is what this box takes, or somebody who learned one
+// spelling types it here and gets nothing.
+test("a kind is found however its two words are joined", () => {
+  for (const typed of ["duel deck", "duel_deck", "duel-deck", "DUEL DECK"]) {
+    expect(narrow(SETS, typed).map(({ set }) => set[0])).toEqual(["ddg"]);
+  }
 });
 
 test("an empty filter is every set", () => {

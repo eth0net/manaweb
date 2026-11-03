@@ -2,7 +2,7 @@
 // which terms the artifact can answer.
 
 import { COLORS } from "./columns";
-import type { Card, Print } from "./index";
+import { type Card, kind, type Print } from "./index";
 import { normalize } from "./search";
 
 export type Op = ":" | "=" | "!=" | ">" | "<" | ">=" | "<=";
@@ -450,12 +450,6 @@ function holds(
     default:
       return false;
   }
-}
-
-// Their spelling is snake_case, and no set type holds a space or a hyphen, so
-// either is read as the underscore somebody meant.
-function kind(value: string): string {
-  return value.toLowerCase().replace(/[\s-]+/g, "_");
 }
 
 // `in:` takes a set, a rarity or a language, and none of the three shares a

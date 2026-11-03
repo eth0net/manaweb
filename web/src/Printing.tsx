@@ -52,7 +52,9 @@ export function twoSided(print: Print): boolean {
 export function describe(print: Print) {
   return [
     `${print.setName} · ${print.set.toUpperCase()} #${print.collectorNumber}`,
-    product(print.setKind),
+    // Every printing in a promo set carries the promo flag too, and the row
+    // below already says it.
+    print.flags.includes(print.setKind) ? null : product(print.setKind),
     print.rarity,
     print.artist,
     ...print.flags.map(words),
