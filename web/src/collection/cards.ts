@@ -251,6 +251,31 @@ function lots(one: Owned): Acquisition[] {
   return one.acquisitions ?? [];
 }
 
+// One stack per identity, kept in the order each was first seen. Bulk commons
+// repeat, and every row folded here is a PDS write that never has to happen.
+export function collapse(rows: Owned[]): Owned[] {
+  // Positions in `kept` rather than the stacks themselves, a ceiling being
+  // the only thing that puts two of one identity in here.
+  const found = new Map<string, number[]>();
+  const kept: Owned[] = [];
+
+  for (const one of rows) {
+    const key = stack(one);
+    const held = found.get(key) ?? [];
+    const at = held.find((index) => joins(kept[index] as Owned, one));
+
+    if (at !== undefined) {
+      kept[at] = merge(kept[at] as Owned, one);
+      continue;
+    }
+    held.push(kept.length);
+    kept.push(one);
+    found.set(key, held);
+  }
+
+  return kept;
+}
+
 // Two changes in order, so a record written and then dropped is only dropped.
 export function then(first: Change, second: Change): Change {
   const writes = new Map(

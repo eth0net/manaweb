@@ -1,5 +1,11 @@
 import { TID } from "@atproto/common-web";
-import { joins, merge, type Owned, type Stack } from "../collection/cards";
+import {
+  joins,
+  merge,
+  type Owned,
+  type Stack,
+  stack,
+} from "../collection/cards";
 import { rkey } from "../oauth/repo";
 
 // One record the import writes, and whether the repo already holds it.
@@ -10,21 +16,41 @@ export type Step = { rkey: string; value: Owned; held: boolean };
 // Nothing here is written — the drain decides that again, against whatever the
 // collection holds by then — so the keys are identity and reach no repo.
 export function plan(imported: Owned[], held: Stack[], at: string): Step[] {
-  const open = held.map((one) => ({ key: rkey(one.uri), value: one.value }));
+  // By identity rather than a list to scan: a collection-sized file against a
+  // collection-sized repo is otherwise one `stack()` per pair, and `stack()`
+  // is a sort and a `JSON.stringify`.
+  const open = new Map<string, Step[]>();
+  for (const one of held) {
+    const key = stack(one.value);
+    const beside = open.get(key) ?? [];
+    beside.push({ rkey: rkey(one.uri), value: one.value, held: true });
+    open.set(key, beside);
+  }
+
   const steps = new Map<string, Step>();
   let key = "";
 
   for (const one of imported) {
-    const into = open.find((other) => joins(other.value, one));
+    // What the repo holds comes first in the bucket, so a row that could go
+    // either way joins a record already written rather than starting one.
+    const beside = open.get(stack(one)) ?? [];
+    const into = beside.find((other) => joins(other.value, one));
 
     if (into) {
-      into.value = merge(into.value, one, at);
-      steps.set(into.key, { rkey: into.key, value: into.value, held: true });
+      // A fold within the file is not a write, so it touches neither date —
+      // `docs/scryfall.md`.
+      into.value = into.held
+        ? merge(into.value, one, at)
+        : merge(into.value, one);
+      steps.set(into.rkey, { ...into });
       continue;
     }
 
     key = TID.nextStr(key);
-    steps.set(key, { rkey: key, value: one, held: false });
+    const fresh: Step = { rkey: key, value: one, held: false };
+    beside.push(fresh);
+    open.set(stack(one), beside);
+    steps.set(key, { ...fresh });
   }
 
   return [...steps.values()];

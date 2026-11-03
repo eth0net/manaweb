@@ -2,12 +2,9 @@ import { type Locate, type Made, printKey } from "../catalog";
 import {
   COPIES,
   clip,
-  joins,
-  merge,
   NOTE,
   NOTE_BYTES,
   type Owned,
-  stack,
   TAG,
   TAGS,
 } from "../collection/cards";
@@ -31,7 +28,10 @@ export const UNREAD: Field[] = ["container"];
 // A row nothing can be made of, and the line it sat on.
 export type Skipped = { line: number; reason: string };
 
-export type Read = { stacks: Owned[]; skipped: Skipped[] };
+// One stack the file made, and where it sat — `docs/scryfall.md`.
+export type Row = { line: number; one: Owned };
+
+export type Read = { rows: Row[]; skipped: Skipped[] };
 
 // A row named by set and number, held for one pass of the catalog rather than
 // a lookup each.
@@ -56,9 +56,9 @@ export function read(
   locate?: Locate,
   made?: Made,
 ): Read {
-  const rows = lined(text);
-  const head = rows.shift();
-  if (!head) return { stacks: [], skipped: [] };
+  const lines = lined(text);
+  const head = lines.shift();
+  if (!head) return { rows: [], skipped: [] };
 
   const wanted = needed(format.binding);
   const found = columns(head.fields, format.binding);
@@ -70,19 +70,19 @@ export function read(
     .join(", ");
   if (missing) {
     return {
-      stacks: [],
+      rows: [],
       skipped: [{ line: head.line, reason: `no ${missing} column` }],
     };
   }
 
-  let stacks: Owned[] = [];
+  let rows: Row[] = [];
   const skipped: Skipped[] = [];
   const waiting: Waiting[] = [];
-  // Which row each stack came off, for a reason naming it after the catalog
-  // has answered. Keyed by the stack itself, which `collapse` has yet to fold.
-  const where = new Map<Owned, { line: number; said: string }>();
+  // How each row named its printing, for a reason naming it the way the file
+  // did once the catalog has answered.
+  const said = new Map<Owned, string>();
 
-  rows.forEach(({ fields, line }) => {
+  lines.forEach(({ fields, line }) => {
     const cell = (field: Field) =>
       (fields[found.get(field) ?? -1] ?? "").trim();
 
@@ -138,8 +138,8 @@ export function read(
     if (!one.scryfallId) {
       waiting.push({ one, line, key: named.key, said: named.said });
     }
-    where.set(one, { line, said: named.said });
-    stacks.push(one);
+    said.set(one, named.said);
+    rows.push({ line, one });
   });
 
   if (waiting.length > 0) {
@@ -157,35 +157,33 @@ export function read(
       }
     }
 
-    stacks = stacks.filter((one) => !lost.has(one));
+    rows = rows.filter(({ one }) => !lost.has(one));
     skipped.sort((a, b) => a.line - b.line);
   }
 
   if (made) {
-    const finishes = made(new Set(stacks.map((one) => one.scryfallId)));
+    const finishes = made(new Set(rows.map(({ one }) => one.scryfallId)));
     const wrong = new Set<Owned>();
 
-    for (const one of stacks) {
+    for (const { line, one } of rows) {
       const came = finishes.get(one.scryfallId);
-      const at = where.get(one);
+      const how = said.get(one);
       // An id the catalog does not know is passed over — `docs/scryfall.md`.
-      if (!at || !came || came.includes(one.finish)) continue;
+      if (how === undefined || !came || came.includes(one.finish)) continue;
       wrong.add(one);
       skipped.push({
-        line: at.line,
-        reason: `${at.said} is ${came.join(" and ")} only, not ${one.finish}`,
+        line,
+        reason: `${how} is ${came.join(" and ")} only, not ${one.finish}`,
       });
     }
 
     if (wrong.size > 0) {
-      stacks = stacks.filter((one) => !wrong.has(one));
+      rows = rows.filter(({ one }) => !wrong.has(one));
       skipped.sort((a, b) => a.line - b.line);
     }
   }
 
-  // todo(review): folding here is what costs a list the order its file had,
-  // and moving it wants `plan` folding what one file brought — `scryfall.md`.
-  return { stacks: collapse(stacks), skipped };
+  return { rows, skipped };
 }
 
 // How this row names its printing: an id to use as it stands, or a key for
@@ -222,24 +220,6 @@ function columns(head: string[], binding: Binding): Map<Field, number> {
     if (index !== undefined) found.set(field as Field, index);
   }
   return found;
-}
-
-// Bulk commons repeat, and every row folded here is a PDS write that never has
-// to happen. Crossing a ceiling leaves two stacks, as amending one does.
-function collapse(rows: Owned[]): Owned[] {
-  const found = new Map<string, Owned[]>();
-
-  for (const one of rows) {
-    const held = found.get(stack(one)) ?? [];
-    const at = held.findIndex((other) => joins(other, one));
-    const into = at < 0 ? undefined : held[at];
-
-    if (into) held[at] = merge(into, one);
-    else held.push(one);
-    found.set(stack(one), held);
-  }
-
-  return [...found.values()].flat();
 }
 
 function tags(cell: (field: Field) => string): string[] {

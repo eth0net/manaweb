@@ -1,14 +1,17 @@
 import { expect, test } from "bun:test";
-import type { Owned, Stack } from "../collection/cards";
+import { collapse, type Owned, type Stack } from "../collection/cards";
 import { parse } from "../import/csv";
 import { columns, type Format, MANABOX } from "../import/formats";
-import { read } from "../import/read";
+import { type Read, read } from "../import/read";
 import { write } from "./csv";
 import { type Describe, type Printing, rows } from "./rows";
 
 const NOW = "2026-10-04T00:00:00.000Z";
 
 const FIXTURES = ["manabox-binder", "manabox-collection", "manabox-list"];
+
+// A read's stacks on their own, these fixtures having no two rows that fold.
+const held = (got: Read) => collapse(got.rows.map(({ one }) => one));
 
 // By name rather than by position: ManaBox has added a column before now.
 const COLUMN = Object.fromEntries(
@@ -71,23 +74,19 @@ test.each(FIXTURES)("%s survives a round trip", async (name) => {
   const first = read(text, MANABOX, NOW);
   expect(first.skipped).toEqual([]);
 
-  const out = write(
-    rows(stacks(first.stacks), MANABOX, describing(text)).rows,
-  );
+  const out = write(rows(stacks(held(first)), MANABOX, describing(text)).rows);
   const again = read(out, MANABOX, NOW);
 
   expect(again.skipped).toEqual([]);
   // The file is written in a settled order, so what comes back is the same
   // stacks rather than the same list.
-  expect(ordered(again.stacks)).toEqual(ordered(first.stacks));
+  expect(ordered(held(again))).toEqual(ordered(held(first)));
 });
 
 test("an export names itself as the format it was written in", async () => {
   const text = await fixture("manabox-binder");
   const first = read(text, MANABOX, NOW);
-  const out = write(
-    rows(stacks(first.stacks), MANABOX, describing(text)).rows,
-  );
+  const out = write(rows(stacks(held(first)), MANABOX, describing(text)).rows);
 
   expect(parse(out)[0]).toEqual(columns(MANABOX));
 });
@@ -268,7 +267,8 @@ test("a collection carrying only what fits loses nothing", () => {
 
 test("one collection writes one file however the repo ordered it", async () => {
   const text = await fixture("manabox-binder");
-  const { stacks: owned } = read(text, MANABOX, NOW);
+  const { rows: got } = read(text, MANABOX, NOW);
+  const owned = collapse(got.map(({ one }) => one));
   const describe = describing(text);
 
   const forward = write(rows(stacks(owned), MANABOX, describe).rows);
@@ -287,7 +287,8 @@ test.each(FIXTURES)(
   "%s goes back out as the file it came from",
   async (name) => {
     const text = await fixture(name);
-    const { stacks: owned } = read(text, MANABOX, NOW);
+    const { rows: got } = read(text, MANABOX, NOW);
+    const owned = collapse(got.map(({ one }) => one));
     const { rows: out } = rows(stacks(owned), MANABOX, describing(text));
 
     const same = (row: string[]) =>

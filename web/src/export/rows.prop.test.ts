@@ -1,6 +1,12 @@
 import { expect, test } from "bun:test";
 import fc from "fast-check";
-import { COPIES, type Owned, type Stack, shown } from "../collection/cards";
+import {
+  COPIES,
+  collapse,
+  type Owned,
+  type Stack,
+  shown,
+} from "../collection/cards";
 import { type Field, type Format, MANABOX, MANAWEB } from "../import/formats";
 import { read } from "../import/read";
 import type { Acquisition } from "../lexicons/app/manaweb/card";
@@ -47,7 +53,9 @@ const order = (all: Owned[]) =>
 
 function trip(all: Owned[], format: Format) {
   const written = rows(shelf(all), format, names, { places: places(all) });
-  const back = read(write(written.rows), format, NOW).stacks;
+  const back = collapse(
+    read(write(written.rows), format, NOW).rows.map(({ one }) => one),
+  );
   return { written, back };
 }
 

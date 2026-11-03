@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { Owned, Stack } from "../collection/cards";
+import { collapse, type Owned, type Stack } from "../collection/cards";
 import { columns, detect, FORMATS, MANABOX, MANAWEB } from "../import/formats";
 import { header, read } from "../import/read";
 import { write } from "./csv";
@@ -75,7 +75,8 @@ test("every column a record can fill is one this format has", () => {
 
 // The one field a reader cannot put back — `docs/scryfall.md`.
 test("a collection comes back whole but for where it was filed", () => {
-  const { stacks: back, skipped } = read(exported(), MANAWEB, NOW);
+  const { rows: got, skipped } = read(exported(), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(skipped).toEqual([]);
   expect(back).toEqual(
@@ -94,12 +95,14 @@ test("where it was filed is written even so", () => {
 });
 
 test("a note carrying a comma and a quote survives the trip", () => {
-  const { stacks: back } = read(exported(), MANAWEB, NOW);
+  const { rows: got } = read(exported(), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
   expect(back[0]?.note).toBe('Signed, "Ach! Hans, Run!"');
 });
 
 test("a lot keeps the day it was come by", () => {
-  const { stacks: back } = read(exported(), MANAWEB, NOW);
+  const { rows: got } = read(exported(), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
   expect(back[0]?.acquisitions?.map((one) => one.at)).toEqual([
     "2025-01-01T00:00:00.000Z",
     "2025-06-01T00:00:00.000Z",
@@ -146,7 +149,8 @@ test("a day with no figure beside it is still a lot", () => {
     acquisitions: [{ quantity: 1, at: "2025-02-02T00:00:00.000Z" }],
     createdAt: "2024-01-01T00:00:00.000Z",
   };
-  const { stacks: back } = read(exported([dated]), MANAWEB, NOW);
+  const { rows: got } = read(exported([dated]), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(back[0]?.acquisitions).toEqual([
     { quantity: 1, at: "2025-02-02T00:00:00.000Z" },
@@ -181,7 +185,8 @@ test("a year no lexicon would take is not read at all", () => {
       acquisitions: [{ quantity: 1, at: "2025-01-01T00:00:00.000Z" }],
     },
   ]).replace("2025-01-01T00:00:00.000Z", "275760-09-12");
-  const { stacks: back } = read(far, MANAWEB, NOW);
+  const { rows: got } = read(far, MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(back[0]?.acquisitions).toBeUndefined();
 });
@@ -192,7 +197,8 @@ test("a column that is not a date at all is not guessed at", () => {
       "2024-03-03T00:00:00.000Z",
       said,
     );
-    const { stacks: back } = read(one, MANAWEB, NOW);
+    const { rows: got } = read(one, MANAWEB, NOW);
+    const back = collapse(got.map(({ one }) => one));
     expect(back[0]?.createdAt).toBe(NOW);
   }
 });
@@ -205,7 +211,8 @@ test("a tag is cut to the bytes a lexicon counts, not the units", () => {
     tags: ["\u{1F600}".repeat(32)],
     createdAt: "2024-01-01T00:00:00.000Z",
   };
-  const { stacks: back } = read(exported([long]), MANAWEB, NOW);
+  const { rows: got } = read(exported([long]), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
   const tag = back[0]?.tags?.[0] ?? "";
 
   expect(new TextEncoder().encode(tag).length).toBeLessThanOrEqual(64);
@@ -270,7 +277,8 @@ test("a note is cut between characters, never through one", () => {
     note: "\u{1F600}".repeat(400),
     createdAt: "2024-01-01T00:00:00.000Z",
   };
-  const { stacks: back } = read(exported([long]), MANAWEB, NOW);
+  const { rows: got } = read(exported([long]), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
   const note = back[0]?.note ?? "";
 
   expect([...note]).toHaveLength(300);
@@ -299,7 +307,8 @@ test("two rows of one stack keep the later date between them", () => {
     updatedAt: "2025-01-01T00:00:00.000Z",
   };
   const late: Owned = { ...early, updatedAt: "2026-06-06T00:00:00.000Z" };
-  const { stacks: back } = read(exported([early, late]), MANAWEB, NOW);
+  const { rows: got } = read(exported([early, late]), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(back).toHaveLength(1);
   expect(back[0]?.quantity).toBe(2);
@@ -318,7 +327,8 @@ test("a vendor's newer columns are read and written", () => {
     createdAt: "2024-01-01T00:00:00.000Z",
   };
   const file = write(rows(stacks([marked]), MANABOX, () => new Map()).rows);
-  const { stacks: back } = read(file, MANABOX, NOW);
+  const { rows: got } = read(file, MANABOX, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(back[0]?.tags).toEqual(["altered", "misprint", "signed"]);
   expect(back[0]?.proxy).toBe(true);
@@ -331,11 +341,12 @@ test("a card that is none of those says so rather than nothing", () => {
     quantity: 1,
     createdAt: "2024-01-01T00:00:00.000Z",
   };
-  const { stacks: back } = read(
+  const { rows: got } = read(
     write(rows(stacks([plain]), MANABOX, () => new Map()).rows),
     MANABOX,
     NOW,
   );
+  const back = collapse(got.map(({ one }) => one));
 
   expect(back[0]?.tags).toBeUndefined();
   expect(back[0]?.proxy).toBeUndefined();
@@ -434,7 +445,8 @@ test("a figure the record leaves empty is counted as lost", () => {
     acquisitions: [{ quantity: 1, price: "", currency: "GBP" }],
     createdAt: "2024-01-01T00:00:00.000Z",
   };
-  const { stacks: back } = read(exported([blank]), MANAWEB, NOW);
+  const { rows: got } = read(exported([blank]), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(rows(stacks([blank]), MANAWEB, () => new Map()).unkept).toBe(1);
   expect(back[0]?.acquisitions).toBeUndefined();
@@ -461,7 +473,8 @@ test("a currency a read will not take is counted as lost", () => {
     acquisitions: [{ quantity: 1, price: "2.50", currency: "   " }],
     createdAt: "2024-01-01T00:00:00.000Z",
   };
-  const { stacks: back } = read(exported([spaces]), MANAWEB, NOW);
+  const { rows: got } = read(exported([spaces]), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(rows(stacks([spaces]), MANAWEB, () => new Map()).unkept).toBe(1);
   expect(back[0]?.acquisitions).toBeUndefined();
@@ -491,7 +504,8 @@ test("a lot with no copies left to spend on is counted as lost", () => {
     createdAt: "2024-01-01T00:00:00.000Z",
   };
   const written = rows(stacks([sold]), MANAWEB, () => new Map());
-  const { stacks: back } = read(write(written.rows), MANAWEB, NOW);
+  const { rows: got } = read(write(written.rows), MANAWEB, NOW);
+  const back = collapse(got.map(({ one }) => one));
 
   expect(written.unspent).toBe(1);
   expect(written.rows).toHaveLength(2);

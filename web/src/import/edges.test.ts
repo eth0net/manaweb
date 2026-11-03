@@ -2,7 +2,7 @@
 // written for what a row can say and a record cannot.
 
 import { expect, test } from "bun:test";
-import type { Owned } from "../collection/cards";
+import { collapse, type Owned } from "../collection/cards";
 import { detect, MANAWEB } from "./formats";
 import { header, read } from "./read";
 
@@ -12,7 +12,9 @@ const file = await Bun.file(
   new URL("./fixtures/edges.csv", import.meta.url),
 ).text();
 
-const { stacks, skipped } = read(file, MANAWEB, NOW);
+const { rows, skipped } = read(file, MANAWEB, NOW);
+// What the import writes, the reader having folded nothing.
+const stacks = collapse(rows.map(({ one }) => one));
 
 const by = (id: string): Owned | undefined =>
   stacks.find((one) => one.scryfallId.startsWith(id));
@@ -38,7 +40,7 @@ test("every row a read can make nothing of says which and why", () => {
 // A row too short to name a print, and a blank one, are neither read nor
 // reported: a file ends in a newline and that is not a complaint.
 test("a row with nothing in it is not a skipped row", () => {
-  expect(stacks).toHaveLength(21);
+  expect(rows).toHaveLength(22);
 });
 
 test("a quoted field spanning two lines is one note", () => {

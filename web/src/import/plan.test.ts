@@ -85,6 +85,63 @@ test("two stacks joining one held record are one write", () => {
   expect(steps[0]?.value.quantity).toBe(6);
 });
 
+// The reader keeps every row the file had, so two of one stack arrive here
+// rather than having been folded already — `docs/scryfall.md`.
+test("two stacks one file brought are one record", () => {
+  const steps = plan(
+    [
+      { ...copy, quantity: 2 },
+      { ...copy, quantity: 3 },
+    ],
+    [],
+    NOW,
+  );
+  expect(steps).toHaveLength(1);
+  expect(steps[0]?.held).toBe(false);
+  expect(steps[0]?.value.quantity).toBe(5);
+});
+
+test("that fold is not a write, so it dates nothing", () => {
+  const steps = plan([copy, copy], [], NOW);
+  expect(steps[0]?.value.updatedAt).toBeUndefined();
+});
+
+test("two of them crossing the copy ceiling stay two records", () => {
+  const steps = plan(
+    [
+      { ...copy, quantity: 9000 },
+      { ...copy, quantity: 9000 },
+    ],
+    [],
+    NOW,
+  );
+  expect(steps).toHaveLength(2);
+  expect(steps.every((one) => one.value.quantity === 9000)).toBe(true);
+});
+
+test("a file folding into itself weighs the records it writes", () => {
+  const weight = weigh(plan([copy, copy, copy], [], NOW), []);
+  expect(weight.records).toBe(1);
+  expect(weight.fresh).toBe(1);
+  expect(weight.adding).toBe(3);
+});
+
+// Candidates sit under one key, and which of them is tried first is the whole
+// of whether a row joins the repo or starts a record beside it.
+test("a row filling a held stack leaves the next to start one", () => {
+  const steps = plan(
+    [{ ...copy, quantity: 9999 }, copy, copy],
+    stacks(copy),
+    NOW,
+  );
+  expect(steps).toHaveLength(2);
+  expect(steps[0]?.rkey).toBe("held0");
+  expect(steps[0]?.held).toBe(true);
+  expect(steps[0]?.value.quantity).toBe(10000);
+  expect(steps[1]?.held).toBe(false);
+  expect(steps[1]?.value.quantity).toBe(2);
+});
+
 test("keys are ordered, so records land in the order they were read", () => {
   const other = { ...copy, finish: "foil" };
   const steps = plan([copy, other], [], NOW);

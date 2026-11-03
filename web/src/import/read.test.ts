@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Locate, Made } from "../catalog";
-import { NOTE, NOTE_BYTES } from "../collection/cards";
+import { collapse, NOTE, NOTE_BYTES } from "../collection/cards";
 import { BATCH, BYTES } from "../oauth/repo";
 import { asPaid, type Format, MANABOX } from "./formats";
 import { read } from "./read";
@@ -45,8 +45,22 @@ function row({
 }
 
 function one(...rows: string[]) {
-  const { stacks, skipped } = read([HEAD, ...rows].join("\n"), MANABOX, NOW);
-  return { stack: stacks[0], stacks, skipped };
+  const { rows: got, skipped } = read(
+    [HEAD, ...rows].join("\n"),
+    MANABOX,
+    NOW,
+  );
+  const stacks = got.map(({ one: made }) => made);
+  // What the import writes. The reader keeps every row the file had, and
+  // folding them is the caller's — `docs/scryfall.md`.
+  const folded = collapse(stacks);
+  return {
+    stack: stacks[0],
+    stacks,
+    folded,
+    lines: got.map((at) => at.line),
+    skipped,
+  };
 }
 
 async function fixture(name: string): Promise<string> {
@@ -55,18 +69,45 @@ async function fixture(name: string): Promise<string> {
 }
 
 test("a binder export reads every row", async () => {
-  const { stacks, skipped } = read(
+  const { rows: got, skipped } = read(
     await fixture("manabox-binder"),
     MANABOX,
     NOW,
   );
+  const stacks = got.map(({ one }) => one);
   expect(skipped).toEqual([]);
   expect(stacks).toHaveLength(25);
   expect(stacks.reduce((sum, held) => sum + held.quantity, 0)).toBe(43);
 });
 
+test("the rows come back in the file's order", () => {
+  const { stacks } = one(
+    row({ quantity: "3" }),
+    row({ quantity: "1" }),
+    row({ quantity: "2" }),
+  );
+  expect(stacks.map((held) => held.quantity)).toEqual([3, 1, 2]);
+});
+
+// A skipped row takes its number with it, so the two that read still number
+// 2 and 4.
+test("each row says which line it was", () => {
+  const { lines } = one(row(), row({ id: "" }), row());
+  expect(lines).toEqual([2, 4]);
+});
+
+test("two rows of one stack stay two until something folds them", () => {
+  const { stacks, folded } = one(
+    row({ quantity: "2" }),
+    row({ quantity: "3" }),
+  );
+  expect(stacks).toHaveLength(2);
+  expect(folded).toHaveLength(1);
+});
+
 test("a name carrying a comma survives the row it sits in", async () => {
-  const { stacks } = read(await fixture("manabox-binder"), MANABOX, NOW);
+  const { rows: got } = read(await fixture("manabox-binder"), MANABOX, NOW);
+  const stacks = got.map(({ one }) => one);
   const etched = stacks.filter((held) => held.finish === "etched");
   expect(etched).toHaveLength(2);
 });
@@ -104,11 +145,12 @@ test("the price column is what a copy was worth, not what was paid", () => {
 });
 
 test("the same column read as paid is a figure, not a snapshot", () => {
-  const { stacks } = read(
+  const { rows: got } = read(
     [HEAD, row()].join("\n"),
     asPaid(MANABOX) as Format,
     NOW,
   );
+  const stacks = got.map(({ one }) => one);
 
   expect(stacks[0]?.acquisitions).toEqual([
     { quantity: 1, price: "0.18", currency: "GBP" },
@@ -134,19 +176,25 @@ test("misprint and altered land as tags", () => {
 });
 
 test("identical rows are one stack", () => {
-  const { stacks } = one(row({ quantity: "2" }), row({ quantity: "3" }));
+  const { folded: stacks } = one(
+    row({ quantity: "2" }),
+    row({ quantity: "3" }),
+  );
   expect(stacks).toHaveLength(1);
   expect(stacks[0]?.quantity).toBe(5);
 });
 
 test("a row differing only in price joins, keeping both figures", () => {
-  const { stacks } = one(row({ price: "0.18" }), row({ price: "0.31" }));
+  const { folded: stacks } = one(
+    row({ price: "0.18" }),
+    row({ price: "0.31" }),
+  );
   expect(stacks).toHaveLength(1);
   expect(stacks[0]?.acquisitions).toHaveLength(2);
 });
 
 test("a merge keeps the earlier of the two dates", () => {
-  const { stacks } = one(
+  const { folded: stacks } = one(
     row({ added: "2026-04-07T22:14:49.647Z" }),
     row({ added: "2025-11-22T13:20:10.577Z" }),
   );
@@ -154,7 +202,7 @@ test("a merge keeps the earlier of the two dates", () => {
 });
 
 test("a differing grade stays a stack of its own", () => {
-  const { stacks } = one(row(), row({ condition: "played" }));
+  const { folded: stacks } = one(row(), row({ condition: "played" }));
   expect(stacks).toHaveLength(2);
 });
 
@@ -201,13 +249,14 @@ function made(finishes: Record<string, string[]>): Made {
 }
 
 function withCatalog(rows: string[], finishes: Record<string, string[]>) {
-  return read(
+  const got = read(
     [HEAD, ...rows].join("\n"),
     MANABOX,
     NOW,
     undefined,
     made(finishes),
   );
+  return { stacks: got.rows.map(({ one }) => one), skipped: got.skipped };
 }
 
 test("a finish the printing was never made in is skipped", () => {
@@ -248,11 +297,12 @@ test("a refused finish keeps the file's order in the receipt", () => {
 });
 
 test("a file missing a column it is read by yields nothing", () => {
-  const { stacks, skipped } = read(
+  const { rows: got, skipped } = read(
     "Name,Set code\nInfestation Sage,FDN",
     MANABOX,
     NOW,
   );
+  const stacks = got.map(({ one }) => one);
   expect(stacks).toEqual([]);
   expect(skipped).toEqual([
     { line: 1, reason: "no Scryfall ID, Foil, Quantity column" },
@@ -260,7 +310,7 @@ test("a file missing a column it is read by yields nothing", () => {
 });
 
 test("an empty file is not an error", () => {
-  expect(read("", MANABOX, NOW)).toEqual({ stacks: [], skipped: [] });
+  expect(read("", MANABOX, NOW)).toEqual({ rows: [], skipped: [] });
 });
 
 test("a blank line is not a row", () => {
@@ -284,7 +334,8 @@ const PAID = {
 };
 
 test("a binding decides whether a sum was paid or was worth", () => {
-  const { stacks } = read([HEAD, row()].join("\n"), PAID, NOW);
+  const { rows: got } = read([HEAD, row()].join("\n"), PAID, NOW);
+  const stacks = got.map(({ one }) => one);
   expect(stacks[0]?.acquisitions).toEqual([
     { quantity: 1, price: "0.18", currency: "GBP" },
   ]);
@@ -299,7 +350,8 @@ test("a column the binding does not name is not read", () => {
       quantity: "Quantity",
     },
   };
-  const { stacks } = read([HEAD, row()].join("\n"), bare, NOW);
+  const { rows: got } = read([HEAD, row()].join("\n"), bare, NOW);
+  const stacks = got.map(({ one }) => one);
   expect(stacks[0]?.condition).toBeUndefined();
   expect(stacks[0]?.acquisitions).toBeUndefined();
   expect(stacks[0]?.createdAt).toBe(NOW);
@@ -310,11 +362,12 @@ test("a tags column joins the flags that have their own", () => {
     name: "Tagged",
     binding: { ...MANABOX.binding, tags: "Name" },
   };
-  const { stacks } = read(
+  const { rows: got } = read(
     [HEAD, row({ altered: "true" })].join("\n"),
     tagged,
     NOW,
   );
+  const stacks = got.map(({ one }) => one);
   expect(stacks[0]?.tags).toEqual(["altered", "Infestation Sage"]);
 });
 
@@ -328,7 +381,12 @@ const NOTED: Format = {
 const CLUSTERS = new Intl.Segmenter("en", { granularity: "grapheme" });
 
 function noted(text: string): string {
-  const { stacks } = read([HEAD, row({ name: text })].join("\n"), NOTED, NOW);
+  const { rows: got } = read(
+    [HEAD, row({ name: text })].join("\n"),
+    NOTED,
+    NOW,
+  );
+  const stacks = got.map(({ one }) => one);
   return stacks[0]?.note ?? "";
 }
 
@@ -395,30 +453,33 @@ function elsewhere(): string {
 }
 
 test("a file with no id column names its printings by set and number", () => {
-  const { stacks, skipped } = read(
+  const { rows: got, skipped } = read(
     [HEAD, row()].join("\n"),
     NUMBERED,
     NOW,
     CATALOG,
   );
+  const stacks = got.map(({ one }) => one);
   expect(skipped).toEqual([]);
   expect(stacks[0]?.scryfallId).toBe(ONE);
 });
 
 test("a printing the catalog hasn't got is skipped as the file spelled it", () => {
-  const { stacks, skipped } = read(
+  const { rows: got, skipped } = read(
     [HEAD, elsewhere(), row()].join("\n"),
     NUMBERED,
     NOW,
     CATALOG,
   );
+  const stacks = got.map(({ one }) => one);
   expect(stacks).toHaveLength(1);
   expect(skipped).toEqual([{ line: 2, reason: "no such print MH3 12" }]);
 });
 
 // Signed out, and before the catalog has loaded.
 test("no catalog leaves a file named that way with nothing to import", () => {
-  const { stacks, skipped } = read([HEAD, row()].join("\n"), NUMBERED, NOW);
+  const { rows: got, skipped } = read([HEAD, row()].join("\n"), NUMBERED, NOW);
+  const stacks = got.map(({ one }) => one);
   expect(stacks).toEqual([]);
   expect(skipped).toEqual([{ line: 2, reason: "no such print FDN 64" }]);
 });
@@ -426,23 +487,25 @@ test("no catalog leaves a file named that way with nothing to import", () => {
 // The id has to land before stacks are folded together, or a file naming one
 // printing twice would write two records.
 test("rows resolving to one printing collapse as a named id would", () => {
-  const { stacks } = read(
+  const { rows: got } = read(
     [HEAD, row(), row()].join("\n"),
     NUMBERED,
     NOW,
     CATALOG,
   );
+  const stacks = collapse(got.map(({ one }) => one));
   expect(stacks).toHaveLength(1);
   expect(stacks[0]?.quantity).toBe(2);
 });
 
 test("a file missing the columns that name a printing yields nothing", () => {
-  const { stacks, skipped } = read(
+  const { rows: got, skipped } = read(
     "Name,Foil\nInfestation Sage,normal",
     NUMBERED,
     NOW,
     CATALOG,
   );
+  const stacks = got.map(({ one }) => one);
   expect(stacks).toEqual([]);
   expect(skipped).toEqual([
     { line: 1, reason: "no Set code, Collector number, Quantity column" },
@@ -453,23 +516,26 @@ test("a file missing the columns that name a printing yields nothing", () => {
 // quoted names in their measured proportions, plus the rows a real export never
 // has — a repeat, one differing only in price, an alter, a misprint, a grade.
 test("a collection-sized export reads into stacks", async () => {
-  const { stacks, skipped } = read(
+  const { rows: got, skipped } = read(
     await fixture("manabox-collection"),
     MANABOX,
   );
+  const stacks = got.map(({ one }) => one);
+  const folded = collapse(stacks);
 
   expect(skipped).toEqual([]);
-  expect(stacks.length).toBeGreaterThan(BATCH);
-  expect(stacks.reduce((sum, held) => sum + held.quantity, 0)).toBe(505);
+  expect(folded.length).toBeGreaterThan(BATCH);
+  expect(folded.reduce((sum, held) => sum + held.quantity, 0)).toBe(505);
 
   // Of the five planted rows two join what they copy — the identical one and
   // the one differing only in price — and three are stacks of their own.
-  expect(stacks).toHaveLength(365 - 2);
-  expect(stacks.filter((held) => held.tags?.includes("altered"))).toHaveLength(
+  expect(stacks).toHaveLength(365);
+  expect(folded).toHaveLength(365 - 2);
+  expect(folded.filter((held) => held.tags?.includes("altered"))).toHaveLength(
     1,
   );
-  expect(stacks.filter((held) => held.condition === "played")).toHaveLength(1);
-  expect(stacks.some((held) => (held.acquisitions?.length ?? 0) > 1)).toBe(
+  expect(folded.filter((held) => held.condition === "played")).toHaveLength(1);
+  expect(folded.some((held) => (held.acquisitions?.length ?? 0) > 1)).toBe(
     true,
   );
 });
@@ -477,7 +543,11 @@ test("a collection-sized export reads into stacks", async () => {
 // Drawn over the whole cache by `just write-fixtures`, so a layout, language or
 // finish nobody has met arrives here rather than in a bug report.
 test("the generated spread reads with nothing left over", async () => {
-  const { stacks, skipped } = read(await fixture("manabox-spread"), MANABOX);
+  const { rows: got, skipped } = read(
+    await fixture("manabox-spread"),
+    MANABOX,
+  );
+  const stacks = got.map(({ one }) => one);
 
   expect(skipped).toEqual([]);
   expect(new Set(stacks.map((held) => held.finish))).toEqual(
@@ -488,7 +558,8 @@ test("the generated spread reads with nothing left over", async () => {
 // The body limit is what bounds a batch once records carry history, so the
 // measured size is worth holding onto.
 test("a batch of real records sits well inside one body", async () => {
-  const { stacks } = read(await fixture("manabox-collection"), MANABOX);
+  const { rows: got } = read(await fixture("manabox-collection"), MANABOX);
+  const stacks = got.map(({ one }) => one);
   const bytes = stacks
     .slice(0, BATCH)
     .reduce((sum, held) => sum + JSON.stringify(held).length, 0);

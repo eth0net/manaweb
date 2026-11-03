@@ -1,7 +1,12 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { useMemo, useState } from "react";
 import type { Catalog } from "../catalog";
-import { clip, type Holdings } from "../collection/cards";
+import {
+  clip,
+  collapse,
+  type Holdings,
+  type Owned,
+} from "../collection/cards";
 import { Link } from "../router";
 import { asPaid, detect, FORMATS, type Format } from "./formats";
 import { plan, type Weight, weigh } from "./plan";
@@ -28,6 +33,9 @@ type Taken = {
   format: Format;
   paid: boolean;
   got: Read;
+  // The file's rows as records, which is fewer of them: a bulk common repeats
+  // down a file and goes to the repo once.
+  stacks: Owned[];
   file: string;
   digest: string;
   text: string;
@@ -79,7 +87,7 @@ export function Import({
   const steps = useMemo(
     () =>
       found && owning.ready
-        ? plan(found.got.stacks, owning.stacks, new Date().toISOString())
+        ? plan(found.stacks, owning.stacks, new Date().toISOString())
         : null,
     [found, owning.ready, owning.stacks],
   );
@@ -137,18 +145,27 @@ export function Import({
             )
         : undefined,
     );
-    return { format, paid, got, file, text, digest: await digest(got.stacks) };
+    const stacks = collapse(got.rows.map(({ one }) => one));
+    return {
+      format,
+      paid,
+      got,
+      stacks,
+      file,
+      text,
+      digest: await digest(stacks),
+    };
   }
 
   // The file goes to the repo as the file, not as the plan: what each of its
   // stacks joins is decided when the card is written, however much later.
   async function start(taking: Taken, weight: Weight) {
-    const why = await begin(taking.got.stacks, {
+    const why = await begin(taking.stacks, {
       source: taking.format.name,
       file: taking.file,
       digest: taking.digest,
       cards: weight.adding,
-      stacks: taking.got.stacks.length,
+      stacks: taking.stacks.length,
       createdAt: new Date().toISOString(),
     });
     // A refusal leaves the state alone, so this is the only place it shows.
@@ -193,7 +210,7 @@ export function Import({
           <p className="quiet">
             Read as {found.format.name}, as {counts(weight)}. The file goes to
             your repository in seconds. Becoming cards there takes{" "}
-            {about(found.got.stacks.length)} of write budget, and carries on
+            {about(found.stacks.length)} of write budget, and carries on
             whenever the app is open.
           </p>
 
