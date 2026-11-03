@@ -3,7 +3,7 @@ import { About } from "./About";
 import { CatalogUpdate } from "./CatalogStatus";
 import { Collection } from "./collection/Collection";
 import { useCollection } from "./collection/cards";
-import { useContainers } from "./collection/containers";
+import { type Containers, useContainers } from "./collection/containers";
 import { Owning } from "./collection/context";
 import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
@@ -21,6 +21,13 @@ import { Review } from "./scan/Review";
 import { REVIEW, SCAN, Scan } from "./scan/Scan";
 import { useGrade, useScratch } from "./scan/store";
 import { useCatalog } from "./useCatalog";
+
+// The chosen container by name, for a screen that has to say which one its
+// arithmetic assumed.
+function named(containers: Containers, chosen: string | null): string | null {
+  if (!chosen) return null;
+  return containers.held.find((one) => one.uri === chosen)?.value.name ?? null;
+}
 
 export function App() {
   const status = useCatalog();
@@ -132,6 +139,9 @@ export function App() {
                   session={signedIn}
                   owning={collection}
                   catalog={load.status === "ready" ? load.catalog : null}
+                  scratch={scratch}
+                  container={chosen}
+                  place={named(containers, chosen)}
                 />
               ) : path === EXPORT ? (
                 <Export

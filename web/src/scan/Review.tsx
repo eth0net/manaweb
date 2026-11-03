@@ -40,6 +40,7 @@ import {
   refinish,
   regraded,
   reported,
+  type Source,
   sure,
 } from "./scratch";
 import type { Scratch } from "./store";
@@ -55,6 +56,19 @@ const SOURCE = "Scan";
 // would want the opposite.
 async function stamped(owned: Owned[], at: string): Promise<string> {
   return `sha256-${await sha(`${at}\n${await digest(owned)}`)}`;
+}
+
+// A file's receipt is the file's: its own name and its own digest, taken when
+// it was read rather than off the list somebody has since been editing.
+async function receipt(
+  source: Source,
+  owned: Owned[],
+  at: string,
+): Promise<{ source: string; file?: string; digest: string }> {
+  if (source.at === "file") {
+    return { source: source.format, file: source.file, digest: source.digest };
+  }
+  return { source: SOURCE, digest: await stamped(owned, at) };
 }
 
 type Found = { card: Card; print: Print };
@@ -91,6 +105,11 @@ export function Review({
     [prints],
   );
 
+  // Where the list came from, which decides what is behind it and what the
+  // way back out of here is.
+  const file = scratch.source.at === "file" ? scratch.source : null;
+  const back = file ? IMPORT : SCAN;
+
   const running = useImport();
   const [keeping, setKeeping] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -126,8 +145,7 @@ export function Review({
       // The list is the only copy of these cards, so it goes only once the
       // job that carries them is written down.
       const why = await begin(owned, {
-        source: SOURCE,
-        digest: await stamped(owned, at),
+        ...(await receipt(scratch.source, owned, at)),
         cards: weighed.adding,
         stacks: owned.length,
         createdAt: at,
@@ -160,15 +178,17 @@ export function Review({
     return (
       <>
         <p className="quiet">
-          <Link className="link" to={SCAN}>
-            Back to the camera
+          <Link className="link" to={back}>
+            {file ? "Back to importing" : "Back to the camera"}
           </Link>
         </p>
         {scratch.problem && <p className="warn">{scratch.problem}</p>}
         {problem ? (
           <p className="warn">{problem}</p>
         ) : (
-          <p className="quiet">Nothing scanned yet.</p>
+          <p className="quiet">
+            {file ? "Nothing left of that file." : "Nothing scanned yet."}
+          </p>
         )}
       </>
     );
@@ -180,7 +200,7 @@ export function Review({
   return (
     <>
       <div className="scratch-head">
-        <Link className="link" to={SCAN}>
+        <Link className="link" to={back}>
           Back
         </Link>
         <p className="tally">
@@ -199,6 +219,13 @@ export function Review({
           Clear
         </button>
       </div>
+
+      {file && (
+        <p className="quiet">
+          {file.file || "A file"}, read as {file.format}. Rows are in the order
+          it had them.
+        </p>
+      )}
 
       {tools}
 

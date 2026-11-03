@@ -7,20 +7,15 @@ import {
   type Holdings,
   type Owned,
 } from "../collection/cards";
-import { Link } from "../router";
+import { Link, navigate } from "../router";
+import { REVIEW } from "../scan/Scan";
+import type { Scratch } from "../scan/store";
 import { asPaid, detect, FORMATS, type Format } from "./formats";
 import { plan, type Weight, weigh } from "./plan";
 import { header, type Read, read } from "./read";
 import { digest, type Receipt, useReceipts } from "./receipt";
-import {
-  begin,
-  carryOn,
-  drop,
-  HOURLY,
-  halt,
-  type State,
-  useImport,
-} from "./runner";
+import { taken } from "./review";
+import { carryOn, drop, HOURLY, halt, type State, useImport } from "./runner";
 
 export const IMPORT = "/collection/import";
 
@@ -74,24 +69,39 @@ export function Import({
   session,
   owning,
   catalog,
+  scratch,
+  container,
+  place,
 }: {
   session: OAuthSession | null;
   owning: Holdings;
   catalog: Catalog | null;
+  scratch: Scratch;
+  // Where the review will file them, which decides what joins what.
+  container: string | null;
+  // That container by name. The arithmetic below follows a choice made on
+  // another screen, so the screen showing it has to say which.
+  place?: string | null;
 }) {
   const [found, setFound] = useState<Taken | null>(null);
   const [problem, setProblem] = useState("");
   const state = useImport();
-  const taken = useReceipts(session);
+  const receipts = useReceipts(session);
 
   // Not while a job is running: the file stays here until it is discarded,
   // and `owning.stacks` moves with every batch the drain lands.
   const steps = useMemo(
     () =>
       found && owning.ready && state.at === "none"
-        ? plan(found.stacks, owning.stacks, new Date().toISOString())
+        ? plan(
+            container
+              ? found.stacks.map((one) => ({ ...one, container }))
+              : found.stacks,
+            owning.stacks,
+            new Date().toISOString(),
+          )
         : null,
-    [found, owning.ready, owning.stacks, state.at],
+    [container, found, owning.ready, owning.stacks, state.at],
   );
 
   const weight = useMemo(
@@ -102,7 +112,7 @@ export function Import({
   // Cards bought since an import still plan as new, so the arithmetic below
   // stops recognizing a file the moment the collection moves on. This does not.
   const already =
-    found && taken.find((one) => one.value.digest === found.digest);
+    found && receipts.find((one) => one.value.digest === found.digest);
 
   async function take(file: File | null) {
     setFound(null);
@@ -116,10 +126,10 @@ export function Import({
       return;
     }
 
-    if (!format.binding.scryfallId && !catalog) {
-      setProblem(
-        "The catalog this file needs to name its cards is not loaded.",
-      );
+    // Needed whatever the file names its cards by: the review it goes to
+    // draws every row out of the catalog.
+    if (!catalog) {
+      setProblem("The catalog has not loaded, and reviewing a file needs it.");
       return;
     }
 
@@ -159,19 +169,19 @@ export function Import({
     };
   }
 
-  // The file goes to the repo as the file, not as the plan: what each of its
-  // stacks joins is decided when the card is written, however much later.
-  async function start(taking: Taken, weight: Weight) {
-    const why = await begin(taking.stacks, {
-      source: taking.format.name,
-      file: taking.file,
-      digest: taking.digest,
-      cards: weight.adding,
-      stacks: taking.stacks.length,
-      createdAt: new Date().toISOString(),
-    });
-    // A refusal leaves the state alone, so this is the only place it shows.
-    if (why) setProblem(why);
+  // Rows rather than stacks, and in the file's own order: what joins what is
+  // settled in the review and again when the card is written.
+  function review(taking: Taken) {
+    scratch.begin(
+      {
+        at: "file",
+        format: taking.format.name,
+        file: taking.file,
+        digest: taking.digest,
+      },
+      taken(taking.got.rows),
+    );
+    navigate(REVIEW);
   }
 
   // The file goes with the job. Planned against a collection that now holds
@@ -210,8 +220,9 @@ export function Import({
             {weight.adding === 1 ? "" : "s"}
           </p>
           <p className="quiet">
-            Read as {found.format.name}, as {counts(weight)}. The file goes to
-            your repository in seconds. Becoming cards there takes{" "}
+            Read as {found.format.name}, as {counts(weight)}
+            {place ? `, filed under ${place}` : ""}. Keeping the list sends the
+            file to your repository in seconds; becoming cards there takes{" "}
             {about(found.stacks.length)} of write budget, and carries on
             whenever the app is open.
           </p>
@@ -254,11 +265,26 @@ export function Import({
             </ul>
           )}
 
-          <button type="button" onClick={() => start(found, weight)}>
-            Add {weight.adding.toLocaleString()} card
-            {weight.adding === 1 ? "" : "s"}
-            {already || again(weight) ? " anyway" : ""}
-          </button>
+          {!scratch.ready ? (
+            // Empty and unread look alike, and reading a file in over a list
+            // nobody has seen is the one thing this screen must not do.
+            <p className="quiet">Looking for a list already open…</p>
+          ) : scratch.list.length > 0 ? (
+            // One list to a device, and the one held is the only copy of
+            // whatever is in it — `docs/scanner.md`.
+            <p className="warn">
+              A list is already open.{" "}
+              <Link className="link" to={REVIEW}>
+                Keep or clear it
+              </Link>{" "}
+              before reading this file in.
+            </p>
+          ) : (
+            <button type="button" onClick={() => review(found)}>
+              Review {found.got.rows.length.toLocaleString()} row
+              {found.got.rows.length === 1 ? "" : "s"}
+            </button>
+          )}
         </>
       )}
     </>

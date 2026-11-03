@@ -159,6 +159,9 @@ export type Scratch = {
   // Every move in `scratch.ts` is the list in and another out, so this takes
   // one rather than a new list: two presses in a tick then compose.
   change: (move: (list: Entry[]) => Entry[]) => void;
+  // A list arriving whole, which is how a file gets here. A device holds one
+  // at a time, so this replaces whatever was held.
+  begin: (source: Source, list: Entry[]) => void;
   // For once the cards are somewhere better than here.
   clear: () => Promise<void>;
   problem: string | null;
@@ -268,6 +271,20 @@ export function useScratch(): Scratch {
     [write],
   );
 
+  const begin = useCallback(
+    (next: Source, list: Entry[]) => {
+      // This replaces what was stored, so a read still in flight has nothing
+      // left to join: without it the old list lands in front of these rows.
+      joined.current = true;
+      out.current = next;
+      held.current = list;
+      setSource(next);
+      setList(list);
+      write();
+    },
+    [write],
+  );
+
   const clear = useCallback(async () => {
     held.current = [];
     out.current = SCANNED;
@@ -278,5 +295,5 @@ export function useScratch(): Scratch {
     await forget();
   }, []);
 
-  return { ready, source, list, change, clear, problem };
+  return { ready, source, list, change, begin, clear, problem };
 }
