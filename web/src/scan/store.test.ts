@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { broken, database } from "../testing/idb";
-import type { Entry } from "./scratch";
+import { type Entry, SCANNED } from "./scratch";
 import { forget, keep, keepGrade, recall, recallGrade } from "./store";
 
 // A fresh database per test: these all write the one key.
@@ -27,11 +27,11 @@ test("nothing kept reads as nothing rather than as a failure", async () => {
 });
 
 test("a list survives being written and read back", async () => {
-  await keep([one({ id: "a" }), one({ id: "b", quantity: 3 })]);
+  await keep(SCANNED, [one({ id: "a" }), one({ id: "b", quantity: 3 })]);
 
   const found = await recall();
-  expect(found).toHaveLength(2);
-  expect(found?.[1]).toMatchObject({ id: "b", quantity: 3 });
+  expect(found?.list).toHaveLength(2);
+  expect(found?.list[1]).toMatchObject({ id: "b", quantity: 3 });
 });
 
 // A build before the stacks carried a grade, which is one object store and
@@ -57,30 +57,51 @@ async function seed(list: Entry[], grade?: string): Promise<void> {
 // grade underneath somebody on the strength of an upgrade.
 test("stacks saved before they carried a grade take the list's", async () => {
   await seed([one({ condition: undefined as unknown as string })], "played");
-  expect((await recall())?.[0]?.condition).toBe("played");
+  expect((await recall())?.list[0]?.condition).toBe("played");
 });
 
 test("stacks saved under no grade at all take the usual one", async () => {
   await seed([one({ condition: undefined as unknown as string })]);
-  expect((await recall())?.[0]?.condition).toBe("nearMint");
+  expect((await recall())?.list[0]?.condition).toBe("nearMint");
 });
 
 // Ungraded is a grade somebody picked, so it survives a reload as itself
 // rather than being read as a stack that said nothing.
 test("a stack set to ungraded comes back ungraded", async () => {
-  await keep([one({ condition: "" })]);
-  expect((await recall())?.[0]?.condition).toBe("");
+  await keep(SCANNED, [one({ condition: "" })]);
+  expect((await recall())?.list[0]?.condition).toBe("");
 });
 
 test("a later write replaces the whole list", async () => {
-  await keep([one({ id: "a" }), one({ id: "b" })]);
-  await keep([one({ id: "c" })]);
+  await keep(SCANNED, [one({ id: "a" }), one({ id: "b" })]);
+  await keep(SCANNED, [one({ id: "c" })]);
 
-  expect((await recall())?.map((held) => held.id)).toEqual(["c"]);
+  expect((await recall())?.list.map((held) => held.id)).toEqual(["c"]);
+});
+
+// Nothing saved before the split was ever a file, and reading one as a file
+// under review would put a line behind rows that have none.
+test("a list saved before the split reads as a scan", async () => {
+  await seed([one()]);
+  expect((await recall())?.source).toEqual(SCANNED);
+});
+
+test("what a list was read out of survives a write and a read", async () => {
+  const source = {
+    at: "file" as const,
+    format: "ManaBox",
+    file: "binder.csv",
+    digest: "sha256-abc",
+  };
+  await keep(source, [one({ line: 7 })]);
+
+  const found = await recall();
+  expect(found?.source).toEqual(source);
+  expect(found?.list[0]?.line).toBe(7);
 });
 
 test("forget leaves nothing behind", async () => {
-  await keep([one()]);
+  await keep(SCANNED, [one()]);
   await forget();
   expect(await recall()).toBeNull();
 });
@@ -98,7 +119,7 @@ test("the grade a scan is taken at survives being written and read", async () =>
 // on being scanned as played once those cards have been kept.
 test("the grade outlives the pile it was set over", async () => {
   await keepGrade("played");
-  await keep([one()]);
+  await keep(SCANNED, [one()]);
   await forget();
 
   expect(await recallGrade()).toBe("played");
@@ -153,5 +174,5 @@ test("a read that cannot open the database throws rather than reading empty", as
 
 test("a write that cannot open the database throws", async () => {
   broken("no room");
-  await expect(keep([one()])).rejects.toThrow("no room");
+  await expect(keep(SCANNED, [one()])).rejects.toThrow("no room");
 });

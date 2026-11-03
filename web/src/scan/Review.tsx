@@ -288,6 +288,7 @@ export function Review({
             finishes={finishes}
             change={change}
             frozen={keeping}
+            scanned={scratch.source.at === "scan"}
           />
         ))}
       </ul>
@@ -370,6 +371,7 @@ function Stack({
   finishes,
   change,
   frozen,
+  scanned,
 }: {
   catalog: Catalog;
   one: Entry;
@@ -377,10 +379,11 @@ function Stack({
   finishes: Finishes;
   change: Change;
   frozen: boolean;
+  scanned: boolean;
 }) {
   const held = prints.get(one.scryfallId) ?? null;
   const made = finishes(one.scryfallId);
-  const others = one.matched.flatMap(({ prints: ids }) => ids);
+  const others = (one.matched ?? []).flatMap(({ prints: ids }) => ids);
   const [sending, setSending] = useState(false);
   const [trouble, setTrouble] = useState("");
 
@@ -411,7 +414,7 @@ function Stack({
   }
 
   async function nothing(): Promise<void> {
-    if (import.meta.env.DEV) await send(null);
+    if (import.meta.env.DEV && scanned) await send(null);
     change((list) => drop(list, one.id));
   }
 
@@ -454,17 +457,20 @@ function Stack({
             </select>
             {one.reported && <small className="quiet">reported</small>}
           </p>
-          {!sure(one) && !one.picked && (
+          {scanned && !sure(one) && !one.picked && (
             <small className="warn">
-              {one.margin >= FLOOR
+              {(one.margin ?? 0) >= FLOOR
                 ? "This art is on more than one printing."
                 : "Nearest, but not by much."}
             </small>
           )}
-          {!one.detected && (
+          {scanned && one.detected === false && (
             <small className="quiet">
               No outline was found, so the frame was read whole.
             </small>
+          )}
+          {one.line !== undefined && (
+            <small className="quiet">Line {one.line}</small>
           )}
         </div>
         <div className="scratch-count">
@@ -548,7 +554,7 @@ function Stack({
           >
             Nothing like it
           </button>
-          {import.meta.env.DEV && (
+          {import.meta.env.DEV && scanned && (
             <button
               type="button"
               onClick={() => void send(one.picked ? one.scryfallId : null)}
@@ -562,7 +568,7 @@ function Stack({
             </button>
           )}
         </p>
-        {import.meta.env.DEV && (
+        {import.meta.env.DEV && scanned && (
           <small className="quiet">
             {one.picked
               ? `Reports as ${held ? describe(held.print) : one.scryfallId}.`

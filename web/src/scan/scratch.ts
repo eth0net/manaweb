@@ -8,16 +8,28 @@ import type { Read } from "./read";
 // One artwork the frame came near, and every printing carrying it.
 export type Matched = { distance: number; prints: string[] };
 
+// What a list was read out of — `docs/scanner.md`. A file carries what its
+// receipt will say, the digest being the file's rather than the list's.
+export type Source =
+  | { at: "scan" }
+  | { at: "file"; format: string; file: string; digest: string };
+
+export const SCANNED: Source = { at: "scan" };
+
+// The four fields below are a scan's: a row read off a file has a line behind
+// it instead, and nothing that came near an artwork.
 export type Entry = {
   id: string;
   at: string;
+  // Which line of the file this was.
+  line?: number;
   // Bits between the nearest artwork and the next.
-  margin: number;
+  margin?: number;
   // False where no outline was found and the framing was guessed at.
-  detected: boolean;
+  detected?: boolean;
   // Nearest first. A printing is picked out of these, so changing one costs
   // no second photograph.
-  matched: Matched[];
+  matched?: Matched[];
   scryfallId: string;
   // Whether a person said so. An index proposing a printing and somebody
   // agreeing it is the card in their hand are different claims, and only the
@@ -41,13 +53,15 @@ const NONFOIL = "nonfoil";
 // Whether the reader settled it on its own. Two conditions, because the
 // margin measures the artwork and an artwork is not a printing.
 export function sure(one: Entry): boolean {
-  return one.margin >= FLOOR && (one.matched[0]?.prints.length ?? 0) === 1;
+  return (
+    (one.margin ?? 0) >= FLOOR && (one.matched?.[0]?.prints.length ?? 0) === 1
+  );
 }
 
 // The printings the winning artwork carries. One is an answer; several is a
 // question the bottom line of the card would settle and nothing reads yet.
 export function among(one: Entry): string[] {
-  return one.matched[0]?.prints ?? [];
+  return one.matched?.[0]?.prints ?? [];
 }
 
 // One scan, one stack. Null where nothing it matched is a printing the
@@ -154,7 +168,7 @@ export function choose(
 // Whether the index had this printing anywhere in what it returned. False
 // against a person's own answer is the strongest thing a report can say.
 export function offered(one: Entry, scryfallId: string): boolean {
-  return one.matched.some(({ prints }) => prints.includes(scryfallId));
+  return (one.matched ?? []).some(({ prints }) => prints.includes(scryfallId));
 }
 
 // Every printing the list needs a catalog row for. The matches alone leave
@@ -164,7 +178,8 @@ export function referenced(list: Entry[]): string[] {
   const all = new Set<string>();
   for (const one of list) {
     all.add(one.scryfallId);
-    for (const { prints } of one.matched) for (const id of prints) all.add(id);
+    for (const { prints } of one.matched ?? [])
+      for (const id of prints) all.add(id);
   }
   return [...all].sort();
 }

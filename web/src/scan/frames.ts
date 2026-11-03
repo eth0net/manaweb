@@ -148,14 +148,16 @@ export async function send(id: string, told: Told): Promise<void> {
   }
 }
 
-// What a stack's own read was, for reporting one from the review.
+// What a stack's own read was, for reporting one from the review. Only a
+// scanned stack has one, and only a scan is reported.
 export function reading(one: Entry): Read {
+  const matched = one.matched ?? [];
   return {
     at: one.at,
-    margin: one.margin,
-    detected: one.detected,
-    matched: one.matched,
-    said: one.matched[0]?.prints[0] ?? one.scryfallId,
+    margin: one.margin ?? 0,
+    detected: one.detected ?? false,
+    matched,
+    said: matched[0]?.prints[0] ?? one.scryfallId,
   };
 }
 

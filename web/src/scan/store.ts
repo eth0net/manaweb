@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Entry } from "./scratch";
+import { type Entry, SCANNED, type Source } from "./scratch";
 
 // Where a scratch list is kept, and the hook that keeps it. The browser's
 // own rather than an account's: a run of scanning is one device holding one
@@ -54,25 +54,35 @@ function open(): Promise<IDBDatabase> {
   });
 }
 
+// A list and what it was read out of. Saved before the split as the bare
+// list, which was always a scan.
+export type Kept = { source: Source; list: Entry[] };
+
 // Throws rather than answering null, because a read that failed and a list
 // that is not there differ by everything: one of them must not be written
 // over.
-export async function recall(): Promise<Entry[] | null> {
+export async function recall(): Promise<Kept | null> {
   const db = await open();
   try {
     // Both asked before either is awaited: a transaction goes inactive at
     // the first await, and a second request on it then throws.
     const store = db.transaction(STORE, "readonly").objectStore(STORE);
-    const asking = settle<Entry[] | undefined>(store.get(LIST));
+    const asking = settle<Kept | Entry[] | undefined>(store.get(LIST));
     const graded = settle<string | undefined>(store.get(GRADE));
-    const [list, grade] = await Promise.all([asking, graded]);
-    if (!list) return null;
+    const [held, grade] = await Promise.all([asking, graded]);
+    if (!held) return null;
+    const kept: Kept = Array.isArray(held)
+      ? { source: SCANNED, list: held }
+      : held;
     // A stack saved before it carried a grade of its own followed the list's,
     // so that is the one it was always going to be kept at.
-    return list.map((one) => ({
-      ...one,
-      condition: one.condition ?? grade ?? USUALLY,
-    }));
+    return {
+      source: kept.source,
+      list: kept.list.map((one) => ({
+        ...one,
+        condition: one.condition ?? grade ?? USUALLY,
+      })),
+    };
   } finally {
     db.close();
   }
@@ -80,11 +90,11 @@ export async function recall(): Promise<Entry[] | null> {
 
 // Throws where the catalog's cache resolves: a scan nothing wrote down is a
 // card somebody has to find and photograph again.
-export async function keep(list: Entry[]): Promise<void> {
+export async function keep(source: Source, list: Entry[]): Promise<void> {
   const db = await open();
   try {
     const transaction = db.transaction(STORE, "readwrite");
-    transaction.objectStore(STORE).put(list, LIST);
+    transaction.objectStore(STORE).put({ source, list } as Kept, LIST);
     await committed(transaction);
   } finally {
     db.close();
@@ -143,6 +153,8 @@ export async function forget(): Promise<void> {
 
 export type Scratch = {
   ready: boolean;
+  // What the list was read out of, which decides what a row has behind it.
+  source: Source;
   list: Entry[];
   // Every move in `scratch.ts` is the list in and another out, so this takes
   // one rather than a new list: two presses in a tick then compose.
@@ -194,9 +206,11 @@ export function useGrade(): Grading {
 
 export function useScratch(): Scratch {
   const [list, setList] = useState<Entry[]>([]);
+  const [source, setSource] = useState<Source>(SCANNED);
   const [ready, setReady] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const held = useRef<Entry[]>([]);
+  const out = useRef<Source>(SCANNED);
   // Whether what was stored has been taken. The effect runs again on a hot
   // reload with the ref still holding every card, and the join below would
   // then put the stored copy in front of the same cards a second time.
@@ -209,7 +223,7 @@ export function useScratch(): Scratch {
   const write = useCallback(() => {
     if (sealed.current) return;
     setProblem(null);
-    keep(held.current).catch((failed: unknown) =>
+    keep(out.current, held.current).catch((failed: unknown) =>
       setProblem(failed instanceof Error ? failed.message : String(failed)),
     );
   }, []);
@@ -223,10 +237,12 @@ export function useScratch(): Scratch {
         if (!live || joined.current) return;
         joined.current = true;
         if (!found) return;
-        // Behind whatever was scanned while the read was still going: those
-        // cards were seen first, and neither list may take the other's place.
+        // Behind whatever landed while the read was still going: those cards
+        // were seen first, and neither list may take the other's place.
         const scanned = held.current;
-        held.current = [...found, ...scanned];
+        out.current = found.source;
+        setSource(found.source);
+        held.current = [...found.list, ...scanned];
         setList(held.current);
         // Such a scan has already stored itself over what was saved, so the
         // join has to go back down before the next reload reads it.
@@ -254,11 +270,13 @@ export function useScratch(): Scratch {
 
   const clear = useCallback(async () => {
     held.current = [];
+    out.current = SCANNED;
     setList([]);
+    setSource(SCANNED);
     if (sealed.current) return;
     setProblem(null);
     await forget();
   }, []);
 
-  return { ready, list, change, clear, problem };
+  return { ready, source, list, change, clear, problem };
 }
