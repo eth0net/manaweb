@@ -26,6 +26,18 @@ test("a filter matches the code", () => {
   expect(narrow(SETS, "lea").map(({ set }) => set[0])).toEqual(["lea"]);
 });
 
+// A product has no code to remember, so what it is has to be what finds it.
+test("a filter matches what kind of thing the set is", () => {
+  expect(narrow(SETS, "commander").map(({ set }) => set[0])).toEqual(["c14"]);
+  expect(narrow(SETS, "masterpiece").map(({ set }) => set[0])).toEqual([
+    "puma",
+  ]);
+});
+
+test("a kind spelled in two words is found as two words", () => {
+  expect(narrow(SETS, "duel deck").map(({ set }) => set[0])).toEqual(["ddg"]);
+});
+
 test("an empty filter is every set", () => {
   expect(narrow(SETS, "   ")).toHaveLength(SETS.length);
 });
