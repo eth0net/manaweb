@@ -13,7 +13,7 @@ against build `5.3.0+20261103` and the catalog of 2026-10-28.
 whole catalog is one small file rather than a slice of a large one. 4,315
 products across 351 set codes, reaching back to the 1990s.
 
-`contents` is a union of six arrays, and
+`contents` is a union of seven arrays, and
 **which one a product has decides
 whether the answer is a fact or a probability**:
 
@@ -26,8 +26,13 @@ whether the answer is a fact or a probability**:
 | `card`     |      481 | a named printing, by set and number | exact  |
 | `variable` |       74 | configs that differ between copies  | chance |
 
+The seventh is `variable_config`, which appears only inside a config and
+carries its `weight`. Reading the configs without it makes a Welcome Deck
+weighted 330 look as likely as the one weighted 4.
+
 A product may carry several. `sealed` recurses — a booster box is 36 of a pack
-— so it bottoms out in whichever kind the thing it names has.
+— so it bottoms out in whichever kind the thing it names has. So does
+`variable`: a config is a whole `contents`, nested configs and all.
 
 **A booster is a weighted model, not a list.** A set's `booster` object is
 keyed by config name, each config a weighted choice of layout over weighted
@@ -48,15 +53,35 @@ the one thing to get right before any of this reaches a screen.
 and 4,268 of the 4,315 products sit in sets the cache holds. The 47 that do not
 are Mystery Booster and a handful of older promo sets.
 
+**Join on the pair and leave `lang` out of it.** The index invites pinning it
+to `en`, which silently drops a printing Default Cards holds in one other
+language alone — Phyrexian `one` #283 and `pmei` #2023-1 are two of these 590.
+Without it the pair is still unique, over all 119,509 in the cache.
+
 **Decklists need the uuid map, and that is where the volume is.** Every board
 keys by MTGJSON's own uuid and nothing else, so reaching them means
-`cardIdentifiers`, which is 16.2MB of the 18.5MB this subject costs. It buys
-**114,426 card entries across 3,135 decklists**, against 590 from exact card
+`cardIdentifiers`, which is 16.2MB of the 19.4MB this subject costs. It buys
+**114,871 entries across 3,135 decklists**, against 590 from exact card
 contents — so the map is not a saving to defer, it is 99.5% of the feature.
 
-The uuid side is one row per face for `transform` and `modal_dfc`, each
-repeating the printing's single Scryfall id, so the map is many-to-one and
-wants deduplicating on the id rather than counted.
+Seven boards, not one: `mainBoard` is 112,556 of those entries and the rest sit
+in `sideBoard`, `commander`, `displayCommander`, `tokens`, `planes` and
+`schemes`. Nor is a mainboard a given — five decklists are token sheets and
+have none.
+
+A uuid names a **part**, not a printing, so the map is many-to-one and wants
+deduplicating on the Scryfall id rather than counted. Every printing on a
+multi-part layout is affected and no printing of any other is: 2,440 of them,
+over `transform`, `modal_dfc`, `adventure`, `split`, `prepare`,
+`reversible_card` and `flip`, reaching five uuids for the five-part
+`Who // What // When // Where // Why`.
+
+**Tokens are keyed in a table of their own.** `cardIdentifiers` has no row for
+one, so a `tokens` board resolves nowhere without `tokenIdentifiers` — and
+neither do 17 `mainBoard` entries, which are the Theros challenge decks, whose
+oversized cards MTGJSON files as tokens. 561 entries in all, closed by 924KB. A
+further 24 close against nothing, carrying `not_in_mtgjson` where an id
+belongs.
 
 ## What this costs to run
 
@@ -67,6 +92,7 @@ nothing here needs it.
 | ---------------------- | ----------: |
 | `cardIdentifiers`      |     16.2 MB |
 | `setDecks`             |      1.9 MB |
+| `tokenIdentifiers`     |      924 KB |
 | `sealedProducts`       |      417 KB |
 | the four `setBooster*` |      4.4 MB |
 
