@@ -83,23 +83,76 @@ oversized cards MTGJSON files as tokens. 561 entries in all, closed by 924KB. A
 further 24 close against nothing, carrying `not_in_mtgjson` where an id
 belongs.
 
+## What a pack can be shown as
+
+The odds are not all the booster tables hold, and the rest of it is structure.
+`setBoosterContents` gives the picks each layout variant takes from each sheet,
+so the count printed on a wrapper falls out of the data instead of being
+transcribed off one. Bloomburrow's play booster has four variants, differing in
+two places:
+
+| sheet                    | picks |
+| ------------------------ | ----: |
+| `common`                 |   6-7 |
+| `uncommon`               |     3 |
+| `rareMythicWithShowcase` |     1 |
+| `wildcard`               |     1 |
+| `foil`                   |     1 |
+| `land` or `foilLand`     |     1 |
+| `specialGuest`           |   0-1 |
+
+A Special Guest takes a common's slot, which is why that row is a range, and
+the land is foil or it is not. Neither statement needs a probability behind it.
+
+**The pulls are `setBoosterSheetCards`** — 293,355 rows naming 78,994 distinct
+cards over 4,465 sheets, for the 205 sets carrying booster data at all. Its
+uuids resolve through the identifier table the boards already want. Held as
+positions into the catalog it comes to a few MB before compression, so it is
+not the part deciding how large any of this gets.
+
+The weights exist and are exact, per variant and per card on a sheet. Leaving
+them off a screen is a decision about what a reader can act on rather than a
+gap in what we hold: every card a configuration draws from, listed under the
+counts above, answers what a pack might hold without asserting what it will.
+
+Sheet names belong to the set that defined them rather than to a fixed list.
+Recent sets name a sheet for the slot it fills; a draft set from 2003 names
+four of them after colors, so what reads as one line of commons elsewhere
+arrives there as four.
+
+## Where it shows
+
+A product is not part of a set the way a card is: one published under a set
+code can hold cards printed elsewhere, which is what `sourceSetCodes` records,
+and a configuration can draw across several sets at once. So products browse
+beside cards and sets rather than inside one, and what a product holds is a
+list in its own right instead of a filter over the set it was published under.
+
 ## What this costs to run
 
 Per-table CSV, not the whole dump: `AllPrintings.json.gz` is 183.9MB and
 nothing here needs it.
 
-| table                  | on the wire |
-| ---------------------- | ----------: |
-| `cardIdentifiers`      |     16.2 MB |
-| `setDecks`             |      1.9 MB |
-| `tokenIdentifiers`     |      924 KB |
-| `sealedProducts`       |      417 KB |
-| the four `setBooster*` |      4.4 MB |
+| table                         | on the wire |
+| ----------------------------- | ----------: |
+| `cardIdentifiers`             |     16.2 MB |
+| `setBoosterSheetCards`        |      4.3 MB |
+| `setDecks`                    |      1.9 MB |
+| `tokenIdentifiers`            |      924 KB |
+| `sealedProducts`              |      417 KB |
+| the other three `setBooster*` |       98 KB |
 
-Builds land daily, there are no deltas, and every file has a `.sha256` sidecar
-— so the check is a few hundred bytes and pulls only on change, which for
-sealed data is far less often than daily. Against the 78MB of Default Cards
-each week this does not compete.
+23.8MB a week in all. Builds land daily, there are no deltas, and every file
+has a `.sha256` sidecar — so the check is a few hundred bytes and pulls only on
+change, which for sealed data is far less often than daily. Against the 78MB of
+Default Cards each week this does not compete.
+
+Parquet sits at the same per-file addresses, serves byte ranges, and comes to
+18.7MB for the same seven. Most of the gap is `setBoosterSheetCards`, 2.1
+against 4.3, a column of uuids being what a column format is good at. The
+saving worth having is narrower: reading `cardIdentifiers` as two columns
+rather than every external id it carries. Both want a reader doing range
+arithmetic, against a weekly figure nothing is straining at.
 
 **Refresh after the Scryfall sync, never before.** The join resolves against
 the cache, so a product for a set the cache has not taken yet drops its rows
@@ -130,8 +183,8 @@ so it is no laundering step for anything Scryfall's terms already govern.
 
 - **Totality.** Three sets were checked card-for-card, not the whole corpus.
   Count before anything depends on every printing being present.
-- **Where it lands in the artifact.** The base pair is already 4.21MB against a
-  4–5MB target, so products are almost certainly an opt-in part — but the size
-  wants measuring rather than assuming.
+- **Where it lands in the artifact.** Measure before deciding anything: a
+  client running to tens of MB is not worth an option, and only a measurement
+  saying otherwise earns one.
 - **The order a product's contents read in**, once one product recurses into
   another and a decklist runs to a hundred cards.
