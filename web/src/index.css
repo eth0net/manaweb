@@ -355,6 +355,12 @@ nav a.here {
   margin: 0 0 0.75rem;
 }
 
+/* The same number beside a pair of buttons rather than heading a screen, so
+   the margin that spaces a paragraph would lift it off their center. */
+span.tally {
+  margin: 0;
+}
+
 /* A scanned stack, and under a fold the presses that put a wrong read
    right. */
 .scratch {
