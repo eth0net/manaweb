@@ -361,8 +361,7 @@ span.tally {
   margin: 0;
 }
 
-/* A scanned stack, and under a fold the presses that put a wrong read
-   right. */
+/* The rows, each a press that opens the panel over it. */
 .scratch {
   list-style: none;
   margin: 0;
@@ -375,21 +374,62 @@ span.tally {
 }
 
 .scratch-card {
-  align-items: center;
+  align-items: stretch;
   display: flex;
   gap: 0.5rem;
 }
 
-.scratch-card img {
+/* As tall as whatever the row came to, and cropped from the top rather than
+   letterboxed: the width is fixed so a name that wraps moves no column. */
+.scratch-art {
   border-radius: 0.125rem;
   flex: none;
+  object-fit: cover;
+  object-position: top;
+  width: 2.75rem;
+}
+
+/* Where the printing has no picture, so the rows still line up. */
+.scratch-blank {
+  background: var(--edge);
 }
 
 .scratch-what {
   display: flex;
   flex: 1;
   flex-direction: column;
+  gap: 0.25rem;
+  justify-content: center;
   min-width: 0;
+}
+
+/* One line, because two of them down a long list is what makes it a scroll.
+   Only a name longer than the column has anything cut. */
+.scratch-name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nothing was found to name, which is a sentence rather than a title. */
+.scratch-wraps {
+  white-space: normal;
+}
+
+.scratch-meta {
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+/* Beside the values they open, and the height of a badge so the line keeps
+   one. */
+.scratch-icon {
+  font-size: 0.8125rem;
+  line-height: 1;
+  min-height: 1.5rem;
+  min-width: 1.75rem;
+  padding: 0.1875rem 0.375rem;
 }
 
 /* One bar: where you came from, what is in the list, and the way to empty
@@ -432,7 +472,7 @@ span.tally {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
-  margin: 0.25rem 0 0;
+  margin: 0;
 }
 
 /* A `tag` that answers to a press: the same label the rest of the app draws,

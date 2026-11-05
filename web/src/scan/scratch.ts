@@ -36,7 +36,7 @@ export type Entry = {
   // second one may be reported as an answer.
   picked?: boolean;
   // When a frame of this stack was last sent back. Kept on the entry rather
-  // than in a component, so it survives the fold closing and the tab dying.
+  // than in a component, so it survives the panel closing and the tab dying.
   reported?: string;
   finish: string;
   // What the stack is kept at, `""` being ungraded — `docs/scanner.md`.
