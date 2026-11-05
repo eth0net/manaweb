@@ -17,7 +17,7 @@ import { Modes } from "./Nav";
 import { CardPanel, type Shown } from "./Printings";
 import { amend, useSettings } from "./router";
 
-export const SETS = "/cards/sets";
+export const SETS = "/sets";
 
 // How many rows are added at a time. A set is unbounded where a search is
 // capped — The List holds 5,740 printings — and a row costs a tenth of a

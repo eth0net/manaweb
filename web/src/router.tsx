@@ -1,9 +1,11 @@
 import { type ReactNode, useEffect, useSyncExternalStore } from "react";
 
-// The first tab holds more than one way to look: `Nav.tsx` switches between
-// them, and this is what it all sits under.
-export const TABS = [
-  { path: "/cards", label: "Search" },
+// A tab holds one way to look or several, each a root of its own: a path then
+// names what it holds rather than which tab was open when you got there.
+type Tab = { path: string; label: string; also?: readonly string[] };
+
+export const TABS: readonly Tab[] = [
+  { path: "/cards", label: "Search", also: ["/sets"] },
   { path: "/collection", label: "Collection" },
   { path: "/scan", label: "Scan" },
   { path: "/decks", label: "Decks" },
@@ -12,19 +14,21 @@ export const TABS = [
 
 export const HOME = "/cards";
 
-// A tab and everything it drills down into.
-function within(path: string, at: string): boolean {
-  return path === at || path.startsWith(`${at}/`);
+// A tab and everything it drills down into, under any root it owns.
+function within(path: string, of: Tab): boolean {
+  return [of.path, ...(of.also ?? [])].some(
+    (at) => path === at || path.startsWith(`${at}/`),
+  );
 }
 
 // Whether the bar can mark this path. An OAuth callback and a bare `/` can't,
 // and are the only paths anything rewrites.
 export function known(path: string): boolean {
-  return TABS.some(({ path: at }) => within(path, at));
+  return TABS.some((one) => within(path, one));
 }
 
 export function tab(path: string): string {
-  const found = TABS.find(({ path: at }) => within(path, at));
+  const found = TABS.find((one) => within(path, one));
   return found ? found.path : HOME;
 }
 

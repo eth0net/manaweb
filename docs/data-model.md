@@ -100,8 +100,8 @@ field, scanning and typing being one intent by two inputs.
 Routes settle before the bar does, because a shared deck link outlives any
 arrangement of tabs. `/cards`, `/collection/:container`, `/decks/:deck` and
 `/lists/:list` are the commitment; their order along the bottom is not.
-Browsing sets earned a place of its own, `/cards/sets` and `/cards/sets/:set`,
-because a set is somewhere you go rather than a filter you set.
+Browsing sets earned a place of its own at `/sets`, because a set is somewhere
+you go rather than a filter you set.
 
 **A tab's own button is two things.** From another tab it returns you where you
 left this one; from inside it, it takes you to the top. The name in the header
