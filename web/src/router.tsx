@@ -1,7 +1,9 @@
 import { type ReactNode, useEffect, useSyncExternalStore } from "react";
 
+// The first tab holds more than one way to look: `Nav.tsx` switches between
+// them, and this is what it all sits under.
 export const TABS = [
-  { path: "/cards", label: "Cards" },
+  { path: "/cards", label: "Search" },
   { path: "/collection", label: "Collection" },
   { path: "/scan", label: "Scan" },
   { path: "/decks", label: "Decks" },
