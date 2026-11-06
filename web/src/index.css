@@ -379,14 +379,16 @@ span.tally {
   gap: 0.5rem;
 }
 
-/* As tall as whatever the row came to, and cropped from the top rather than
-   letterboxed: the width is fixed so a name that wraps moves no column. */
+/* As tall as whatever the row came to, with the width following from that
+   and the card's own shape: a fixed one has to crop or letterbox to fill it. */
 .scratch-art {
+  align-self: stretch;
+  /* Held before the picture arrives, so a row does not resize as it loads. */
+  aspect-ratio: 5 / 7;
   border-radius: 0.125rem;
   flex: none;
-  object-fit: cover;
-  object-position: top;
-  width: 2.75rem;
+  object-fit: contain;
+  width: auto;
 }
 
 /* Where the printing has no picture, so the rows still line up. */
