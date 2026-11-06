@@ -47,6 +47,7 @@ import {
   regraded,
   reported,
   type Source,
+  settled,
   sure,
 } from "./scratch";
 import type { Scratch } from "./store";
@@ -131,14 +132,12 @@ export function Review({
   const [clearing, setClearing] = useState(false);
   const [problem, setProblem] = useState("");
 
-  // Which row has a panel open, rather than a panel apiece: a list of
+  // Which row has the panel open, rather than a panel apiece: a list of
   // thousands would mount every one of them to show a single dialog.
   const [editing, setEditing] = useState<string | null>(null);
-  const [asking, setAsking] = useState<string | null>(null);
   // Looked up each render rather than held: a panel open over a row somebody
   // has since changed has to show what the row says now.
   const edited = list.find((one) => one.id === editing) ?? null;
-  const asked = list.find((one) => one.id === asking) ?? null;
 
   // What keeping the list does to the collection, which is the arithmetic a
   // file is asked for before it lands.
@@ -340,7 +339,6 @@ export function Review({
             frozen={keeping}
             scanned={scratch.source.at === "scan"}
             onEdit={() => setEditing(one.id)}
-            onAsk={() => setAsking(one.id)}
           />
         ))}
       </ul>
@@ -348,24 +346,14 @@ export function Review({
       {edited && (
         <Editing
           key={edited.id}
-          one={edited}
-          made={finishes(edited.scryfallId)}
-          finishes={finishes}
-          change={change}
-          onShut={() => setEditing(null)}
-        />
-      )}
-
-      {asked && (
-        <Others
           catalog={catalog}
-          one={asked}
+          one={edited}
           prints={prints}
           finishes={finishes}
           change={change}
           frozen={keeping}
           scanned={scratch.source.at === "scan"}
-          onShut={() => setAsking(null)}
+          onShut={() => setEditing(null)}
         />
       )}
     </>
@@ -447,7 +435,6 @@ function Stack({
   frozen,
   scanned,
   onEdit,
-  onAsk,
 }: {
   one: Entry;
   prints: Map<string, Found>;
@@ -455,12 +442,11 @@ function Stack({
   frozen: boolean;
   scanned: boolean;
   onEdit: () => void;
-  onAsk: () => void;
 }) {
   const held = prints.get(one.scryfallId) ?? null;
   const named = held ? cardName(held.card.name, held.print, APP) : null;
-  // Carried by the second button rather than a line of its own, which is
-  // what kept a row of three facts five lines tall.
+  // Worn by the button that opens the panel saying why, rather than a line of
+  // its own: that line is what kept a row of three facts five lines tall.
   const doubt =
     scanned && ((!sure(one) && !one.picked) || one.detected === false);
 
@@ -494,22 +480,14 @@ function Stack({
             </span>
             <button
               type="button"
-              className="scratch-icon"
-              aria-label="Change this stack"
+              className={doubt ? "scratch-icon warn" : "scratch-icon"}
+              aria-label={
+                doubt ? "This reading is unsure" : "Change this stack"
+              }
               onClick={onEdit}
               disabled={frozen}
             >
-              &#9998;
-            </button>
-            <button
-              type="button"
-              className={doubt ? "scratch-icon warn" : "scratch-icon"}
-              aria-label={
-                doubt ? "This reading is unsure" : "A different printing"
-              }
-              onClick={onAsk}
-            >
-              {doubt ? "!" : "?"}
+              {doubt ? "!" : "\u270E"}
             </button>
           </p>
         </div>
@@ -548,87 +526,10 @@ function meta(held: Found | null, one: Entry): string {
     .join(" · ");
 }
 
-// Everything but how many, which stays a press on the row because it is the
-// one somebody makes over and over.
+// Everything about a stack but how many, which stays a press on the row
+// because it is the one somebody makes over and over. Nothing lands until
+// Confirm, the printing included.
 function Editing({
-  one,
-  made,
-  finishes,
-  change,
-  onShut,
-}: {
-  one: Entry;
-  made: string[];
-  finishes: Finishes;
-  change: Change;
-  onShut: () => void;
-}) {
-  const [finish, setFinish] = useState(one.finish);
-  const [condition, setCondition] = useState(one.condition);
-
-  function confirm(): void {
-    change((list) =>
-      regraded(refinish(list, one.id, finish, finishes), one.id, condition),
-    );
-    onShut();
-  }
-
-  return (
-    <Panel
-      title="Change this stack"
-      onShut={onShut}
-      actions={
-        <>
-          <button type="button" onClick={onShut}>
-            Cancel
-          </button>
-          <button type="button" className="chosen" onClick={confirm}>
-            Confirm
-          </button>
-        </>
-      }
-    >
-      <h3>Finish</h3>
-      {made.length > 1 ? (
-        <p className="scratch-finishes">
-          {made.map((was) => (
-            <button
-              key={was}
-              type="button"
-              className={was === finish ? "chosen" : undefined}
-              aria-pressed={was === finish}
-              onClick={() => setFinish(was)}
-            >
-              {was}
-            </button>
-          ))}
-        </p>
-      ) : (
-        <p className="quiet">It was only made in {one.finish}.</p>
-      )}
-
-      <h3>Condition</h3>
-      <p>
-        <select
-          aria-label="Condition"
-          value={condition}
-          onChange={(event) => setCondition(event.target.value)}
-        >
-          <option value="">ungraded</option>
-          {CONDITIONS.map((grade) => (
-            <option key={grade} value={grade}>
-              {words(grade)}
-            </option>
-          ))}
-        </select>
-      </p>
-    </Panel>
-  );
-}
-
-// Why a reading is what it is, and every way to put it right. One panel for
-// the page, opened by whichever row asked for it.
-function Others({
   catalog,
   one,
   prints,
@@ -649,8 +550,34 @@ function Others({
 }) {
   const held = prints.get(one.scryfallId) ?? null;
   const others = (one.matched ?? []).flatMap(({ prints: ids }) => ids);
+  // Null until a printing is pressed, so confirming a panel nobody touched
+  // does not file the reader's guess as somebody's answer.
+  const [picked, setPicked] = useState<Print | null>(null);
+  const [finish, setFinish] = useState(one.finish);
+  const [condition, setCondition] = useState(one.condition);
   const [sending, setSending] = useState(false);
   const [trouble, setTrouble] = useState("");
+
+  // A printing named by search is in no list the catalog resolved for this
+  // page, so what it was made in comes off the printing itself.
+  const made: Finishes = (id) =>
+    id === picked?.id ? picked.finishes : finishes(id);
+
+  const shown = picked ?? held?.print ?? null;
+  const makes = made(shown?.id ?? one.scryfallId);
+
+  function take(print: Print): void {
+    setPicked(print);
+    if (!print.finishes.includes(finish)) setFinish(settled(print.finishes));
+  }
+
+  function confirm(): void {
+    change((list) => {
+      const now = picked ? choose(list, one.id, picked.id, made) : list;
+      return regraded(refinish(now, one.id, finish, made), one.id, condition);
+    });
+    onShut();
+  }
 
   // Reported before it goes, since the frame goes with the stack.
   async function send(answer: string | null): Promise<void> {
@@ -686,7 +613,25 @@ function Others({
   }
 
   return (
-    <Panel title="A different printing" onShut={onShut}>
+    <Panel
+      title="Change this stack"
+      onShut={onShut}
+      actions={
+        <>
+          <button type="button" onClick={onShut}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="chosen"
+            onClick={confirm}
+            disabled={frozen}
+          >
+            Confirm
+          </button>
+        </>
+      }
+    >
       {scanned && !sure(one) && !one.picked && (
         <p className="warn">
           {(one.margin ?? 0) >= FLOOR
@@ -700,36 +645,67 @@ function Others({
         </p>
       )}
 
-      <ul className="scratch-prints">
-        {others.map((id) => {
-          const other = prints.get(id);
-          if (!other) return null;
-          return (
-            <li key={id}>
-              <button
-                type="button"
-                className={id === one.scryfallId ? "chosen" : undefined}
-                aria-pressed={id === one.scryfallId}
-                onClick={() =>
-                  change((list) => choose(list, one.id, id, finishes))
-                }
-                disabled={frozen}
-              >
-                <Title held={other} />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <h3>Printing</h3>
+      <p className="quiet">
+        {shown ? describe(shown) : "No printing in this catalog carries it"}
+      </p>
+      {others.length > 0 && (
+        <ul className="scratch-prints">
+          {others.map((id) => {
+            const other = prints.get(id);
+            if (!other) return null;
+            return (
+              <li key={id}>
+                <button
+                  type="button"
+                  className={id === shown?.id ? "chosen" : undefined}
+                  aria-pressed={id === shown?.id}
+                  onClick={() => take(other.print)}
+                >
+                  <Title held={other} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-      <Finding
-        catalog={catalog}
-        onPick={(print) =>
-          change((list) =>
-            choose(list, one.id, print.id, () => print.finishes),
-          )
-        }
-      />
+      <Finding catalog={catalog} onPick={take} />
+
+      <h3>Finish</h3>
+      {makes.length > 1 ? (
+        <p className="scratch-finishes">
+          {makes.map((was) => (
+            <button
+              key={was}
+              type="button"
+              className={was === finish ? "chosen" : undefined}
+              aria-pressed={was === finish}
+              onClick={() => setFinish(was)}
+            >
+              {was}
+            </button>
+          ))}
+        </p>
+      ) : (
+        <p className="quiet">It was only made in {finish}.</p>
+      )}
+
+      <h3>Condition</h3>
+      <p>
+        <select
+          aria-label="Condition"
+          value={condition}
+          onChange={(event) => setCondition(event.target.value)}
+        >
+          <option value="">ungraded</option>
+          {CONDITIONS.map((grade) => (
+            <option key={grade} value={grade}>
+              {words(grade)}
+            </option>
+          ))}
+        </select>
+      </p>
 
       <p className="scratch-report">
         <button
@@ -745,7 +721,11 @@ function Others({
             onClick={() => void send(one.picked ? one.scryfallId : null)}
             disabled={frozen || sending}
           >
-            {sending ? "Reporting…" : one.reported ? "Report again" : "Report"}
+            {sending
+              ? "Reporting\u2026"
+              : one.reported
+                ? "Report again"
+                : "Report"}
           </button>
         )}
       </p>
@@ -753,7 +733,7 @@ function Others({
         <small className="quiet">
           {one.picked
             ? `Reports as ${held ? describe(held.print) : one.scryfallId}.`
-            : "Reports the frame and no answer — name the card first to say what it was."}
+            : "Reports the frame and no answer \u2014 name the card first to say what it was."}
         </small>
       )}
       {trouble && <small className="warn">{trouble}</small>}

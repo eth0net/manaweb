@@ -10,6 +10,7 @@ import type { Scratch } from "./store";
 const PRINT = {
   id: "aaa",
   set: "10e",
+  setName: "Tenth Edition",
   collectorNumber: "100",
   rarity: "common",
   finishes: ["nonfoil", "foil"],
@@ -18,11 +19,25 @@ const PRINT = {
   imageStatus: "highres_scan",
 } as unknown as Print;
 
+// The same card in another set, which is what an unsure reading offers.
+const OTHER = {
+  ...PRINT,
+  id: "bbb",
+  set: "7ed",
+  setName: "Seventh Edition",
+  collectorNumber: "80",
+  finishes: ["nonfoil"],
+} as unknown as Print;
+
 const CARD = { name: "Remove Soul", index: 0 } as unknown as Card;
 
 // Only what the screen reads, so a change to the rest does not reach here.
 const catalog = {
-  resolve: () => new Map([[PRINT.id, { card: CARD, print: PRINT }]]),
+  resolve: () =>
+    new Map([
+      [PRINT.id, { card: CARD, print: PRINT }],
+      [OTHER.id, { card: CARD, print: OTHER }],
+    ]),
   find: () => [],
   prints: () => [],
 } as unknown as Catalog;
@@ -103,13 +118,43 @@ test("what the reading is unsure of stays out of the row", () => {
 });
 
 // A file row was never read off a photograph, so there is nothing to doubt.
-test("a row off a file asks rather than warns", () => {
+test("a row off a file has nothing to be unsure of", () => {
   const { view } = show(one({ line: 2 }), FILE);
 
   expect(view.queryByRole("button", { name: /unsure/ })).toBeNull();
-  expect(
-    view.getByRole("button", { name: /A different printing/ }),
-  ).toBeTruthy();
+  expect(view.getByRole("button", { name: /Change this stack/ })).toBeTruthy();
+});
+
+// The printing is edited where the rest of the stack is, so it waits on the
+// same press.
+test("another printing lands on confirm and not before", () => {
+  const picked = one({
+    matched: [{ distance: 0, prints: [PRINT.id, OTHER.id] }],
+  });
+  const { view, kept } = show(picked, SCANNED);
+
+  fireEvent.click(view.getByRole("button", { name: /unsure/ }));
+  fireEvent.click(view.getByRole("button", { name: /Seventh Edition/ }));
+  expect(kept().scryfallId).toBe(PRINT.id);
+
+  fireEvent.click(view.getByRole("button", { name: "Confirm" }));
+  expect(kept().scryfallId).toBe(OTHER.id);
+  expect(kept().picked).toBe(true);
+});
+
+// The finish on the panel is the one the printing under it was made in, not
+// the one the stack arrived with.
+test("picking a printing made one way says so", () => {
+  const picked = one({
+    finish: "foil",
+    matched: [{ distance: 0, prints: [PRINT.id, OTHER.id] }],
+  });
+  const { view } = show(picked, SCANNED);
+
+  fireEvent.click(view.getByRole("button", { name: /unsure/ }));
+  fireEvent.click(view.getByRole("button", { name: /Seventh Edition/ }));
+
+  expect(view.getByText("It was only made in nonfoil.")).toBeTruthy();
 });
 
 test("cancelling the edit leaves the stack as it was", () => {
