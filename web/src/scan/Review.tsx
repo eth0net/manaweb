@@ -473,8 +473,8 @@ function Stack({
           </p>
           <p className="scratch-meta quiet">{meta(held, one)}</p>
           <p className="scratch-badges">
-            <span className="badge locked">{one.finish}</span>
-            <span className="badge locked">
+            <span className="badge">{one.finish}</span>
+            <span className="badge">
               {one.condition ? words(one.condition) : "ungraded"}
             </span>
             <button
