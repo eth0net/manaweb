@@ -374,21 +374,21 @@ span.tally {
 }
 
 .scratch-card {
-  align-items: stretch;
+  align-items: center;
   display: flex;
   gap: 0.5rem;
 }
 
-/* As tall as whatever the row came to, with the width following from that
-   and the card's own shape: a fixed one has to crop or letterbox to fill it. */
+/* One width down the list, so every row starts its text in the same place and
+   no row's height can feed back into it. 5:7 over the three lines beside it. */
 .scratch-art {
-  align-self: stretch;
+  align-self: flex-start;
   /* Held before the picture arrives, so a row does not resize as it loads. */
   aspect-ratio: 5 / 7;
   border-radius: 0.125rem;
   flex: none;
   object-fit: contain;
-  width: auto;
+  width: 3.375rem;
 }
 
 /* Where the printing has no picture, so the rows still line up. */
