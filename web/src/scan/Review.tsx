@@ -245,13 +245,11 @@ export function Review({
       </div>
 
       {file && (
-        <p className="quiet">
-          {file.file || "A file"}, read as {file.format}. Rows are in the order
-          it had them.
+        <p className="scratch-from quiet">
+          <span className="scratch-file">{file.file || "A file"}</span>
+          <span>· read as {file.format}, rows in file order</span>
         </p>
       )}
-
-      {tools}
 
       {clearing ? (
         <p className="scratch-clear" aria-live="polite">
@@ -266,23 +264,26 @@ export function Review({
             Leave them here
           </button>
         </p>
-      ) : session ? (
-        // An import in flight owns the same job record, so keeping now would
-        // take the place of one already half written.
-        running.at !== "none" && running.at !== "done" ? (
-          <p className="warn scratch-does">
-            An import holds the place these would go.{" "}
-            <Link className="link" to={IMPORT}>
-              Finish or discard it
-            </Link>
-            . These cards wait here meanwhile.
-          </p>
-        ) : !owning.ready ? (
-          // Planned against an empty collection, every copy reads as new and
-          // the receipt records a count nothing supports.
-          <p className="quiet scratch-does">Reading what you already own…</p>
-        ) : (
-          <p className="scratch-does">
+      ) : (
+        <div className="scratch-does">
+          {tools}
+          {!session ? (
+            <span className="quiet">Sign in to keep</span>
+          ) : // An import in flight owns the same job record, so keeping now
+          // would take the place of one already half written.
+          running.at !== "none" && running.at !== "done" ? (
+            <span className="warn">
+              An import holds the place these would go.{" "}
+              <Link className="link" to={IMPORT}>
+                Finish or discard it
+              </Link>
+              . These cards wait here meanwhile.
+            </span>
+          ) : !owning.ready ? (
+            // Planned against an empty collection, every copy reads as new
+            // and the receipt records a count nothing supports.
+            <span className="quiet">Reading what you already own…</span>
+          ) : (
             <button
               type="button"
               onClick={() => void keep()}
@@ -290,10 +291,8 @@ export function Review({
             >
               Keep {held.toLocaleString()} card{held === 1 ? "" : "s"}
             </button>
-          </p>
-        )
-      ) : (
-        <p className="quiet scratch-does">Sign in to keep</p>
+          )}
+        </div>
       )}
 
       {joins > 0 && (
