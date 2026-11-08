@@ -444,52 +444,55 @@ function Stack({
 }) {
   const held = prints.get(one.scryfallId) ?? null;
   const named = held ? cardName(held.card.name, held.print, APP) : null;
-  // Worn by the button that opens the panel saying why, rather than a line of
-  // its own: that line is what kept a row of three facts five lines tall.
+  // A badge of its own rather than a line or a button: the row is itself the
+  // press that answers it.
   const doubt =
     scanned && ((!sure(one) && !one.picked) || one.detected === false);
 
   return (
     <li>
       <div className="scratch-card">
-        {held && hasArt(held.print) ? (
-          <img
-            className="scratch-art"
-            src={image(held.print.id, "small")}
-            alt=""
-          />
-        ) : (
-          <span className="scratch-art scratch-blank" />
-        )}
-        <div className="scratch-what">
-          <p className={named ? "scratch-name" : "scratch-name scratch-wraps"}>
-            {named ? (
-              <span lang={named.lang}>{named.text}</span>
-            ) : (
-              <span className="quiet">
-                No printing in this catalog carries it
-              </span>
-            )}
-          </p>
-          <p className="scratch-meta quiet">{meta(held, one)}</p>
-          <p className="scratch-badges">
-            <span className="badge">{one.finish}</span>
-            <span className="badge">
-              {one.condition ? words(one.condition) : "ungraded"}
-            </span>
-            <button
-              type="button"
-              className={doubt ? "scratch-icon warn" : "scratch-icon"}
-              aria-label={
-                doubt ? "This reading is unsure" : "Change this stack"
-              }
-              onClick={onEdit}
-              disabled={frozen}
+        <button
+          type="button"
+          className="scratch-open"
+          aria-haspopup="dialog"
+          onClick={onEdit}
+          disabled={frozen}
+        >
+          {held && hasArt(held.print) ? (
+            <img
+              className="scratch-art"
+              src={image(held.print.id, "small")}
+              alt=""
+            />
+          ) : (
+            <span className="scratch-art scratch-blank" />
+          )}
+          <span className="scratch-what">
+            <span
+              className={named ? "scratch-name" : "scratch-name scratch-wraps"}
             >
-              {doubt ? "!" : "\u270E"}
-            </button>
-          </p>
-        </div>
+              {named ? (
+                <span lang={named.lang}>{named.text}</span>
+              ) : (
+                <span className="quiet">
+                  No printing in this catalog carries it
+                </span>
+              )}
+            </span>
+            <span className="scratch-meta quiet">{meta(held, one)}</span>
+            <span className="scratch-badges">
+              <span className="badge">{one.finish}</span>
+              <span className="badge">
+                {one.condition ? words(one.condition) : "ungraded"}
+              </span>
+              {doubt && <span className="badge warn">unsure</span>}
+            </span>
+          </span>
+          <span className="scratch-edit quiet" aria-hidden="true">
+            {"\u270E"}
+          </span>
+        </button>
         <div className="scratch-count">
           <button
             type="button"

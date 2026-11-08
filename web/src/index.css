@@ -418,14 +418,33 @@ nav a.here {
   margin: 0;
 }
 
-/* Beside the values they open, and the height of a badge so the line keeps
-   one. */
-.scratch-icon {
-  font-size: 0.8125rem;
-  line-height: 1;
-  min-height: 1.5rem;
-  min-width: 1.75rem;
-  padding: 0.1875rem 0.375rem;
+/* The row is the press that opens it, so the target is the card and
+   everything written beside it rather than an icon between two labels. */
+.scratch-open {
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* Nothing on the row is for pressing while the cards are being written, and
+   a list dimmed end to end says less than the button that is doing it. */
+.scratch-open:disabled {
+  color: inherit;
+}
+
+/* Says the row is a press without being one itself: a second target is the
+   width the badges were going without. */
+.scratch-edit {
+  align-self: center;
+  flex: none;
+  font-size: 0.875rem;
 }
 
 /* One bar: where you came from, what is in the list, and the way to empty
@@ -502,8 +521,7 @@ nav a.here {
   margin: 0;
 }
 
-/* A fact the row shows without being asked, the width of its own word and
-   the height of the button beside it. */
+/* A fact the row shows without being asked, the width of its own word. */
 .badge {
   align-items: center;
   border: 1px solid var(--edge);

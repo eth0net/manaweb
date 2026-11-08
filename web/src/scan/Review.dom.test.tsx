@@ -111,9 +111,9 @@ test("what the reading is unsure of stays out of the row", () => {
   const { view } = show(one(), SCANNED);
 
   expect(view.queryByText(/Nearest, but not by much/)).toBeNull();
-  const ask = view.getByRole("button", { name: /This reading is unsure/ });
+  expect(view.getByText("unsure")).toBeTruthy();
 
-  fireEvent.click(ask);
+  fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   expect(view.getByText(/Nearest, but not by much/)).toBeTruthy();
 });
 
@@ -121,8 +121,8 @@ test("what the reading is unsure of stays out of the row", () => {
 test("a row off a file has nothing to be unsure of", () => {
   const { view } = show(one({ line: 2 }), FILE);
 
-  expect(view.queryByRole("button", { name: /unsure/ })).toBeNull();
-  expect(view.getByRole("button", { name: /Change this stack/ })).toBeTruthy();
+  expect(view.queryByText("unsure")).toBeNull();
+  expect(view.getByRole("button", { name: /Remove Soul/ })).toBeTruthy();
 });
 
 // The printing is edited where the rest of the stack is, so it waits on the
@@ -133,7 +133,7 @@ test("another printing lands on confirm and not before", () => {
   });
   const { view, kept } = show(picked, SCANNED);
 
-  fireEvent.click(view.getByRole("button", { name: /unsure/ }));
+  fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   fireEvent.click(view.getByRole("button", { name: /Seventh Edition/ }));
   expect(kept().scryfallId).toBe(PRINT.id);
 
@@ -151,7 +151,7 @@ test("picking a printing made one way says so", () => {
   });
   const { view } = show(picked, SCANNED);
 
-  fireEvent.click(view.getByRole("button", { name: /unsure/ }));
+  fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   fireEvent.click(view.getByRole("button", { name: /Seventh Edition/ }));
 
   expect(view.getByText("It was only made in nonfoil.")).toBeTruthy();
@@ -160,7 +160,7 @@ test("picking a printing made one way says so", () => {
 test("cancelling the edit leaves the stack as it was", () => {
   const { view, kept } = show(one(), FILE);
 
-  fireEvent.click(view.getByRole("button", { name: /Change this stack/ }));
+  fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   fireEvent.change(view.getByLabelText("Condition"), {
     target: { value: "played" },
   });
@@ -172,7 +172,7 @@ test("cancelling the edit leaves the stack as it was", () => {
 test("confirming the edit is what moves the stack", () => {
   const { view, kept } = show(one(), FILE);
 
-  fireEvent.click(view.getByRole("button", { name: /Change this stack/ }));
+  fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   fireEvent.change(view.getByLabelText("Condition"), {
     target: { value: "played" },
   });
