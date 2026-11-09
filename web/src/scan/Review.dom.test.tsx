@@ -377,3 +377,19 @@ test("an import under way leaves nothing to press", () => {
   view.unmount();
   running.state({ at: "none" });
 });
+
+// A press that came and went with the list moved every row under it, so it
+// stays and says there is nothing for it.
+test("the press that joins repeats keeps its place", () => {
+  const { view } = show(one(), FILE);
+
+  const press = view.getByRole("button", { name: "Join duplicates" });
+  expect((press as HTMLButtonElement).disabled).toBe(true);
+});
+
+test("two rows of one printing fold into one", () => {
+  const { view, all } = show(one(), FILE, [one({ id: "b" })]);
+
+  fireEvent.click(view.getByRole("button", { name: "Join duplicates" }));
+  expect(all()).toHaveLength(1);
+});

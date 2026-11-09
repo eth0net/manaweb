@@ -321,22 +321,19 @@ export function Review({
               {keeping ? "Keeping\u2026" : "Add to collection"}
             </button>
           )}
+          {/* Dead rather than gone: a press that comes and goes with the
+              list moves every row under it on the way past. */}
+          <button
+            type="button"
+            onClick={() => change((held) => merged(held))}
+            disabled={keeping || joins === 0}
+          >
+            Join duplicates
+          </button>
           {session && owning.error && (
             <span className="warn">{owning.error}</span>
           )}
         </div>
-      )}
-
-      {joins > 0 && (
-        <p>
-          <button
-            type="button"
-            onClick={() => change((held) => merged(held))}
-            disabled={keeping}
-          >
-            Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
-          </button>
-        </p>
       )}
 
       {scratch.problem && <p className="warn">{scratch.problem}</p>}
