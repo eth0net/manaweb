@@ -218,6 +218,10 @@ export function Review({
         {scratch.problem && <p className="warn">{scratch.problem}</p>}
         {problem ? (
           <p className="warn">{problem}</p>
+        ) : !scratch.ready ? (
+          // Empty and unread look alike, and this is the screen somebody
+          // would read as the cards having gone.
+          <p className="quiet">Looking for what was left here…</p>
         ) : (
           <p className="quiet">
             {at === "file"

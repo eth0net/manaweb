@@ -393,3 +393,32 @@ test("two rows of one printing fold into one", () => {
   fireEvent.click(view.getByRole("button", { name: "Join duplicates" }));
   expect(all()).toHaveLength(1);
 });
+
+// A reload lands here before the store answers, and "nothing" said too early
+// is the one thing this screen must not say.
+test("an unread list is not an empty one", () => {
+  const view = render(
+    <Review
+      at="file"
+      catalog={catalog}
+      scratch={
+        {
+          ready: false,
+          source: FILE,
+          list: [],
+          change: () => {},
+          begin: () => {},
+          clear: async () => {},
+          problem: null,
+        } satisfies Scratch
+      }
+      session={null}
+      owning={owning}
+      container={null}
+      where={null}
+    />,
+  );
+
+  expect(view.queryByText("Nothing left of that file.")).toBeNull();
+  expect(view.getByText("Looking for what was left here…")).toBeTruthy();
+});
