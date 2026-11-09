@@ -909,3 +909,16 @@ has none of this.
   development-only because it began as an instrument, which also means a tester
   holding their own phone cannot reach it. Some of it may be worth a preference
   instead. Open until there is a tester who is not the author.
+- **What a wide screen is for.** Every screen is a phone's, and a laptop gets
+  the same column with empty margins either side. A row is a strip of text that
+  could be a table, or a cell with as many beside it as the width takes —
+  landscape, the shape the row already has, or portrait with the text under the
+  artwork. The collection's own grid asks the same thing.
+- **Where the target and the joining belong.** Both sit above the keep as
+  controls of their own, and neither is a fact about the list: a container only
+  decides anything at the moment something is written, and joining is a press
+  somebody is about to make. They may be one control with the keep.
+- **What the header says twice.** The count is in the tally, in the keep and in
+  the line under it; the file name, the format and the row order take a line
+  above a picker naming where it all goes. A third of a phone screen before the
+  first card is the symptom.
