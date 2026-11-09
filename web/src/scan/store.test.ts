@@ -146,12 +146,12 @@ test("an upgrade another tab is holding off fails rather than waiting", async ()
 
 // The distinction the review turned up: a read that failed and an empty list
 // are not the same answer, because only one of them may be written over.
-test("a read that cannot open the database throws rather than reading empty", () => {
+test("a read that cannot open the database throws rather than reading empty", async () => {
   broken("no room");
-  expect(recall()).rejects.toThrow("no room");
+  await expect(recall()).rejects.toThrow("no room");
 });
 
-test("a write that cannot open the database throws", () => {
+test("a write that cannot open the database throws", async () => {
   broken("no room");
-  expect(keep([one()])).rejects.toThrow("no room");
+  await expect(keep([one()])).rejects.toThrow("no room");
 });
