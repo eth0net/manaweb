@@ -513,26 +513,6 @@ nav a.here {
   padding: 0.5rem 0.75rem;
 }
 
-/* The file behind the list, as a note rather than a paragraph. The name is
-   the part that runs long, so it is the part that gives way. */
-.scratch-from {
-  display: flex;
-  font-size: 0.8125rem;
-  gap: 0.25rem;
-  margin: 0 0 0.5rem;
-  white-space: nowrap;
-}
-
-.scratch-file {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.scratch-from > :last-child {
-  flex: none;
-}
-
 /* Struck where it stands, so nothing a keep passes over moves the rows under
    it and nothing is asked before the press. */
 .scratch-gone .scratch-open {
