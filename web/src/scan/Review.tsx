@@ -98,7 +98,7 @@ export function Review({
   session,
   owning,
   container,
-  tools,
+  where,
 }: {
   at: Source["at"];
   catalog: Catalog;
@@ -106,7 +106,8 @@ export function Review({
   session: OAuthSession | null;
   owning: Holdings;
   container: string | null;
-  tools: ReactNode;
+  // Where a keep would file them, which nothing before a keep decides.
+  where: ReactNode;
 }) {
   const { change } = scratch;
   // One list to a device, and it belongs to the flow that made it. The other
@@ -147,6 +148,7 @@ export function Review({
 
   const running = useImport();
   const [keeping, setKeeping] = useState(false);
+  const [filing, setFiling] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [problem, setProblem] = useState("");
 
@@ -201,6 +203,7 @@ export function Review({
       setProblem(failed instanceof Error ? failed.message : String(failed));
     } finally {
       setKeeping(false);
+      setFiling(false);
     }
   }
 
@@ -293,7 +296,6 @@ export function Review({
         </p>
       ) : (
         <div className="scratch-does">
-          {tools}
           {!session ? (
             <span className="quiet">Sign in to keep</span>
           ) : // An import in flight owns the same job record, so keeping now
@@ -313,11 +315,14 @@ export function Review({
           ) : (
             <button
               type="button"
-              onClick={() => void keep()}
+              onClick={() => setFiling(true)}
               disabled={keeping}
             >
-              Keep {held.toLocaleString()} card{held === 1 ? "" : "s"}
+              {keeping ? "Keeping\u2026" : "Add to collection"}
             </button>
+          )}
+          {session && owning.error && (
+            <span className="warn">{owning.error}</span>
           )}
         </div>
       )}
@@ -331,23 +336,6 @@ export function Review({
           >
             Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
           </button>
-        </p>
-      )}
-
-      {weight && weight.joined > 0 && (
-        <p className="quiet">
-          {weight.joined.toLocaleString()} of them join a stack you already
-          hold.
-        </p>
-      )}
-
-      {apart > 0 && (
-        <p className="quiet">
-          {apart.toLocaleString()}{" "}
-          {apart === 1 ? "is a printing" : "are printings"} you own already but
-          filed otherwise — another grade, or another place — so{" "}
-          {apart === 1 ? "it stays a stack" : "they stay stacks"} of
-          {apart === 1 ? " its" : " their"} own.
         </p>
       )}
 
@@ -369,6 +357,53 @@ export function Review({
           />
         ))}
       </ul>
+
+      {filing && (
+        <Panel
+          title="Add to collection"
+          onShut={() => setFiling(false)}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setFiling(false)}
+                disabled={keeping}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="chosen"
+                onClick={() => void keep()}
+                disabled={keeping}
+              >
+                {keeping
+                  ? "Keeping\u2026"
+                  : `Keep ${held.toLocaleString()} card${held === 1 ? "" : "s"}`}
+              </button>
+            </>
+          }
+        >
+          {where}
+
+          {weight && weight.joined > 0 && (
+            <p className="quiet">
+              {weight.joined.toLocaleString()} of them join a stack you already
+              hold.
+            </p>
+          )}
+
+          {apart > 0 && (
+            <p className="quiet">
+              {apart.toLocaleString()}{" "}
+              {apart === 1 ? "is a printing" : "are printings"} you own already
+              but filed otherwise — another grade, or another place — so{" "}
+              {apart === 1 ? "it stays a stack" : "they stay stacks"} of
+              {apart === 1 ? " its" : " their"} own.
+            </p>
+          )}
+        </Panel>
+      )}
 
       {edited && (
         <Editing

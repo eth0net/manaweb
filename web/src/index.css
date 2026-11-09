@@ -497,8 +497,8 @@ nav a.here {
   justify-self: end;
 }
 
-/* What to do with the list and where it would go, on one line: a line each
-   is a third of a phone screen before the first card. */
+/* Everything the list can be done to, on one line: a line each is a third of
+   a phone screen before the first card. */
 .scratch-does {
   align-items: center;
   display: flex;
@@ -508,8 +508,7 @@ nav a.here {
   margin: 0 0 0.75rem;
 }
 
-/* The press beside the control is the same height as it, being the same
-   row. */
+/* Taller than a press elsewhere: these are the ones a thumb goes for. */
 .scratch-does > button {
   padding: 0.5rem 0.75rem;
 }

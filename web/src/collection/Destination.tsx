@@ -4,19 +4,17 @@ import { Modal } from "../Modal";
 import type { Holdings } from "./cards";
 import { type Containers, KINDS, UNFILED } from "./containers";
 
-export function Destination({
-  containers,
-  owning,
-  chosen,
-  onChoose,
-}: {
+type Picking = {
   containers: Containers;
   owning: Holdings;
   chosen: string | null;
   onChoose: (uri: string | null) => void;
-}) {
-  const { held, error, add, drop } = containers;
-  const here = held.find((one) => one.uri === chosen);
+};
+
+export function Destination(picking: Picking) {
+  const here = picking.containers.held.find(
+    (one) => one.uri === picking.chosen,
+  );
 
   return (
     <Modal
@@ -32,6 +30,18 @@ export function Destination({
         </>
       }
     >
+      <Places {...picking} />
+    </Modal>
+  );
+}
+
+// The choice without a dialog around it, for a panel that is already open on
+// something the choice decides.
+export function Places({ containers, owning, chosen, onChoose }: Picking) {
+  const { held, error, add, drop } = containers;
+
+  return (
+    <>
       <ul className="places">
         <li>
           <button
@@ -73,7 +83,7 @@ export function Destination({
 
       <New add={add} />
       {error && <p className="warn">{error}</p>}
-    </Modal>
+    </>
   );
 }
 

@@ -297,6 +297,11 @@ matched, which a row read off a file carries none of. The ceiling that may
 exist is a thousand rows drawn at once, which wants a phone to answer and not a
 laptop.
 
+**Where a list lands is settled by the press that lands it.** The container,
+and the arithmetic that follows from one — how much joins what is already held,
+how much sits beside it — wait inside that press, none of them being a fact
+about the list. Folding one stack into another is, so that stays on the screen.
+
 It asks nothing of the lexicons: `container` is already a field a card may
 carry, `source` already says what the cards were read out of, and the file a
 CSV names is already optional. What it does ask is that the review settle a
@@ -914,10 +919,6 @@ has none of this.
   could be a table, or a cell with as many beside it as the width takes —
   landscape, the shape the row already has, or portrait with the text under the
   artwork. The collection's own grid asks the same thing.
-- **Where the target and the joining belong.** Both sit above the keep as
-  controls of their own, and neither is a fact about the list: a container only
-  decides anything at the moment something is written, and joining is a press
-  somebody is about to make. They may be one control with the keep.
 - **What the header says twice.** The count is in the tally, in the keep and in
   the line under it; the file name, the format and the row order take a line
   above a picker naming where it all goes. A third of a phone screen before the

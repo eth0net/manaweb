@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
-import { fireEvent, render } from "@testing-library/react";
+import type { OAuthSession } from "@atproto/oauth-client-browser";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import type { Card, Catalog, Print } from "../catalog";
 import type { Holdings } from "../collection/cards";
 import "../testing/dom";
+import { writing } from "../testing/running";
 import { Review } from "./Review";
 import { type Entry, SCANNED, type Source } from "./scratch";
 import type { Scratch } from "./store";
@@ -100,7 +102,7 @@ function show(
       session={null}
       owning={owning}
       container={null}
-      tools={null}
+      where={null}
     />
   );
 
@@ -271,4 +273,107 @@ test("a row struck off keeps its place and its stack", () => {
   again();
   fireEvent.click(view.getByRole("button", { name: /Put Remove Soul back/ }));
   expect(kept().dropped).toBe(false);
+});
+
+// The write the keep makes, held open: what the panel does while one is in
+// flight is the whole of what it does wrong.
+const running = writing();
+
+// Signed in over a collection already read, which is the one state a keep is
+// offered in.
+const READY = {
+  ready: true,
+  stacks: [],
+  owned: () => 0,
+} as unknown as Holdings;
+
+// A container decides nothing until something is written, so the choice is
+// behind the press that writes rather than above the list.
+test("where they go waits inside the press that files them", () => {
+  const view = render(
+    <Review
+      at="file"
+      catalog={catalog}
+      scratch={
+        {
+          ready: true,
+          source: FILE,
+          list: [one()],
+          change: () => {},
+          begin: () => {},
+          clear: async () => {},
+          problem: null,
+        } satisfies Scratch
+      }
+      session={{} as unknown as OAuthSession}
+      owning={READY}
+      container={null}
+      where={<p>Somewhere to put them</p>}
+    />,
+  );
+
+  expect(view.queryByText("Somewhere to put them")).toBeNull();
+  fireEvent.click(view.getByRole("button", { name: "Add to collection" }));
+  expect(view.getByText("Somewhere to put them")).toBeTruthy();
+  expect(view.getByRole("button", { name: "Keep 1 card" })).toBeTruthy();
+  view.unmount();
+});
+
+function filing(list: Entry[] = [one()]) {
+  return render(
+    <Review
+      at="file"
+      catalog={catalog}
+      scratch={
+        {
+          ready: true,
+          source: FILE,
+          list,
+          change: () => {},
+          begin: () => {},
+          clear: async () => {},
+          problem: null,
+        } satisfies Scratch
+      }
+      session={{} as unknown as OAuthSession}
+      owning={READY}
+      container={null}
+      where={null}
+    />,
+  );
+}
+
+// Nothing calls a write back once it is going, so a way out of the panel
+// would be a lie: the cards land whatever the press said.
+test("a keep already going offers no way out of itself", async () => {
+  const view = filing();
+
+  fireEvent.click(view.getByRole("button", { name: "Add to collection" }));
+  fireEvent.click(view.getByRole("button", { name: "Keep 1 card" }));
+
+  // The press on the page says the same, for a panel shut by Escape.
+  const panel = () => within(view.getByRole("dialog"));
+  await waitFor(() => panel().getByRole("button", { name: "Keeping…" }));
+  const cancel = panel().getByRole("button", { name: "Cancel" });
+  expect((cancel as HTMLButtonElement).disabled).toBe(true);
+
+  running.finish("Your PDS refused it.");
+  await waitFor(() =>
+    view.getByText("Your PDS refused it. The list is still here."),
+  );
+  expect(view.queryByRole("dialog")).toBeNull();
+  view.unmount();
+});
+
+// One job to a repository, so a keep made while an import of these same cards
+// is going would take the place of one already half written.
+test("an import under way leaves nothing to press", () => {
+  running.state({ at: "running", done: 1, total: 2, due: 0, quiet: false });
+  const view = filing();
+
+  expect(view.queryByRole("button", { name: "Add to collection" })).toBeNull();
+  expect(view.getByText(/An import holds the place/)).toBeTruthy();
+
+  view.unmount();
+  running.state({ at: "none" });
 });

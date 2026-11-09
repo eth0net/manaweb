@@ -5,7 +5,7 @@ import { Collection } from "./collection/Collection";
 import { useCollection } from "./collection/cards";
 import { type Containers, useContainers } from "./collection/containers";
 import { Owning } from "./collection/context";
-import { Destination } from "./collection/Destination";
+import { Destination, Places } from "./collection/Destination";
 import { CATALOG } from "./config";
 import { EXPORT, Export } from "./export/Export";
 import {
@@ -78,6 +78,17 @@ export function App() {
     </>
   );
 
+  // The same choice without the tool around it: a keep is all it decides, so
+  // on a review it waits inside the press that decides.
+  const places = signedIn && (
+    <Places
+      containers={containers}
+      owning={collection}
+      chosen={chosen}
+      onChoose={choose}
+    />
+  );
+
   // One screen under either tab, holding the list that flow made and no
   // other: what a scan read in is not what an import is waiting on.
   const reviewing = (at: Source["at"]) =>
@@ -89,7 +100,7 @@ export function App() {
         session={signedIn}
         owning={collection}
         container={chosen}
-        tools={destination}
+        where={places}
       />
     ) : load.status === "loading" ? (
       <p className="quiet">The catalog is still loading.</p>
