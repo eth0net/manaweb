@@ -154,7 +154,7 @@ test("picking a printing made one way says so", () => {
   fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   fireEvent.click(view.getByRole("button", { name: /Seventh Edition/ }));
 
-  expect(view.getByText("It was only made in nonfoil.")).toBeTruthy();
+  expect(view.getByText("Only made in nonfoil.")).toBeTruthy();
 });
 
 test("cancelling the edit leaves the stack as it was", () => {

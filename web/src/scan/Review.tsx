@@ -677,86 +677,95 @@ function Editing({
           </p>
         )}
 
-        <h3>Printing</h3>
-        <p className="quiet">
-          {shown ? describe(shown) : "No printing in this catalog carries it"}
-        </p>
-        {others.length > 0 && (
-          <ul className="scratch-prints">
-            {others.map((id) => {
-              const other = prints.get(id);
-              if (!other) return null;
-              return (
-                <li key={id}>
-                  <button
-                    type="button"
-                    className={id === shown?.id ? "chosen" : undefined}
-                    aria-pressed={id === shown?.id}
-                    onClick={() => take(other.print)}
-                  >
-                    <Title held={other} />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <dl className="stack-grid">
+          <dt>Printing</dt>
+          <dd>
+            <p className="quiet">
+              {shown
+                ? describe(shown)
+                : "No printing in this catalog carries it"}
+            </p>
+            {others.length > 0 && (
+              <ul className="scratch-prints">
+                {others.map((id) => {
+                  const other = prints.get(id);
+                  if (!other) return null;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        className={id === shown?.id ? "chosen" : undefined}
+                        aria-pressed={id === shown?.id}
+                        onClick={() => take(other.print)}
+                      >
+                        <Title held={other} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <Finding catalog={catalog} onPick={take} />
+          </dd>
 
-        <Finding catalog={catalog} onPick={take} />
-
-        <h3>Copies</h3>
-        <div className="scratch-count">
-          <button
-            type="button"
-            aria-label="One fewer"
-            onClick={() => setQuantity((was) => Math.max(1, was - 1))}
-          >
-            &minus;
-          </button>
-          <span className="tally">{quantity}</span>
-          <button
-            type="button"
-            aria-label="One more"
-            onClick={() => setQuantity((was) => Math.min(COPIES, was + 1))}
-          >
-            +
-          </button>
-        </div>
-
-        <h3>Finish</h3>
-        {makes.length > 1 ? (
-          <p className="scratch-finishes">
-            {makes.map((was) => (
+          <dt>Copies</dt>
+          <dd>
+            <div className="scratch-count">
               <button
-                key={was}
                 type="button"
-                className={was === finish ? "chosen" : undefined}
-                aria-pressed={was === finish}
-                onClick={() => setFinish(was)}
+                aria-label="One fewer"
+                onClick={() => setQuantity((was) => Math.max(1, was - 1))}
               >
-                {was}
+                &minus;
               </button>
-            ))}
-          </p>
-        ) : (
-          <p className="quiet">It was only made in {finish}.</p>
-        )}
+              <span className="tally">{quantity}</span>
+              <button
+                type="button"
+                aria-label="One more"
+                onClick={() => setQuantity((was) => Math.min(COPIES, was + 1))}
+              >
+                +
+              </button>
+            </div>
+          </dd>
 
-        <h3>Condition</h3>
-        <p>
-          <select
-            aria-label="Condition"
-            value={condition}
-            onChange={(event) => setCondition(event.target.value)}
-          >
-            <option value="">ungraded</option>
-            {CONDITIONS.map((grade) => (
-              <option key={grade} value={grade}>
-                {words(grade)}
-              </option>
-            ))}
-          </select>
-        </p>
+          <dt>Finish</dt>
+          <dd>
+            {makes.length > 1 ? (
+              <fieldset className="scratch-finishes" aria-label="Finish">
+                {makes.map((was) => (
+                  <button
+                    key={was}
+                    type="button"
+                    className={was === finish ? "chosen" : undefined}
+                    aria-pressed={was === finish}
+                    onClick={() => setFinish(was)}
+                  >
+                    {was}
+                  </button>
+                ))}
+              </fieldset>
+            ) : (
+              <p className="quiet">Only made in {finish}.</p>
+            )}
+          </dd>
+
+          <dt>Condition</dt>
+          <dd>
+            <select
+              aria-label="Condition"
+              value={condition}
+              onChange={(event) => setCondition(event.target.value)}
+            >
+              <option value="">ungraded</option>
+              {CONDITIONS.map((grade) => (
+                <option key={grade} value={grade}>
+                  {words(grade)}
+                </option>
+              ))}
+            </select>
+          </dd>
+        </dl>
 
         {import.meta.env.DEV && scanned && (
           <p className="scratch-report">
