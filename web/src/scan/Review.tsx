@@ -562,7 +562,7 @@ function Stack({
   );
 }
 
-// Drawn rather than set in type, so the pair matches whatever font a phone
+// Drawn rather than set in type, so the four match whatever font a phone
 // falls back to — `licenses/README.md` says where they came from.
 function Pencil() {
   return (
@@ -580,12 +580,10 @@ function Bin() {
   );
 }
 
-// A turn back and a dismissal, both plain enough to draw beside the pair
-// above rather than fetch.
 function Back() {
   return (
     <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
-      <path d="M9 5 4 10l5 5M4 10h10a5 5 0 0 1 0 10h-4" />
+      <path d="M14.5 20L15.3182 19.1429C18.9628 15.3247 16.2565 9 10.9781 9H6M6 9L10 13M6 9L10 5" />
     </svg>
   );
 }
@@ -593,7 +591,7 @@ function Back() {
 function Cross() {
   return (
     <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
-      <path d="M7 7l10 10M17 7 7 17" />
+      <path d="M6 6L18 18M18 6L6 18" />
     </svg>
   );
 }
