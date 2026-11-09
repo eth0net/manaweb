@@ -41,9 +41,11 @@ import {
   copies,
   counted,
   drop,
+  dropping,
   type Entry,
   type Finishes,
   joinable,
+  kept,
   merged,
   offered,
   referenced,
@@ -102,6 +104,9 @@ export function Review({
 }) {
   const { list, change } = scratch;
 
+  // What a keep would write, which is every row but the ones struck off.
+  const live = useMemo(() => kept(list), [list]);
+
   // Changes only when a scan or a removal moves them, so a press on a count
   // does not send the catalog looking again.
   const wanted = useMemo(() => referenced(list).join(" "), [list]);
@@ -146,28 +151,28 @@ export function Review({
   // What keeping the list does to the collection, which is the arithmetic a
   // file is asked for before it lands.
   const weight = useMemo(() => {
-    if (!owning.ready || list.length === 0) return null;
-    const owned = cards(list, container);
+    if (!owning.ready || live.length === 0) return null;
+    const owned = cards(live, container);
     const at = new Date().toISOString();
     return weigh(plan(owned, owning.stacks, at), owning.stacks);
-  }, [container, list, owning.ready, owning.stacks]);
+  }, [container, live, owning.ready, owning.stacks]);
 
   // Stacks whose printing the collection already holds but which the plan
   // did not join. A grade apart is the usual reason, and nothing else on this
   // page would say so.
   const apart = useMemo(() => {
     if (!owning.ready || !weight) return 0;
-    const known = list.filter(
+    const known = live.filter(
       (one) => owning.owned(one.scryfallId, one.finish) > 0,
     ).length;
     return Math.max(0, known - weight.joined);
-  }, [list, owning, weight]);
+  }, [live, owning, weight]);
 
   async function keep() {
     setKeeping(true);
     setProblem("");
     try {
-      const owned = cards(list, container);
+      const owned = cards(live, container);
       const at = new Date().toISOString();
       const weighed = weigh(plan(owned, owning.stacks, at), owning.stacks);
       // The list is the only copy of these cards, so it goes only once the
@@ -190,13 +195,11 @@ export function Review({
     }
   }
 
-  // The frame goes with the stack, so a scan says what it missed before the
-  // row carrying it goes.
-  async function discard(one: Entry): Promise<void> {
-    if (import.meta.env.DEV && scratch.source.at === "scan") {
-      await told(one, null);
-    }
-    change((list) => drop(list, one.id));
+  // Struck where it stands rather than taken away: the press that was not
+  // meant is undone by the row it was aimed at, and nothing moves under the
+  // next one.
+  function strike(one: Entry, dropped: boolean): void {
+    change((held) => dropping(held, one.id, dropped));
   }
 
   // The list is the only copy of these cards, so the press that throws them
@@ -231,8 +234,8 @@ export function Review({
     );
   }
 
-  const held = copies(list);
-  const joins = joinable(list);
+  const held = copies(live);
+  const joins = joinable(live);
 
   return (
     <>
@@ -244,7 +247,7 @@ export function Review({
           {held.toLocaleString()} card{held === 1 ? "" : "s"}
           <span className="quiet">
             {" "}
-            · {list.length} stack{list.length === 1 ? "" : "s"}
+            · {live.length} stack{live.length === 1 ? "" : "s"}
           </span>
         </p>
         <button
@@ -350,7 +353,8 @@ export function Review({
             frozen={keeping}
             scanned={scratch.source.at === "scan"}
             onEdit={() => setEditing(one.id)}
-            onDrop={() => void discard(one)}
+            onStrike={(dropped) => strike(one, dropped)}
+            onClear={() => change((held) => drop(held, one.id))}
           />
         ))}
       </ul>
@@ -449,14 +453,16 @@ function Stack({
   frozen,
   scanned,
   onEdit,
-  onDrop,
+  onStrike,
+  onClear,
 }: {
   one: Entry;
   prints: Map<string, Found>;
   frozen: boolean;
   scanned: boolean;
   onEdit: () => void;
-  onDrop: () => void;
+  onStrike: (dropped: boolean) => void;
+  onClear: () => void;
 }) {
   const held = prints.get(one.scryfallId) ?? null;
   const named = held ? cardName(held.card.name, held.print, APP) : null;
@@ -465,14 +471,16 @@ function Stack({
   const doubt =
     scanned && ((!sure(one) && !one.picked) || one.detected === false);
 
+  const name = named ? named.text : "this stack";
+
   return (
-    <li>
+    <li className={one.dropped ? "scratch-gone" : undefined}>
       <div className="scratch-card">
         <button
           type="button"
           className="scratch-open"
-          aria-haspopup="dialog"
-          onClick={onEdit}
+          aria-haspopup={one.dropped ? undefined : "dialog"}
+          onClick={one.dropped ? () => onStrike(false) : onEdit}
           disabled={frozen}
         >
           {held && hasArt(held.print) ? (
@@ -508,23 +516,46 @@ function Stack({
           </span>
         </button>
         <span className="scratch-acts">
-          <button
-            type="button"
-            aria-label="Change this stack"
-            aria-haspopup="dialog"
-            onClick={onEdit}
-            disabled={frozen}
-          >
-            <Pencil />
-          </button>
-          <button
-            type="button"
-            aria-label="Take this stack off the list"
-            onClick={onDrop}
-            disabled={frozen}
-          >
-            <Bin />
-          </button>
+          {one.dropped ? (
+            <>
+              <button
+                type="button"
+                aria-label={`Put ${name} back`}
+                onClick={() => onStrike(false)}
+                disabled={frozen}
+              >
+                <Back />
+              </button>
+              <button
+                type="button"
+                aria-label={`Clear ${name} off the screen`}
+                onClick={onClear}
+                disabled={frozen}
+              >
+                <Cross />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                aria-label="Change this stack"
+                aria-haspopup="dialog"
+                onClick={onEdit}
+                disabled={frozen}
+              >
+                <Pencil />
+              </button>
+              <button
+                type="button"
+                aria-label="Take this stack off the list"
+                onClick={() => onStrike(true)}
+                disabled={frozen}
+              >
+                <Bin />
+              </button>
+            </>
+          )}
         </span>
       </div>
     </li>
@@ -545,6 +576,24 @@ function Bin() {
   return (
     <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
       <path d="M6 7V18C6 19.1046 6.89543 20 8 20H16C17.1046 20 18 19.1046 18 18V7M6 7H5M6 7H8M18 7H19M18 7H16M10 11V16M14 11V16M8 7V5C8 3.89543 8.89543 3 10 3H14C15.1046 3 16 3.89543 16 5V7M8 7H16" />
+    </svg>
+  );
+}
+
+// A turn back and a dismissal, both plain enough to draw beside the pair
+// above rather than fetch.
+function Back() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M9 5 4 10l5 5M4 10h10a5 5 0 0 1 0 10h-4" />
+    </svg>
+  );
+}
+
+function Cross() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M7 7l10 10M17 7 7 17" />
     </svg>
   );
 }

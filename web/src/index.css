@@ -529,6 +529,16 @@ nav a.here {
   flex: none;
 }
 
+/* Struck where it stands, so nothing a keep passes over moves the rows under
+   it and nothing is asked before the press. */
+.scratch-gone .scratch-open {
+  opacity: 0.45;
+}
+
+.scratch-gone .scratch-name {
+  text-decoration: line-through;
+}
+
 /* Asked below the bar rather than in it, so pressing Clear moves nothing. */
 .scratch-clear {
   align-items: center;

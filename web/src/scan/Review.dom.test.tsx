@@ -70,31 +70,41 @@ function one(over: Partial<Entry> = {}): Entry {
 
 // The list is read back rather than re-rendered: what a press is worth is the
 // move it made, and nothing here holds state between renders.
-function show(entry: Entry, source: Source) {
-  let list = [entry];
-  const scratch = {
-    ready: true,
-    source,
-    list,
-    change: (move: (was: Entry[]) => Entry[]) => {
-      list = move(list);
-    },
-    begin: () => {},
-    clear: async () => {},
-    problem: null,
-  } satisfies Scratch;
+function show(entry: Entry, source: Source, also: Entry[] = []) {
+  let list = [entry, ...also];
 
-  const view = render(
+  // Built fresh each time, so `again` draws what the moves have made of the
+  // list rather than what it held when the screen first went up.
+  const drawn = () => (
     <Review
       catalog={catalog}
-      scratch={scratch}
+      scratch={
+        {
+          ready: true,
+          source,
+          list,
+          change: (move: (was: Entry[]) => Entry[]) => {
+            list = move(list);
+          },
+          begin: () => {},
+          clear: async () => {},
+          problem: null,
+        } satisfies Scratch
+      }
       session={null}
       owning={owning}
       container={null}
       tools={null}
-    />,
+    />
   );
-  return { view, kept: () => list[0] as Entry };
+
+  const view = render(drawn());
+  return {
+    view,
+    kept: () => list[0] as Entry,
+    all: () => list,
+    again: () => view.rerender(drawn()),
+  };
 }
 
 test("a row carries the card, the printing and the line it came off", () => {
@@ -218,5 +228,32 @@ test("a row goes without opening anything", () => {
     view.getByRole("button", { name: /Take this stack off the list/ }),
   );
   expect(view.queryByRole("dialog")).toBeNull();
-  expect(kept()).toBeUndefined();
+  expect(kept().dropped).toBe(true);
+});
+
+// The second press is the one that clears the screen, and only the screen:
+// the row was already out of what a keep would write.
+test("a struck row is cleared off by a second press", () => {
+  const { view, all } = show(one({ dropped: true }), FILE);
+
+  fireEvent.click(
+    view.getByRole("button", { name: /Clear Remove Soul off the screen/ }),
+  );
+  expect(all()).toEqual([]);
+});
+
+// An import review has no second try, so the row stays where it was with
+// everything it held.
+test("a row struck off keeps its place and its stack", () => {
+  const { view, kept, again } = show(one({ condition: "played" }), FILE);
+
+  fireEvent.click(
+    view.getByRole("button", { name: /Take this stack off the list/ }),
+  );
+  expect(kept().dropped).toBe(true);
+  expect(kept().condition).toBe("played");
+
+  again();
+  fireEvent.click(view.getByRole("button", { name: /Put Remove Soul back/ }));
+  expect(kept().dropped).toBe(false);
 });

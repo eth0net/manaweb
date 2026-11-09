@@ -38,6 +38,9 @@ export type Entry = {
   // When a frame of this stack was last sent back. Kept on the entry rather
   // than in a component, so it survives the panel closing and the tab dying.
   reported?: string;
+  // Struck off without being taken off: nothing keeps it, and the row stays
+  // where it was in case the press was not meant.
+  dropped?: boolean;
   finish: string;
   // What the stack is kept at, `""` being ungraded — `docs/scanner.md`.
   condition: string;
@@ -157,6 +160,22 @@ export function drop(list: Entry[], id: string): Entry[] {
   return list.filter((one) => one.id !== id);
 }
 
+// Struck through rather than taken away, so what somebody changes their mind
+// about comes back with everything it held.
+export function dropping(
+  list: Entry[],
+  id: string,
+  dropped: boolean,
+): Entry[] {
+  return list.map((one) => (one.id === id ? { ...one, dropped } : one));
+}
+
+// The rows a keep writes. The last gate before a record, so a row struck off
+// cannot reach one whatever counted it on the way.
+export function kept(list: Entry[]): Entry[] {
+  return list.filter((one) => !one.dropped);
+}
+
 // Any printing, not only one the scan matched. Holding it to the matches
 // left nothing to say when the index had missed the card altogether, which
 // is the reading most worth being able to correct.
@@ -248,6 +267,12 @@ export function merged(list: Entry[]): Entry[] {
   const kept: Entry[] = [];
 
   for (const one of list) {
+    // A row nothing keeps joins nothing: it is here to be put back as it was.
+    if (one.dropped) {
+      kept.push({ ...one });
+      continue;
+    }
+
     const mine = record(one);
     const at = into.get(stack(mine));
 
@@ -288,12 +313,12 @@ export function joinable(list: Entry[]): number {
 }
 
 export function copies(list: Entry[]): number {
-  return list.reduce((sum, one) => sum + one.quantity, 0);
+  return kept(list).reduce((sum, one) => sum + one.quantity, 0);
 }
 
 // The list as cards, for the path that writes them.
 export function cards(list: Entry[], container: string | null): Owned[] {
-  return list.map((one) => record(one, container));
+  return kept(list).map((one) => record(one, container));
 }
 
 // The record one stack stands for, which is what decides whether two of them

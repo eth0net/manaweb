@@ -9,9 +9,11 @@ import {
   among,
   cards,
   choose,
+  copies,
   counted,
   cycled,
   drop,
+  dropping,
   type Entry,
   joinable,
   merged,
@@ -175,6 +177,17 @@ test("a report is remembered on the stack, not in a view", () => {
 
   expect(first?.reported).toBe("2026-09-30T12:00:00.000Z");
   expect(second?.reported).toBeUndefined();
+});
+
+test("a stack struck off is still there, and is kept by nothing", () => {
+  const list = dropping([one({ id: "a" }), one({ id: "b" })], "a", true);
+
+  expect(list.map((held) => held.id)).toEqual(["a", "b"]);
+  expect(copies(list)).toBe(1);
+  expect(cards(list, null).length).toBe(1);
+  expect(merged(list).map((held) => held.id)).toEqual(["a", "b"]);
+
+  expect(copies(dropping(list, "a", false))).toBe(2);
 });
 
 test("drop takes one stack without touching another of the same card", () => {
