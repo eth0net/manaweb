@@ -108,6 +108,14 @@ function Licenses() {
         <dd>
           <a href="https://github.com/akveo/eva-icons">Eva Icons</a>, MIT
         </dd>
+
+        <dt>Tab and row icons</dt>
+        <dd>
+          <a href="https://www.svgrepo.com/collection/iconcino-interface-icons/">
+            Iconcino
+          </a>
+          , CC0 1.0
+        </dd>
       </dl>
     </>
   );
