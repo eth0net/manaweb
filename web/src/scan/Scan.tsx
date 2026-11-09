@@ -17,7 +17,6 @@ import {
   words,
 } from "../catalog";
 import { CONDITIONS } from "../collection/cards";
-import { REVIEWING } from "../import/Import";
 import { describe } from "../Printing";
 import { Link } from "../router";
 import { frame, open } from "./camera";
@@ -191,7 +190,7 @@ export function Scan({
       return;
     }
     if (reviewing) {
-      setProblem("A file is open for review. Keep or clear it to scan.");
+      setProblem("A file is open for review in Import. Keep or clear it.");
       return;
     }
     setAnswer({ at: "reading" });
@@ -354,8 +353,8 @@ export function Scan({
               Open the camera
             </button>
           )}
-          {scratch.list.length > 0 && (
-            <Waiting list={scratch.list} read={reviewing} />
+          {!reviewing && scratch.list.length > 0 && (
+            <Waiting list={scratch.list} />
           )}
           {problem && <p className="warn">{problem}</p>}
           {/* todo(settings): a panel behind a button in the viewfinder's
@@ -505,7 +504,7 @@ export function Scan({
                   </button>
                 </p>
               )}
-              {scratch.list.length > 0 && (
+              {!reviewing && scratch.list.length > 0 && (
                 <p className="scan-count">
                   {stack && (
                     <Counted
@@ -514,7 +513,7 @@ export function Scan({
                       onMore={() => change((list) => plus(list, stack.id))}
                     />
                   )}
-                  <Waiting list={scratch.list} read={reviewing} />
+                  <Waiting list={scratch.list} />
                 </p>
               )}
             </div>
@@ -616,15 +615,14 @@ function Counted({
   );
 }
 
-// How much is in the list, and the way into it, which is the flow it came
-// out of.
-function Waiting({ list, read }: { list: Entry[]; read: boolean }) {
+// How much has been scanned, and the way into it. A file read in is the
+// import's list and is reviewed there, so nothing here counts it.
+function Waiting({ list }: { list: Entry[] }) {
   const held = copies(list);
 
   return (
-    <Link className="link" to={read ? REVIEWING : REVIEW}>
-      {held.toLocaleString()} card{held === 1 ? "" : "s"}{" "}
-      {read ? "read in" : "scanned"}
+    <Link className="link" to={REVIEW}>
+      {held.toLocaleString()} card{held === 1 ? "" : "s"} scanned
     </Link>
   );
 }
