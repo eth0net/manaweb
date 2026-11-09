@@ -450,11 +450,27 @@ nav a.here {
 }
 
 .scratch-acts button {
+  align-items: center;
+  display: flex;
   flex: 1;
-  font-size: 0.875rem;
-  line-height: 1;
+  justify-content: center;
   min-width: 2.5rem;
   padding: 0.25rem 0.5rem;
+}
+
+.scratch-acts svg {
+  height: 1.125rem;
+  width: 1.125rem;
+}
+
+/* An outline drawing rather than a filled one, so it takes the line weight
+   the color is drawn at. */
+.stroked {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 /* One bar: where you came from, what is in the list, and the way to empty

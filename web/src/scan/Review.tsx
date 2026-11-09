@@ -514,7 +514,7 @@ function Stack({
             onClick={onEdit}
             disabled={frozen}
           >
-            {"\u270E"}
+            <Pencil />
           </button>
           <button
             type="button"
@@ -522,11 +522,29 @@ function Stack({
             onClick={onDrop}
             disabled={frozen}
           >
-            {"\u2715"}
+            <Bin />
           </button>
         </span>
       </div>
     </li>
+  );
+}
+
+// Drawn rather than set in type, so the pair matches whatever font a phone
+// falls back to — `licenses/README.md` says where they came from.
+function Pencil() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M12 4H6C4.89543 4 4 4.89543 4 6V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V12M9 15V12.5L17.75 3.75C18.4404 3.05964 19.5596 3.05964 20.25 3.75V3.75C20.9404 4.44036 20.9404 5.55964 20.25 6.25L15.5 11L11.5 15H9Z" />
+    </svg>
+  );
+}
+
+function Bin() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M6 7V18C6 19.1046 6.89543 20 8 20H16C17.1046 20 18 19.1046 18 18V7M6 7H5M6 7H8M18 7H19M18 7H16M10 11V16M14 11V16M8 7V5C8 3.89543 8.89543 3 10 3H14C15.1046 3 16 3.89543 16 5V7M8 7H16" />
+    </svg>
   );
 }
 
