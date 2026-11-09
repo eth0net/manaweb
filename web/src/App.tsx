@@ -8,7 +8,7 @@ import { Owning } from "./collection/context";
 import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
 import { EXPORT, Export } from "./export/Export";
-import { IMPORT, Import, ImportStatus } from "./import/Import";
+import { IMPORT, Import, ImportStatus, REVIEWING } from "./import/Import";
 import { attach, useWaiting } from "./import/runner";
 import { Menu } from "./Menu";
 import { Nav } from "./Nav";
@@ -56,6 +56,15 @@ export function App() {
     if (account.state.status !== "restoring" && !known(path)) replace(HOME);
   }, [account.state.status, path]);
 
+  // One list, reviewed where it came from: a link into the other review is a
+  // link to an empty screen, and the list is what somebody meant.
+  useEffect(() => {
+    if (!scratch.ready) return;
+    const mine = scratch.source.at === "file" ? REVIEWING : REVIEW;
+    if ((path === REVIEW || path === REVIEWING) && path !== mine)
+      replace(mine);
+  }, [path, scratch.ready, scratch.source]);
+
   const destination = signedIn && (
     <>
       <Destination
@@ -67,6 +76,29 @@ export function App() {
       {collection.error && <span className="warn">{collection.error}</span>}
     </>
   );
+
+  // The same screen either tab reaches it from, built once rather than twice
+  // over: which list it holds is the list's own business.
+  const reviewing =
+    load.status === "ready" ? (
+      <Review
+        catalog={load.catalog}
+        scratch={scratch}
+        session={signedIn}
+        owning={collection}
+        container={chosen}
+        tools={destination}
+      />
+    ) : load.status === "loading" ? (
+      <p className="quiet">The catalog is still loading.</p>
+    ) : (
+      // Every row is drawn out of the catalog, so there is no list to draw.
+      // The cards are still saved; what is missing is what names them.
+      <p className="warn">
+        No catalog at <code>{CATALOG}</code>: {load.error}. The cards waiting
+        here are still here.
+      </p>
+    );
 
   return (
     <main>
@@ -112,18 +144,7 @@ export function App() {
 
             {here === SCAN &&
               (path === REVIEW ? (
-                load.status === "ready" ? (
-                  <Review
-                    catalog={load.catalog}
-                    scratch={scratch}
-                    session={signedIn}
-                    owning={collection}
-                    container={chosen}
-                    tools={destination}
-                  />
-                ) : (
-                  <p className="quiet">The catalog is still loading.</p>
-                )
+                reviewing
               ) : (
                 <Scan
                   catalog={load.status === "ready" ? load.catalog : null}
@@ -134,7 +155,9 @@ export function App() {
               ))}
 
             {here === "/collection" &&
-              (path === IMPORT ? (
+              (path === REVIEWING ? (
+                reviewing
+              ) : path === IMPORT ? (
                 <Import
                   session={signedIn}
                   owning={collection}

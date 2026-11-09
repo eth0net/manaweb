@@ -5,7 +5,7 @@ import type { Holdings } from "../collection/cards";
 import { type Entry, SCANNED, type Source } from "../scan/scratch";
 import type { Scratch } from "../scan/store";
 import "../testing/dom";
-import { Import } from "./Import";
+import { Import, REVIEWING } from "./Import";
 
 const HEAD =
   "Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID," +
@@ -113,12 +113,14 @@ test("a file read in goes to the list, not to the repo", async () => {
   });
   // In the file's order, each knowing which line it was.
   expect(started[0]?.[1].map((one) => one.line)).toEqual([2, 3]);
+  // Under the import that opened it, rather than across in the scan tab.
+  expect(location.pathname).toBe(REVIEWING);
 });
 
 // The list held is the only copy of whatever is in it, so a file cannot take
 // its place without somebody saying so.
 test("a file waits while another list is open", async () => {
-  const { findByText, queryByRole } = render(
+  const { findByText, queryByRole, getByRole } = render(
     <Import
       session={{} as never}
       owning={owning}
@@ -131,6 +133,10 @@ test("a file waits while another list is open", async () => {
   choose(`${HEAD}\n${line("normal")}`);
   expect(await findByText(/A list is already open/)).toBeTruthy();
   expect(queryByRole("button", { name: /Review/ })).toBeNull();
+  // A scan's list is reviewed where a scan is, which is not this screen.
+  expect(
+    getByRole("link", { name: /Keep or clear it/ }).getAttribute("href"),
+  ).toBe("/scan/review");
 });
 
 // Unread and empty look alike, and reading a file in over a list nobody has

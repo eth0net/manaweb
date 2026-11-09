@@ -17,6 +17,7 @@ import {
   words,
 } from "../catalog";
 import { CONDITIONS } from "../collection/cards";
+import { REVIEWING } from "../import/Import";
 import { describe } from "../Printing";
 import { Link } from "../router";
 import { frame, open } from "./camera";
@@ -615,12 +616,13 @@ function Counted({
   );
 }
 
-// How much is in the list, and the way into it.
+// How much is in the list, and the way into it, which is the flow it came
+// out of.
 function Waiting({ list, read }: { list: Entry[]; read: boolean }) {
   const held = copies(list);
 
   return (
-    <Link className="link" to={REVIEW}>
+    <Link className="link" to={read ? REVIEWING : REVIEW}>
       {held.toLocaleString()} card{held === 1 ? "" : "s"}{" "}
       {read ? "read in" : "scanned"}
     </Link>

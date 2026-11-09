@@ -19,6 +19,10 @@ import { carryOn, drop, HOURLY, halt, type State, useImport } from "./runner";
 
 export const IMPORT = "/collection/import";
 
+// The review a file goes through, under the import that opened it rather
+// than beside the camera: it is the same list and not the same screen.
+export const REVIEWING = `${IMPORT}/review`;
+
 // The lexicon's ceiling on a remembered file name, in bytes.
 const FILE = 255;
 
@@ -181,7 +185,7 @@ export function Import({
       },
       taken(taking.got.rows),
     );
-    navigate(REVIEW);
+    navigate(REVIEWING);
   }
 
   // The file goes with the job. Planned against a collection that now holds
@@ -274,7 +278,10 @@ export function Import({
             // whatever is in it — `docs/scanner.md`.
             <p className="warn">
               A list is already open.{" "}
-              <Link className="link" to={REVIEW}>
+              <Link
+                className="link"
+                to={scratch.source.at === "file" ? REVIEWING : REVIEW}
+              >
                 Keep or clear it
               </Link>{" "}
               before reading this file in.
