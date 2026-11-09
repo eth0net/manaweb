@@ -8,7 +8,6 @@ import {
   type Owned,
 } from "../collection/cards";
 import { Link, navigate } from "../router";
-import { REVIEW } from "../scan/Scan";
 import { copies } from "../scan/scratch";
 import type { Scratch } from "../scan/store";
 import { asPaid, detect, FORMATS, type Format } from "./formats";
@@ -80,9 +79,8 @@ export function ReviewStatus({
   // Rows rather than cards: a file with every row struck off still holds the
   // place, and saying nothing about it leaves the next one refused for a
   // reason nothing on the screen gives.
-  const mine = scratch.source.at === "file" ? scratch.list : [];
-  if (mine.length === 0 || path === REVIEWING) return null;
-  const held = copies(mine);
+  if (scratch.list.length === 0 || path === REVIEWING) return null;
+  const held = copies(scratch.list);
 
   return (
     <p className="destination">
@@ -300,19 +298,16 @@ export function Import({
           {!scratch.ready ? (
             // Empty and unread look alike, and reading a file in over a list
             // nobody has seen is the one thing this screen must not do.
-            <p className="quiet">Looking for a list already open…</p>
+            <p className="quiet">Looking for a file already open…</p>
           ) : scratch.list.length > 0 ? (
             // One list to a device, and the one held is the only copy of
             // whatever is in it — `docs/scanner.md`.
             <p className="warn">
-              A list is already open.{" "}
-              <Link
-                className="link"
-                to={scratch.source.at === "file" ? REVIEWING : REVIEW}
-              >
+              A file is already open.{" "}
+              <Link className="link" to={REVIEWING}>
                 Keep or clear it
               </Link>{" "}
-              before reading this file in.
+              before reading this one in.
             </p>
           ) : (
             <button type="button" onClick={() => review(found)}>

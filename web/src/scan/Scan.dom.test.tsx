@@ -3,7 +3,7 @@ import { act, fireEvent, render } from "@testing-library/react";
 import type { Catalog } from "../catalog";
 import { MANIFEST, scanning } from "../testing/scanning";
 import { Scan } from "./Scan";
-import { type Entry, SCANNED, type Source } from "./scratch";
+import { type Entry, SCANNED } from "./scratch";
 import type { Grading, Scratch } from "./store";
 
 scanning();
@@ -25,13 +25,6 @@ const scratch = {
 } satisfies Scratch;
 
 const HELD = { id: "a", quantity: 2 } as Entry;
-
-const FILE: Source = {
-  at: "file",
-  format: "ManaBox",
-  file: "collection.csv",
-  digest: "sha256-cafe",
-};
 
 function still(over: Partial<Scratch>) {
   return render(
@@ -64,22 +57,11 @@ test("the shutter waits for the list already held", async () => {
   ).toBeTruthy();
 });
 
-test("a file open for review takes the shutter out of use", async () => {
-  const { view, press } = await shutter({ source: FILE });
-  fireEvent.click(press);
-
-  expect(await view.findByText(/A file is open for review/)).toBeTruthy();
-});
-
-// A file read in is the import's list and is reviewed under the import, so
-// the viewfinder neither counts it nor offers a way into it.
-test("a file read in is not the scan's own list", () => {
+// A file read in is the import's own list now, so the camera carries on over
+// one and counts nothing but what it scanned.
+test("the camera counts what it scanned", () => {
   const held = still({ list: [HELD] });
   expect(held.getByRole("link", { name: /2 cards scanned/ })).toBeTruthy();
-  held.unmount();
-
-  const file = still({ source: FILE, list: [HELD] });
-  expect(file.queryByRole("link", { name: /cards/ })).toBeNull();
 });
 
 // Without this the two above pass just as well on a camera that never works.

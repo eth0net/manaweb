@@ -45,7 +45,10 @@ export function App() {
   const containers = useContainers(signedIn);
   const [chosen, choose] = useState<string | null>(null);
   const waiting = useWaiting();
-  const scratch = useScratch();
+  // Two piles nobody has committed, kept apart: a box in front of the camera
+  // is not a file somebody is partway through.
+  const scanning = useScratch("scan");
+  const importing = useScratch("file");
   const grading = useGrade();
   const collection = useCollection(signedIn, chosen, waiting);
   const path = usePath();
@@ -82,7 +85,7 @@ export function App() {
       <Review
         at={at}
         catalog={load.catalog}
-        scratch={scratch}
+        scratch={at === "file" ? importing : scanning}
         session={signedIn}
         owning={collection}
         container={chosen}
@@ -148,13 +151,13 @@ export function App() {
                 <Scan
                   catalog={load.status === "ready" ? load.catalog : null}
                   manifest={load.status === "ready" ? load.manifest : null}
-                  scratch={scratch}
+                  scratch={scanning}
                   grading={grading}
                 />
               ))}
 
             {here === "/collection" && (
-              <ReviewStatus path={path} scratch={scratch} />
+              <ReviewStatus path={path} scratch={importing} />
             )}
 
             {here === "/collection" &&
@@ -165,7 +168,7 @@ export function App() {
                   session={signedIn}
                   owning={collection}
                   catalog={load.status === "ready" ? load.catalog : null}
-                  scratch={scratch}
+                  scratch={importing}
                   container={chosen}
                   place={named(containers, chosen)}
                 />

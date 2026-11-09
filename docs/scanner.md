@@ -280,11 +280,15 @@ The list is kept in a database of its own rather than under whoever is signed
 in. The pile in front of the camera belongs to the device holding it, and an
 account only comes into it once there is a reason for one.
 
-**A list holds either a session or a file, so it carries which.** A box being
-worked through and an import under review are both piles nobody has committed
-yet, and a device holds one at a time; what differs is what the receipt says
-they were read out of, and whether a row has a line behind it —
-[`scryfall.md`](scryfall.md).
+**A list holds either a session or a file, so it carries which, and the two
+are kept apart.**
+A box being worked through and an import under review are both piles nobody has
+committed yet, but they are reached from different tabs and neither waits on
+the other: a file part way through does not take the camera away, and a box in
+front of it does not stop a CSV being read in. They are stored under a key
+each, differ in what the receipt says they were read out of, and in whether a
+row has a line behind it — [`scryfall.md`](scryfall.md). One of each is the
+ceiling: a second file replaces the first only once somebody says so.
 
 Nothing caps it. A thousand scans weigh about a megabyte and fold in well under
 a millisecond, so an afternoon spent emptying a box costs nothing worth

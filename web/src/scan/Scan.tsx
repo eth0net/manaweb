@@ -96,8 +96,6 @@ export function Scan({
   grading: Grading;
 }) {
   const { change, ready } = scratch;
-  // A file open for review is already the list — `docs/scanner.md`.
-  const reviewing = scratch.source.at === "file";
   const { grade, regrade } = grading;
   const [camera, setCamera] = useState<"off" | "opening" | "on">("off");
   const [answer, setAnswer] = useState<Answer>({ at: "none" });
@@ -189,10 +187,6 @@ export function Scan({
       setProblem("Still looking for a list already open.");
       return;
     }
-    if (reviewing) {
-      setProblem("A file is open for review in Import. Keep or clear it.");
-      return;
-    }
     setAnswer({ at: "reading" });
     setProblem(null);
     setExpanded(false);
@@ -246,7 +240,7 @@ export function Scan({
       setAnswer({ at: "none" });
       setProblem(said(failed));
     }
-  }, [catalog, change, grade, manifest, ready, reviewing]);
+  }, [catalog, change, grade, manifest, ready]);
 
   if (!catalog || !manifest) {
     return <p className="quiet">The catalog is still loading.</p>;
@@ -353,9 +347,7 @@ export function Scan({
               Open the camera
             </button>
           )}
-          {!reviewing && scratch.list.length > 0 && (
-            <Waiting list={scratch.list} />
-          )}
+          {scratch.list.length > 0 && <Waiting list={scratch.list} />}
           {problem && <p className="warn">{problem}</p>}
           {/* todo(settings): a panel behind a button in the viewfinder's
               corner, once this is not the only one — `docs/scanner.md`. */}
@@ -504,7 +496,7 @@ export function Scan({
                   </button>
                 </p>
               )}
-              {!reviewing && scratch.list.length > 0 && (
+              {scratch.list.length > 0 && (
                 <p className="scan-count">
                   {stack && (
                     <Counted
