@@ -1058,8 +1058,14 @@ dialog::backdrop {
 .panel h3 {
   font-size: 0.875rem;
   letter-spacing: 0.02em;
-  margin: 1.25rem 0 0.5rem;
+  margin: 1rem 0 0.375rem;
   text-transform: uppercase;
+}
+
+/* Four things to change and not much of each, so a heading sits on what it
+   labels rather than a paragraph's reach from it. */
+.stack-edit p {
+  margin: 0.25rem 0;
 }
 
 .panel h2 {

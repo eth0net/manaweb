@@ -419,23 +419,25 @@ export function Finding({
           setCard(null);
         }}
       />
-      <ul className="scratch-prints">
-        {!card &&
-          found.map((one) => (
-            <li key={one.index}>
-              <button type="button" onClick={() => setCard(one)}>
-                {one.name}
+      {(found.length > 0 || printings.length > 0) && (
+        <ul className="scratch-prints">
+          {!card &&
+            found.map((one) => (
+              <li key={one.index}>
+                <button type="button" onClick={() => setCard(one)}>
+                  {one.name}
+                </button>
+              </li>
+            ))}
+          {printings.map((print) => (
+            <li key={print.id}>
+              <button type="button" onClick={() => onPick(print)}>
+                {describe(print)}
               </button>
             </li>
           ))}
-        {printings.map((print) => (
-          <li key={print.id}>
-            <button type="button" onClick={() => onPick(print)}>
-              {describe(print)}
-            </button>
-          </li>
-        ))}
-      </ul>
+        </ul>
+      )}
     </div>
   );
 }
