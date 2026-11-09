@@ -107,13 +107,28 @@ nav {
   padding-top: 0.5rem;
 }
 
+/* The mark over the word, so a tab is read at a glance and still says what
+   it is. */
 nav a {
+  align-items: center;
   border-radius: 0.375rem;
   color: var(--quiet);
+  display: flex;
   flex: 1;
-  padding: 0.5rem 0.25rem;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.375rem 0.25rem;
   text-align: center;
   text-decoration: none;
+}
+
+nav svg {
+  height: 1.375rem;
+  width: 1.375rem;
+}
+
+nav span {
+  font-size: 0.75rem;
 }
 
 nav a.here {
@@ -461,16 +476,6 @@ nav a.here {
 .scratch-acts svg {
   height: 1.125rem;
   width: 1.125rem;
-}
-
-/* An outline drawing rather than a filled one, so it takes the line weight
-   the color is drawn at. */
-.stroked {
-  fill: none;
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
 }
 
 /* One bar: where you came from, what is in the list, and the way to empty
@@ -1222,6 +1227,16 @@ button:disabled {
   color: var(--warn);
 }
 
+/* An outline drawing rather than a filled one, so it takes the line weight
+   the color is drawn at. */
+.stroked {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .quiet {
   color: var(--quiet);
 }
@@ -1527,10 +1542,18 @@ dialog.wide {
     grid-row: 2 / -1;
   }
 
+  /* A rail reads along the line rather than down it, so the mark comes back
+     beside the word. */
   nav a {
     flex: none;
+    flex-direction: row;
+    gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     text-align: left;
+  }
+
+  nav span {
+    font-size: inherit;
   }
 
   .column {
