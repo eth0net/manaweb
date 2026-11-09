@@ -1089,8 +1089,10 @@ dialog::backdrop {
   margin: 0.25rem 0;
 }
 
+/* The label against one edge and what it changes against the other, so a
+   panel of short answers uses the width it has. */
 .stack-grid {
-  align-items: baseline;
+  align-items: center;
   column-gap: 0.75rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1105,7 +1107,9 @@ dialog::backdrop {
 }
 
 .stack-grid dd {
+  justify-self: end;
   margin: 0;
+  max-width: 100%;
 }
 
 /* The gap between rows is the spacing, so the first and last thing in a cell
@@ -1130,6 +1134,7 @@ dialog::backdrop {
   }
 
   .stack-grid dd {
+    justify-self: start;
     margin: 0 0 0.375rem;
   }
 }
