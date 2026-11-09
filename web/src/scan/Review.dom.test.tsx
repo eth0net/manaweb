@@ -70,13 +70,19 @@ function one(over: Partial<Entry> = {}): Entry {
 
 // The list is read back rather than re-rendered: what a press is worth is the
 // move it made, and nothing here holds state between renders.
-function show(entry: Entry, source: Source, also: Entry[] = []) {
+function show(
+  entry: Entry,
+  source: Source,
+  also: Entry[] = [],
+  at: Source["at"] = source.at,
+) {
   let list = [entry, ...also];
 
   // Built fresh each time, so `again` draws what the moves have made of the
   // list rather than what it held when the screen first went up.
   const drawn = () => (
     <Review
+      at={at}
       catalog={catalog}
       scratch={
         {
@@ -125,6 +131,15 @@ test("what the reading is unsure of stays out of the row", () => {
 
   fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   expect(view.getByText(/Nearest, but not by much/)).toBeTruthy();
+});
+
+// The two reviews are two screens over one list, so each shows the list only
+// where it belongs.
+test("a review holds nothing the other flow read in", () => {
+  const { view } = show(one({ line: 2 }), FILE, [], "scan");
+
+  expect(view.queryByText("Remove Soul")).toBeNull();
+  expect(view.getByText("Nothing scanned yet.")).toBeTruthy();
 });
 
 // A file row was never read off a photograph, so there is nothing to doubt.

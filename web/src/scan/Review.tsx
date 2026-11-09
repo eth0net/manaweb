@@ -85,9 +85,14 @@ async function receipt(
 }
 
 type Found = { card: Card; print: Print };
+
+// Held rather than written fresh, so the screen a list does not belong to
+// hands everything reading it the same empty one each render.
+const NONE: Entry[] = [];
 type Change = Scratch["change"];
 
 export function Review({
+  at,
   catalog,
   scratch,
   session,
@@ -95,6 +100,7 @@ export function Review({
   container,
   tools,
 }: {
+  at: Source["at"];
   catalog: Catalog;
   scratch: Scratch;
   session: OAuthSession | null;
@@ -102,7 +108,10 @@ export function Review({
   container: string | null;
   tools: ReactNode;
 }) {
-  const { list, change } = scratch;
+  const { change } = scratch;
+  // One list to a device, and it belongs to the flow that made it. The other
+  // screen holds nothing rather than somebody else's cards.
+  const list = scratch.source.at === at ? scratch.list : NONE;
 
   // What a keep would write, which is every row but the ones struck off.
   const live = useMemo(() => kept(list), [list]);
@@ -128,13 +137,13 @@ export function Review({
   useEffect(() => {
     // A scan only takes it back once there are cards, or clearing a file
     // would relabel the empty screen that follows.
-    if (scratch.source.at === "file" || list.length > 0) {
+    if (scratch.source.at === at && (at === "file" || list.length > 0)) {
       setCame(scratch.source);
     }
-  }, [scratch.source, list.length]);
+  }, [at, scratch.source, list.length]);
 
-  const file = came.at === "file" ? came : null;
-  const back = file ? IMPORT : SCAN;
+  const file = at === "file" && came.at === "file" ? came : null;
+  const back = at === "file" ? IMPORT : SCAN;
 
   const running = useImport();
   const [keeping, setKeeping] = useState(false);
@@ -219,7 +228,7 @@ export function Review({
       <>
         <p className="quiet">
           <Link className="link" to={back}>
-            {file ? "Back to importing" : "Back to the camera"}
+            {at === "file" ? "Back to importing" : "Back to the camera"}
           </Link>
         </p>
         {scratch.problem && <p className="warn">{scratch.problem}</p>}
@@ -227,7 +236,9 @@ export function Review({
           <p className="warn">{problem}</p>
         ) : (
           <p className="quiet">
-            {file ? "Nothing left of that file." : "Nothing scanned yet."}
+            {at === "file"
+              ? "Nothing left of that file."
+              : "Nothing scanned yet."}
           </p>
         )}
       </>

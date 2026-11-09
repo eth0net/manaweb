@@ -9,6 +9,7 @@ import {
 } from "../collection/cards";
 import { Link, navigate } from "../router";
 import { REVIEW } from "../scan/Scan";
+import { copies } from "../scan/scratch";
 import type { Scratch } from "../scan/store";
 import { asPaid, detect, FORMATS, type Format } from "./formats";
 import { plan, type Weight, weigh } from "./plan";
@@ -65,6 +66,33 @@ function say(state: Exclude<State, { at: "none" }>): string {
   if (state.at === "uploading") return `Uploading ${total} records`;
   if (state.at === "running") return `Importing ${done} of ${total} records`;
   return `Import stopped at ${done} of ${total} records`;
+}
+
+// The way back into a file still being gone through, which is otherwise two
+// presses away and named nowhere.
+export function ReviewStatus({
+  path,
+  scratch,
+}: {
+  path: string;
+  scratch: Scratch;
+}) {
+  // Rows rather than cards: a file with every row struck off still holds the
+  // place, and saying nothing about it leaves the next one refused for a
+  // reason nothing on the screen gives.
+  const mine = scratch.source.at === "file" ? scratch.list : [];
+  if (mine.length === 0 || path === REVIEWING) return null;
+  const held = copies(mine);
+
+  return (
+    <p className="destination">
+      <Link className="link" to={REVIEWING}>
+        {held === 0
+          ? "A file is open, with every row struck off"
+          : `${held.toLocaleString()} card${held === 1 ? "" : "s"} waiting to be kept`}
+      </Link>
+    </p>
+  );
 }
 
 // A collection arriving from somewhere else, and the one point at which the

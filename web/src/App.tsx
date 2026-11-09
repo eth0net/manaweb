@@ -8,7 +8,13 @@ import { Owning } from "./collection/context";
 import { Destination } from "./collection/Destination";
 import { CATALOG } from "./config";
 import { EXPORT, Export } from "./export/Export";
-import { IMPORT, Import, ImportStatus, REVIEWING } from "./import/Import";
+import {
+  IMPORT,
+  Import,
+  ImportStatus,
+  REVIEWING,
+  ReviewStatus,
+} from "./import/Import";
 import { attach, useWaiting } from "./import/runner";
 import { Menu } from "./Menu";
 import { Nav } from "./Nav";
@@ -19,6 +25,7 @@ import { SETS, SetView } from "./Sets";
 import { Soon } from "./Soon";
 import { Review } from "./scan/Review";
 import { REVIEW, SCAN, Scan } from "./scan/Scan";
+import type { Source } from "./scan/scratch";
 import { useGrade, useScratch } from "./scan/store";
 import { useCatalog } from "./useCatalog";
 
@@ -56,15 +63,6 @@ export function App() {
     if (account.state.status !== "restoring" && !known(path)) replace(HOME);
   }, [account.state.status, path]);
 
-  // One list, reviewed where it came from: a link into the other review is a
-  // link to an empty screen, and the list is what somebody meant.
-  useEffect(() => {
-    if (!scratch.ready) return;
-    const mine = scratch.source.at === "file" ? REVIEWING : REVIEW;
-    if ((path === REVIEW || path === REVIEWING) && path !== mine)
-      replace(mine);
-  }, [path, scratch.ready, scratch.source]);
-
   const destination = signedIn && (
     <>
       <Destination
@@ -77,11 +75,12 @@ export function App() {
     </>
   );
 
-  // The same screen either tab reaches it from, built once rather than twice
-  // over: which list it holds is the list's own business.
-  const reviewing =
+  // One screen under either tab, holding the list that flow made and no
+  // other: what a scan read in is not what an import is waiting on.
+  const reviewing = (at: Source["at"]) =>
     load.status === "ready" ? (
       <Review
+        at={at}
         catalog={load.catalog}
         scratch={scratch}
         session={signedIn}
@@ -144,7 +143,7 @@ export function App() {
 
             {here === SCAN &&
               (path === REVIEW ? (
-                reviewing
+                reviewing("scan")
               ) : (
                 <Scan
                   catalog={load.status === "ready" ? load.catalog : null}
@@ -154,9 +153,13 @@ export function App() {
                 />
               ))}
 
+            {here === "/collection" && (
+              <ReviewStatus path={path} scratch={scratch} />
+            )}
+
             {here === "/collection" &&
               (path === REVIEWING ? (
-                reviewing
+                reviewing("file")
               ) : path === IMPORT ? (
                 <Import
                   session={signedIn}

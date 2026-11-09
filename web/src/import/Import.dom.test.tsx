@@ -5,7 +5,7 @@ import type { Holdings } from "../collection/cards";
 import { type Entry, SCANNED, type Source } from "../scan/scratch";
 import type { Scratch } from "../scan/store";
 import "../testing/dom";
-import { Import, REVIEWING } from "./Import";
+import { Import, REVIEWING, ReviewStatus } from "./Import";
 
 const HEAD =
   "Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID," +
@@ -175,4 +175,38 @@ test("the preview names the container it planned against", async () => {
   expect((await findByText(/Read as ManaBox/)).textContent).toContain(
     "filed under Trade binder",
   );
+});
+
+// A file whose rows were every one struck off still holds the one place an
+// import has, so the screen that refuses the next one has to name it.
+test("a file struck off end to end still says it is open", () => {
+  const struck: Entry = {
+    id: "a",
+    at: "2026-11-09T00:00:00.000Z",
+    scryfallId: ONE,
+    finish: "nonfoil",
+    condition: "nearMint",
+    quantity: 2,
+    dropped: true,
+  };
+  const view = render(
+    <ReviewStatus
+      path="/collection"
+      scratch={{
+        ...scratch,
+        source: {
+          at: "file",
+          format: "ManaBox",
+          file: "collection.csv",
+          digest: "sha256-cafe",
+        },
+        list: [struck],
+      }}
+    />,
+  );
+
+  expect(view.getByRole("link").textContent).toBe(
+    "A file is open, with every row struck off",
+  );
+  view.unmount();
 });
