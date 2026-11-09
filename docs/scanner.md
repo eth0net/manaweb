@@ -896,6 +896,11 @@ has none of this.
   the wrong locked set reads as a scanner that has quietly stopped working. A
   reason has to reach the screen without arriving as a verdict about a card
   that was never matched in the first place.
+- **Where a card named by hand comes in.** A card that will not scan, or one
+  nobody has in front of them, has no way onto the list today, and the same
+  press would serve a collection as well as this list. It also settles what a
+  removal means: naming a card by hand leaves nothing to be wrong about, so
+  taking a row off cannot stand as a verdict on a reading.
 - **What belongs behind a build flag rather than a setting.** The readout is
   development-only because it began as an instrument, which also means a tester
   holding their own phone cannot reach it. Some of it may be worth a preference
