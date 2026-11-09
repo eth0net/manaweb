@@ -181,11 +181,27 @@ test("confirming the edit is what moves the stack", () => {
   expect(kept().condition).toBe("played");
 });
 
-// The count is the press somebody makes over and over, so it stays on the row
-// where the panel holds everything else.
-test("the count is still a press on the row itself", () => {
+// The count is edited where the rest of the stack is, so it waits on the
+// same press.
+test("the count is settled by the panel, not on the way through it", () => {
   const { view, kept } = show(one(), FILE);
 
+  fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
   fireEvent.click(view.getByRole("button", { name: "One more" }));
+  expect(kept().quantity).toBe(1);
+
+  fireEvent.click(view.getByRole("button", { name: "Confirm" }));
   expect(kept().quantity).toBe(2);
+});
+
+// Taking a row off the list is its own press, where it was once a choice
+// inside the panel that edits one.
+test("a row goes without opening anything", () => {
+  const { view, kept } = show(one(), FILE);
+
+  fireEvent.click(
+    view.getByRole("button", { name: /Take this stack off the list/ }),
+  );
+  expect(view.queryByRole("dialog")).toBeNull();
+  expect(kept()).toBeUndefined();
 });

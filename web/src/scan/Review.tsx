@@ -20,7 +20,12 @@ import {
 } from "../catalog";
 import { FLOOR } from "../catalog/artwork";
 import { parse } from "../catalog/query";
-import { CONDITIONS, type Holdings, type Owned } from "../collection/cards";
+import {
+  CONDITIONS,
+  COPIES,
+  type Holdings,
+  type Owned,
+} from "../collection/cards";
 import { IMPORT } from "../import/Import";
 import { plan, weigh } from "../import/plan";
 import { digest, sha } from "../import/receipt";
@@ -34,14 +39,13 @@ import {
   cards,
   choose,
   copies,
+  counted,
   drop,
   type Entry,
   type Finishes,
   joinable,
   merged,
-  minus,
   offered,
-  plus,
   referenced,
   refinish,
   regraded,
@@ -184,6 +188,15 @@ export function Review({
     } finally {
       setKeeping(false);
     }
+  }
+
+  // The frame goes with the stack, so a scan says what it missed before the
+  // row carrying it goes.
+  async function discard(one: Entry): Promise<void> {
+    if (import.meta.env.DEV && scratch.source.at === "scan") {
+      await told(one, null);
+    }
+    change((list) => drop(list, one.id));
   }
 
   // The list is the only copy of these cards, so the press that throws them
@@ -334,10 +347,10 @@ export function Review({
             key={one.id}
             one={one}
             prints={prints}
-            change={change}
             frozen={keeping}
             scanned={scratch.source.at === "scan"}
             onEdit={() => setEditing(one.id)}
+            onDrop={() => void discard(one)}
           />
         ))}
       </ul>
@@ -430,17 +443,17 @@ export function Finding({
 function Stack({
   one,
   prints,
-  change,
   frozen,
   scanned,
   onEdit,
+  onDrop,
 }: {
   one: Entry;
   prints: Map<string, Found>;
-  change: Change;
   frozen: boolean;
   scanned: boolean;
   onEdit: () => void;
+  onDrop: () => void;
 }) {
   const held = prints.get(one.scryfallId) ?? null;
   const named = held ? cardName(held.card.name, held.print, APP) : null;
@@ -472,6 +485,7 @@ function Stack({
             <span
               className={named ? "scratch-name" : "scratch-name scratch-wraps"}
             >
+              <span className="quiet">{one.quantity}&times;</span>{" "}
               {named ? (
                 <span lang={named.lang}>{named.text}</span>
               ) : (
@@ -489,29 +503,26 @@ function Stack({
               {doubt && <span className="badge warn">unsure</span>}
             </span>
           </span>
-          <span className="scratch-edit quiet" aria-hidden="true">
-            {"\u270E"}
-          </span>
         </button>
-        <div className="scratch-count">
+        <span className="scratch-acts">
           <button
             type="button"
-            onClick={() => change((list) => minus(list, one.id))}
-            aria-label="One fewer"
+            aria-label="Change this stack"
+            aria-haspopup="dialog"
+            onClick={onEdit}
             disabled={frozen}
           >
-            &minus;
+            {"\u270E"}
           </button>
-          <span className="tally">{one.quantity}</span>
           <button
             type="button"
-            onClick={() => change((list) => plus(list, one.id))}
-            aria-label="One more"
+            aria-label="Take this stack off the list"
+            onClick={onDrop}
             disabled={frozen}
           >
-            +
+            {"\u2715"}
           </button>
-        </div>
+        </span>
       </div>
     </li>
   );
@@ -528,9 +539,8 @@ function meta(held: Found | null, one: Entry): string {
     .join(" · ");
 }
 
-// Everything about a stack but how many, which stays a press on the row
-// because it is the one somebody makes over and over. Nothing lands until
-// Confirm, the printing included.
+// Everything about a stack, the printing and the count included. Nothing
+// lands until Confirm.
 function Editing({
   catalog,
   one,
@@ -555,6 +565,7 @@ function Editing({
   // Null until a printing is pressed, so confirming a panel nobody touched
   // does not file the reader's guess as somebody's answer.
   const [picked, setPicked] = useState<Print | null>(null);
+  const [quantity, setQuantity] = useState(one.quantity);
   const [finish, setFinish] = useState(one.finish);
   const [condition, setCondition] = useState(one.condition);
   const [sending, setSending] = useState(false);
@@ -576,7 +587,12 @@ function Editing({
   function confirm(): void {
     change((list) => {
       const now = picked ? choose(list, one.id, picked.id, made) : list;
-      return regraded(refinish(now, one.id, finish, made), one.id, condition);
+      const grade = regraded(
+        refinish(now, one.id, finish, made),
+        one.id,
+        condition,
+      );
+      return counted(grade, one.id, quantity);
     });
     onShut();
   }
@@ -607,13 +623,6 @@ function Editing({
     }
   }
 
-  // The row goes with it, so there is nothing left for the panel to show.
-  async function nothing(): Promise<void> {
-    if (import.meta.env.DEV && scanned) await send(null);
-    change((list) => drop(list, one.id));
-    onShut();
-  }
-
   return (
     <Panel
       title="Change this stack"
@@ -634,111 +643,125 @@ function Editing({
         </>
       }
     >
-      {scanned && !sure(one) && !one.picked && (
-        <p className="warn">
-          {(one.margin ?? 0) >= FLOOR
-            ? "This art is on more than one printing."
-            : "Nearest, but not by much."}
-        </p>
-      )}
-      {scanned && one.detected === false && (
+      <div className="stack-edit">
+        {scanned && !sure(one) && !one.picked && (
+          <p className="warn">
+            {(one.margin ?? 0) >= FLOOR
+              ? "This art is on more than one printing."
+              : "Nearest, but not by much."}
+          </p>
+        )}
+        {scanned && one.detected === false && (
+          <p className="quiet">
+            No outline was found, so the frame was read whole.
+          </p>
+        )}
+
+        <h3>Printing</h3>
         <p className="quiet">
-          No outline was found, so the frame was read whole.
+          {shown ? describe(shown) : "No printing in this catalog carries it"}
         </p>
-      )}
+        {others.length > 0 && (
+          <ul className="scratch-prints">
+            {others.map((id) => {
+              const other = prints.get(id);
+              if (!other) return null;
+              return (
+                <li key={id}>
+                  <button
+                    type="button"
+                    className={id === shown?.id ? "chosen" : undefined}
+                    aria-pressed={id === shown?.id}
+                    onClick={() => take(other.print)}
+                  >
+                    <Title held={other} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
-      <h3>Printing</h3>
-      <p className="quiet">
-        {shown ? describe(shown) : "No printing in this catalog carries it"}
-      </p>
-      {others.length > 0 && (
-        <ul className="scratch-prints">
-          {others.map((id) => {
-            const other = prints.get(id);
-            if (!other) return null;
-            return (
-              <li key={id}>
-                <button
-                  type="button"
-                  className={id === shown?.id ? "chosen" : undefined}
-                  aria-pressed={id === shown?.id}
-                  onClick={() => take(other.print)}
-                >
-                  <Title held={other} />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+        <Finding catalog={catalog} onPick={take} />
 
-      <Finding catalog={catalog} onPick={take} />
-
-      <h3>Finish</h3>
-      {makes.length > 1 ? (
-        <p className="scratch-finishes">
-          {makes.map((was) => (
-            <button
-              key={was}
-              type="button"
-              className={was === finish ? "chosen" : undefined}
-              aria-pressed={was === finish}
-              onClick={() => setFinish(was)}
-            >
-              {was}
-            </button>
-          ))}
-        </p>
-      ) : (
-        <p className="quiet">It was only made in {finish}.</p>
-      )}
-
-      <h3>Condition</h3>
-      <p>
-        <select
-          aria-label="Condition"
-          value={condition}
-          onChange={(event) => setCondition(event.target.value)}
-        >
-          <option value="">ungraded</option>
-          {CONDITIONS.map((grade) => (
-            <option key={grade} value={grade}>
-              {words(grade)}
-            </option>
-          ))}
-        </select>
-      </p>
-
-      <p className="scratch-report">
-        <button
-          type="button"
-          onClick={() => void nothing()}
-          disabled={frozen || sending}
-        >
-          Nothing like it
-        </button>
-        {import.meta.env.DEV && scanned && (
+        <h3>Copies</h3>
+        <div className="scratch-count">
           <button
             type="button"
-            onClick={() => void send(one.picked ? one.scryfallId : null)}
-            disabled={frozen || sending}
+            aria-label="One fewer"
+            onClick={() => setQuantity((was) => Math.max(1, was - 1))}
           >
-            {sending
-              ? "Reporting\u2026"
-              : one.reported
-                ? "Report again"
-                : "Report"}
+            &minus;
           </button>
+          <span className="tally">{quantity}</span>
+          <button
+            type="button"
+            aria-label="One more"
+            onClick={() => setQuantity((was) => Math.min(COPIES, was + 1))}
+          >
+            +
+          </button>
+        </div>
+
+        <h3>Finish</h3>
+        {makes.length > 1 ? (
+          <p className="scratch-finishes">
+            {makes.map((was) => (
+              <button
+                key={was}
+                type="button"
+                className={was === finish ? "chosen" : undefined}
+                aria-pressed={was === finish}
+                onClick={() => setFinish(was)}
+              >
+                {was}
+              </button>
+            ))}
+          </p>
+        ) : (
+          <p className="quiet">It was only made in {finish}.</p>
         )}
-      </p>
-      {import.meta.env.DEV && scanned && (
-        <small className="quiet">
-          {one.picked
-            ? `Reports as ${held ? describe(held.print) : one.scryfallId}.`
-            : "Reports the frame and no answer \u2014 name the card first to say what it was."}
-        </small>
-      )}
-      {trouble && <small className="warn">{trouble}</small>}
+
+        <h3>Condition</h3>
+        <p>
+          <select
+            aria-label="Condition"
+            value={condition}
+            onChange={(event) => setCondition(event.target.value)}
+          >
+            <option value="">ungraded</option>
+            {CONDITIONS.map((grade) => (
+              <option key={grade} value={grade}>
+                {words(grade)}
+              </option>
+            ))}
+          </select>
+        </p>
+
+        {import.meta.env.DEV && scanned && (
+          <p className="scratch-report">
+            <button
+              type="button"
+              onClick={() => void send(one.picked ? one.scryfallId : null)}
+              disabled={frozen || sending}
+            >
+              {sending
+                ? "Reporting\u2026"
+                : one.reported
+                  ? "Report again"
+                  : "Report"}
+            </button>
+          </p>
+        )}
+        {import.meta.env.DEV && scanned && (
+          <small className="quiet">
+            {one.picked
+              ? `Reports as ${held ? describe(held.print) : one.scryfallId}.`
+              : "Reports the frame and no answer \u2014 name the card first to say what it was."}
+          </small>
+        )}
+        {trouble && <small className="warn">{trouble}</small>}
+      </div>
     </Panel>
   );
 }

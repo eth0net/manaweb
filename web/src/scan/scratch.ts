@@ -142,6 +142,13 @@ export function minus(list: Entry[], id: string): Entry[] {
   });
 }
 
+// What a panel settles on rather than a press at a time. One is the floor:
+// taking the stack away is the list's own move.
+export function counted(list: Entry[], id: string, quantity: number): Entry[] {
+  const held = Math.min(Math.max(1, Math.trunc(quantity)), COPIES);
+  return list.map((one) => (one.id === id ? { ...one, quantity: held } : one));
+}
+
 export function reported(list: Entry[], id: string, at: string): Entry[] {
   return list.map((one) => (one.id === id ? { ...one, reported: at } : one));
 }

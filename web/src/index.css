@@ -439,12 +439,22 @@ nav a.here {
   color: inherit;
 }
 
-/* Says the row is a press without being one itself: a second target is the
-   width the badges were going without. */
-.scratch-edit {
-  align-self: center;
+/* The two presses a row carries, one above the other so they come to the
+   height of what is written beside them. */
+.scratch-acts {
+  align-self: stretch;
+  display: flex;
   flex: none;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.scratch-acts button {
+  flex: 1;
   font-size: 0.875rem;
+  line-height: 1;
+  min-width: 2.5rem;
+  padding: 0.25rem 0.5rem;
 }
 
 /* One bar: where you came from, what is in the list, and the way to empty

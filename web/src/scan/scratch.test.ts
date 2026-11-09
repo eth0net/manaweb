@@ -9,6 +9,7 @@ import {
   among,
   cards,
   choose,
+  counted,
   cycled,
   drop,
   type Entry,
@@ -153,6 +154,14 @@ test("a minus to zero takes the stack away", () => {
   const list = [one({ id: "a", quantity: 2 }), one({ id: "b" })];
   expect(minus(list, "a").map((held) => held.quantity)).toEqual([1, 1]);
   expect(minus(minus(list, "a"), "a").map((held) => held.id)).toEqual(["b"]);
+});
+
+test("a count settled on holds to the same bounds as a press", () => {
+  const list = [one({ id: "a", quantity: 3 }), one({ id: "b" })];
+
+  expect(counted(list, "a", 7).map((held) => held.quantity)).toEqual([7, 1]);
+  expect(counted(list, "a", 0)[0]?.quantity).toBe(1);
+  expect(counted(list, "a", 20000)[0]?.quantity).toBe(10000);
 });
 
 test("a plus counts up and leaves the rest alone", () => {
