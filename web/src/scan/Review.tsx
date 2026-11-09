@@ -31,7 +31,7 @@ import { plan, weigh } from "../import/plan";
 import { digest, sha } from "../import/receipt";
 import { begin, useImport } from "../import/runner";
 import { Panel } from "../Modal";
-import { brief, describe, hasArt } from "../Printing";
+import { brief, describe, edition, hasArt } from "../Printing";
 import { Link } from "../router";
 import type { Said } from "./frames";
 import { SCAN } from "./Scan";
@@ -393,7 +393,7 @@ export function Finding({
   onPick,
 }: {
   catalog: Catalog;
-  onPick: (print: Print) => void;
+  onPick: (print: Print, card: Card) => void;
 }) {
   const [text, setText] = useState("");
   const [card, setCard] = useState<Card | null>(null);
@@ -429,13 +429,14 @@ export function Finding({
                 </button>
               </li>
             ))}
-          {printings.map((print) => (
-            <li key={print.id}>
-              <button type="button" onClick={() => onPick(print)}>
-                {describe(print)}
-              </button>
-            </li>
-          ))}
+          {card &&
+            printings.map((print) => (
+              <li key={print.id}>
+                <button type="button" onClick={() => onPick(print, card)}>
+                  {describe(print)}
+                </button>
+              </li>
+            ))}
         </ul>
       )}
     </div>
@@ -584,7 +585,7 @@ function Editing({
   const others = (one.matched ?? []).flatMap(({ prints: ids }) => ids);
   // Null until a printing is pressed, so confirming a panel nobody touched
   // does not file the reader's guess as somebody's answer.
-  const [picked, setPicked] = useState<Print | null>(null);
+  const [picked, setPicked] = useState<Found | null>(null);
   const [quantity, setQuantity] = useState(one.quantity);
   const [finish, setFinish] = useState(one.finish);
   const [condition, setCondition] = useState(one.condition);
@@ -594,19 +595,26 @@ function Editing({
   // A printing named by search is in no list the catalog resolved for this
   // page, so what it was made in comes off the printing itself.
   const made: Finishes = (id) =>
-    id === picked?.id ? picked.finishes : finishes(id);
+    id === picked?.print.id ? picked.print.finishes : finishes(id);
 
-  const shown = picked ?? held?.print ?? null;
-  const makes = made(shown?.id ?? one.scryfallId);
+  const shown = picked ?? held;
+  const makes = made(shown?.print.id ?? one.scryfallId);
 
-  function take(print: Print): void {
-    setPicked(print);
+  // Every printing of the card in hand, which is what a picker offers once
+  // the card itself is settled.
+  const printings = useMemo(
+    () => (shown ? catalog.prints(shown.card.index) : []),
+    [catalog, shown],
+  );
+
+  function take(print: Print, card: Card): void {
+    setPicked({ card, print });
     if (!print.finishes.includes(finish)) setFinish(settled(print.finishes));
   }
 
   function confirm(): void {
     change((list) => {
-      const now = picked ? choose(list, one.id, picked.id, made) : list;
+      const now = picked ? choose(list, one.id, picked.print.id, made) : list;
       const grade = regraded(
         refinish(now, one.id, finish, made),
         one.id,
@@ -680,32 +688,28 @@ function Editing({
         <dl className="stack-grid">
           <dt>Printing</dt>
           <dd>
-            <p className="quiet">
-              {shown
-                ? describe(shown)
-                : "No printing in this catalog carries it"}
-            </p>
-            {others.length > 0 && (
-              <ul className="scratch-prints">
-                {others.map((id) => {
-                  const other = prints.get(id);
-                  if (!other) return null;
-                  return (
-                    <li key={id}>
-                      <button
-                        type="button"
-                        className={id === shown?.id ? "chosen" : undefined}
-                        aria-pressed={id === shown?.id}
-                        onClick={() => take(other.print)}
-                      >
-                        <Title held={other} />
-                      </button>
-                    </li>
+            {printings.length > 1 && shown ? (
+              <select
+                aria-label="Printing"
+                value={shown.print.id}
+                onChange={(event) => {
+                  const print = printings.find(
+                    (one) => one.id === event.target.value,
                   );
-                })}
-              </ul>
+                  if (print) take(print, shown.card);
+                }}
+              >
+                {printings.map((print) => (
+                  <option key={print.id} value={print.id}>
+                    {edition(print)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="quiet">
+                {shown ? edition(shown.print) : "Not in this catalog"}
+              </span>
             )}
-            <Finding catalog={catalog} onPick={take} />
           </dd>
 
           <dt>Copies</dt>
@@ -766,6 +770,37 @@ function Editing({
             </select>
           </dd>
         </dl>
+
+        {(scanned || !shown) && (
+          <>
+            <h3>Read as</h3>
+            {others.length > 0 && (
+              <ul className="scratch-prints">
+                {others.map((id) => {
+                  const other = prints.get(id);
+                  if (!other) return null;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        className={
+                          other.print.id === shown?.print.id
+                            ? "chosen"
+                            : undefined
+                        }
+                        aria-pressed={other.print.id === shown?.print.id}
+                        onClick={() => take(other.print, other.card)}
+                      >
+                        <Title held={other} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <Finding catalog={catalog} onPick={take} />
+          </>
+        )}
 
         {import.meta.env.DEV && scanned && (
           <p className="scratch-report">

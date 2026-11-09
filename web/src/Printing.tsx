@@ -59,6 +59,15 @@ export function describe(print: Print) {
     .join(" · ");
 }
 
+// The one line a picker shows, the set being what tells two printings of a
+// card apart.
+export function edition(print: Print) {
+  return [
+    `${print.setName} #${print.collectorNumber}`,
+    ...print.flags.map(words),
+  ].join(" \u00b7 ");
+}
+
 // The same printing for a list row: rarity takes the letter a collector line
 // carries, and Scryfall's six rarities each start with a different one.
 export function brief(print: Print) {

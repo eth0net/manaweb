@@ -39,7 +39,7 @@ const catalog = {
       [OTHER.id, { card: CARD, print: OTHER }],
     ]),
   find: () => [],
-  prints: () => [],
+  prints: () => [PRINT, OTHER],
 } as unknown as Catalog;
 
 // Unread, which is the one state that needs no plan arithmetic behind it.
@@ -123,6 +123,21 @@ test("a row off a file has nothing to be unsure of", () => {
 
   expect(view.queryByText("unsure")).toBeNull();
   expect(view.getByRole("button", { name: /Remove Soul/ })).toBeTruthy();
+});
+
+// A file named the card, so the panel offers what that card was printed in
+// rather than a search for another one.
+test("the printing is picked from what the card was printed in", () => {
+  const { view, kept } = show(one(), FILE);
+
+  fireEvent.click(view.getByRole("button", { name: /Remove Soul/ }));
+  fireEvent.change(view.getByLabelText("Printing"), {
+    target: { value: OTHER.id },
+  });
+  expect(kept().scryfallId).toBe(PRINT.id);
+
+  fireEvent.click(view.getByRole("button", { name: "Confirm" }));
+  expect(kept().scryfallId).toBe(OTHER.id);
 });
 
 // The printing is edited where the rest of the stack is, so it waits on the
