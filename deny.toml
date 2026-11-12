@@ -4,7 +4,17 @@
 
 [advisories]
 # Waiving one needs a reason and a link here, not silence.
-ignore = []
+ignore = [
+  # todo(sqlx): lift this once a release takes libsqlite3-sys 0.39. 0.9.0 is
+  # the current one and asks for ^0.37, so there is nothing to upgrade to and
+  # a patch is refused for not satisfying that.
+  # https://rustsec.org/advisories/RUSTSEC-2026-0459 — opening a database
+  # beside a `-wal` whose page size disagrees can hand back uninitialized
+  # memory as rows. Ours is written and read by the one process, on a box
+  # nobody else has, and the file re-derives from Scryfall if it ever looks
+  # wrong.
+  "RUSTSEC-2026-0459",
+]
 
 [licenses]
 # Exactly what the tree uses, nothing on spec — an unmatched entry is an error
