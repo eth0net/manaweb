@@ -20,7 +20,7 @@ import { amend, useSettings } from "./router";
 export const SETS = "/sets";
 
 // How many rows are added at a time. A set is unbounded where a search is
-// capped — The List holds 5,740 printings — and a row costs a tenth of a
+// capped — The List holds ~5,700 printings — and a row costs a tenth of a
 // millisecond to build, so the whole of that one is half a second before
 // anything is on screen.
 const PAGE = 600;

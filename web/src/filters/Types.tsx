@@ -169,7 +169,7 @@ function Subtypes({
 }
 
 // Its own component because a dialog's contents are built by whoever writes
-// them, shut or not, and there are 684 of these.
+// them, shut or not, and there are ~700 of these.
 function Listing({
   subtypes,
   chosen,

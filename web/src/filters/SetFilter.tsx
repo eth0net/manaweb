@@ -22,7 +22,7 @@ export function SetFilter({
   const sets = useMemo(() => narrow(all, filter), [all, filter]);
   const chosen = useMemo(() => read(text, KEY.set).values, [text]);
 
-  // Picked first, or unpicking one means finding it again among 989.
+  // Picked first, or unpicking one means finding it again among ~1,000.
   const ordered = useMemo(() => {
     if (chosen.length === 0) return sets;
     const picked = (one: string) => chosen.includes(one);
