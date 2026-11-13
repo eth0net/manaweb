@@ -25,10 +25,12 @@ is on plain `//` notes; `///` and `//!` are the cargo docs and earn the room,
 and TypeScript has neither marker, so a comment there is always a note. Write
 it that way first rather than trimming after — `just prose` fails on any eight
 words a comment shares with a doc, or one doc with another, because prose said
-twice drifts apart and figures said twice go stale. Lexicon descriptions say
-what a field is, never why — measured against Bluesky, WhiteWind and Leaflet,
-real ones run to a median of 48 characters and Leaflet describes no fields at
-all. Reasoning belongs in `docs/`.
+twice drifts apart and figures said twice go stale. A figure measured off the
+catalog goes stale with no second copy to blame, so write one as a size rather
+than a count: `~37,000` names, not 37,000. Lexicon descriptions say what a
+field is, never why — measured against Bluesky, WhiteWind and Leaflet, real
+ones run to a median of 48 characters and Leaflet describes no fields at all.
+Reasoning belongs in `docs/`.
 
 Deferred work is marked at the line it affects. `todo(<the thing>)` waits on
 something that does not exist yet — `todo(settings)`, say — and carries its
