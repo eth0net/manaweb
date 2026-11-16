@@ -440,5 +440,5 @@ first, then any-printing, extras as the complement.
 foil and a nonfoil of one printing share a Scryfall id, so counting ids answers
 "which cards from this set do I have" and never "have I got both finishes". The
 second is a larger denominator — printings times the finishes each offers — and
-it is a preference rather than a correction, so it waits for somewhere to keep
-preferences. Marked `todo(settings)` where it is displayed.
+it is a preference rather than a correction, so it is one, under the account
+menu and off by default.
