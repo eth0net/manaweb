@@ -179,6 +179,32 @@ export async function keepGrade(grade: string): Promise<void> {
   }
 }
 
+// A switch kept beside the grade. Which ones there are is `docs/scanner.md`.
+export const SOLID = "solid";
+
+export async function recallSwitch(key: string): Promise<boolean | undefined> {
+  const db = await open();
+  try {
+    const reading = db.transaction(SETTINGS, "readonly");
+    return await settle<boolean | undefined>(
+      reading.objectStore(SETTINGS).get(key),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function keepSwitch(key: string, on: boolean): Promise<void> {
+  const db = await open();
+  try {
+    const transaction = db.transaction(SETTINGS, "readwrite");
+    transaction.objectStore(SETTINGS).put(on, key);
+    await committed(transaction);
+  } finally {
+    db.close();
+  }
+}
+
 export async function forget(at: Source["at"]): Promise<void> {
   const db = await open();
   try {
@@ -210,6 +236,39 @@ export type Scratch = {
 };
 
 // The grade a scan is stamped with, and the press that moves it.
+export type Switch = {
+  on: boolean;
+  flip: (on: boolean) => void;
+};
+
+// The grade's own pattern, for a switch: read once, written through, and
+// carried on without where the store will not answer.
+export function useSwitch(key: string): Switch {
+  const [on, setOn] = useState(false);
+  const picked = useRef(false);
+
+  useEffect(() => {
+    let live = true;
+    recallSwitch(key)
+      .then((found) => {
+        if (live && !picked.current && found !== undefined) setOn(found);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [key]);
+
+  return {
+    on,
+    flip: (next: boolean) => {
+      picked.current = true;
+      setOn(next);
+      void keepSwitch(key, next).catch(() => {});
+    },
+  };
+}
+
 export type Grading = {
   grade: string;
   regrade: (grade: string) => void;
