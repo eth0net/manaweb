@@ -17,6 +17,7 @@ import {
   words,
 } from "../catalog";
 import { CONDITIONS } from "../collection/cards";
+import { Panel } from "../Modal";
 import { describe } from "../Printing";
 import { Link } from "../router";
 import { frame, open } from "./camera";
@@ -34,7 +35,7 @@ import {
   settled,
   sure,
 } from "./scratch";
-import type { Grading, Scratch } from "./store";
+import { type Grading, type Scratch, SOLID, useSwitch } from "./store";
 
 // Development only. The import sits inside the branch, so the module and
 // the route it posts to are dropped with it.
@@ -100,9 +101,8 @@ export function Scan({
   const [camera, setCamera] = useState<"off" | "opening" | "on">("off");
   const [answer, setAnswer] = useState<Answer>({ at: "none" });
   const [problem, setProblem] = useState<string | null>(null);
-  // todo(settings): held for the page rather than the person, there being
-  // nowhere yet for a preference to live — `docs/scanner.md`.
-  const [solid, setSolid] = useState(false);
+  const solid = useSwitch(SOLID);
+  const [tuning, setTuning] = useState(false);
   // Development only: which held frame a report is being written about, and
   // what to say once one has gone.
   const [telling, setTelling] = useState<string | null>(null);
@@ -333,6 +333,49 @@ export function Scan({
         hidden={camera !== "on"}
       />
 
+      <button
+        type="button"
+        className="scan-tune"
+        onClick={() => setTuning(true)}
+      >
+        Settings
+      </button>
+
+      {tuning && (
+        <Panel title="Scanner" onShut={() => setTuning(false)}>
+          <dl className="panel-grid">
+            <dt>
+              <label htmlFor="scan-grade">Condition</label>
+            </dt>
+            <dd>
+              <select
+                id="scan-grade"
+                value={grade}
+                onChange={(event) => regrade(event.target.value)}
+              >
+                <option value="">Ungraded</option>
+                {CONDITIONS.map((one) => (
+                  <option key={one} value={one}>
+                    {words(one)}
+                  </option>
+                ))}
+              </select>
+            </dd>
+            <dt>
+              <label htmlFor="scan-solid">Solid</label>
+            </dt>
+            <dd>
+              <input
+                id="scan-solid"
+                type="checkbox"
+                checked={solid.on}
+                onChange={(event) => solid.flip(event.target.checked)}
+              />
+            </dd>
+          </dl>
+        </Panel>
+      )}
+
       {camera !== "on" && (
         <div className="scan-idle">
           {camera === "opening" ? (
@@ -349,23 +392,6 @@ export function Scan({
           )}
           {scratch.list.length > 0 && <Waiting list={scratch.list} />}
           {problem && <p className="warn">{problem}</p>}
-          {/* todo(settings): a panel behind a button in the viewfinder's
-              corner, once this is not the only one — `docs/scanner.md`. */}
-          <p className="field scan-setting">
-            <label htmlFor="scan-grade">Scanning as</label>
-            <select
-              id="scan-grade"
-              value={grade}
-              onChange={(event) => regrade(event.target.value)}
-            >
-              <option value="">Ungraded</option>
-              {CONDITIONS.map((one) => (
-                <option key={one} value={one}>
-                  {words(one)}
-                </option>
-              ))}
-            </select>
-          </p>
         </div>
       )}
 
@@ -395,7 +421,7 @@ export function Scan({
           )}
 
           {Told && telling && (
-            <div className={solid ? "scan-said solid" : "scan-said"}>
+            <div className={solid.on ? "scan-said solid" : "scan-said"}>
               <div className="scan-panel">
                 <Suspense fallback={<p className="quiet">Opening…</p>}>
                   <Told
@@ -432,18 +458,8 @@ export function Scan({
           )}
 
           {answered && !telling && (
-            <div className={solid ? "scan-said solid" : "scan-said"}>
+            <div className={solid.on ? "scan-said solid" : "scan-said"}>
               <div className="scan-panel">
-                {expanded && (
-                  <button
-                    type="button"
-                    className="scan-veil"
-                    onClick={() => setSolid(!solid)}
-                    aria-pressed={solid}
-                  >
-                    {solid ? "See through" : "Solid"}
-                  </button>
-                )}
                 {problem && <p className="warn">{problem}</p>}
                 {scratch.problem && <p className="warn">{scratch.problem}</p>}
                 {answer.at === "nothing" && (

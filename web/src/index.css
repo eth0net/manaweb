@@ -222,9 +222,15 @@ nav a.here {
 
 /* The parent's gap stands in for the margin a field carries, and the label
    centers with everything else on this screen. */
-.scan-setting {
-  align-items: center;
-  margin: 0;
+/* Over the viewfinder rather than beside it, the picture being the whole
+   screen while a camera is open. */
+.scan-tune {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  z-index: 1;
 }
 
 /* Everything you touch is at the bottom, where a thumb already is: the
@@ -297,13 +303,6 @@ nav a.here {
 .scan-said .quiet {
   color: inherit;
   opacity: 0.7;
-}
-
-.scan-veil {
-  float: right;
-  font-size: 0.75rem;
-  margin-left: 0.5rem;
-  padding: 0.125rem 0.5rem;
 }
 
 .scan-named {

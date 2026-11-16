@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import type { Catalog } from "../catalog";
 import { MANIFEST, scanning } from "../testing/scanning";
 import { Scan } from "./Scan";
 import { type Entry, SCANNED } from "./scratch";
-import type { Grading, Scratch } from "./store";
+import { type Grading, recallSwitch, type Scratch, SOLID } from "./store";
 
 scanning();
 
@@ -73,4 +73,33 @@ test("a settled list of its own is scanned into", async () => {
   // The read this started runs on past the assertion, and it is this test
   // that has to see the end of it.
   await act(async () => {});
+});
+
+// It sat on the idle screen, so changing it meant closing the camera over the
+// pile being scanned.
+test("the grade is reachable with the camera open", async () => {
+  const { view } = await shutter({});
+
+  fireEvent.click(view.getByRole("button", { name: "Settings" }));
+
+  expect(view.getByLabelText("Condition")).toBeTruthy();
+});
+
+// A preference rather than page state, so it outlives the read it was set
+// over and the reload after that.
+test("a solid reading is remembered", async () => {
+  const first = still({});
+  fireEvent.click(first.getByRole("button", { name: "Settings" }));
+  fireEvent.click(first.getByLabelText("Solid"));
+  await waitFor(async () => {
+    expect(await recallSwitch(SOLID)).toBe(true);
+  });
+  first.unmount();
+
+  const second = still({});
+  fireEvent.click(second.getByRole("button", { name: "Settings" }));
+  await waitFor(() => {
+    const box = second.getByLabelText("Solid");
+    expect((box as HTMLInputElement).checked).toBe(true);
+  });
 });
