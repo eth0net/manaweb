@@ -122,14 +122,20 @@ export function App() {
             Manaweb
           </Link>
         </h1>
-        {/* todo(settings): profile, settings, about and sign out as one menu
-            off the picture; sign in stays a button, there being none. */}
         <div className="controls">
-          <About
+          {/* Signed in it hangs off the picture; signed out there is none,
+              so it stands on its own beside the form. */}
+          {!signedIn && (
+            <About
+              status={status}
+              loaded={load.status === "ready" ? load : null}
+            />
+          )}
+          <Menu
+            account={account}
             status={status}
             loaded={load.status === "ready" ? load : null}
           />
-          <Menu account={account} />
         </div>
       </header>
 

@@ -1,19 +1,40 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Particulars } from "./About";
 import { Avatar } from "./Avatar";
+import type { Loaded } from "./catalog/load";
 import { SCOPES } from "./config";
-import { Modal } from "./Modal";
+import { Panel } from "./Modal";
 import { bare, wear } from "./oauth/profile";
 import { type Repo, read } from "./oauth/records";
 import type { Session } from "./oauth/useSession";
+import type { Status } from "./useCatalog";
 
-// Who you are, and nothing else: under a sign-in form an index version and a
-// license read as its terms. The rest is in `About`.
-export function Menu({ account }: { account: Session }) {
+type View = "profile" | "about";
+
+const TITLES: Record<View, string> = {
+  profile: "Profile",
+  about: "About Manaweb",
+};
+
+// Everything hanging off the picture: who you are, what the app is, and the
+// way out. Signed out there is no picture, so the press is the sign-in form.
+export function Menu({
+  account,
+  status,
+  loaded,
+}: {
+  account: Session;
+  status: Status;
+  loaded: Loaded | null;
+}) {
   const { state, signIn, signOut } = account;
   const [repo, setRepo] = useState<Repo | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [worn, setWorn] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<View | null>(null);
+  const held = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (state.status !== "in") {
@@ -34,54 +55,99 @@ export function Menu({ account }: { account: Session }) {
     };
   }, [state]);
 
+  // A press anywhere else and the escape key, which is what a dialog would
+  // have brought with it.
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: PointerEvent) => {
+      if (!held.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+
   // Only the page-load read takes the menu away. Signing in keeps it, or the
   // dialog holding the form is torn down with the failure still to report.
   if (state.status === "restoring") return <span className="quiet">…</span>;
   const session = state.status === "in" ? state.session : null;
+  const name = repo?.handle ?? session?.did ?? "";
+
+  function go(to: View) {
+    setOpen(false);
+    setView(to);
+  }
 
   return (
-    <Modal
-      trigger="summary"
-      title={session ? "Account" : "Sign in"}
-      label={
-        state.status === "in" ? (
+    <div className="account" ref={held}>
+      <button
+        type="button"
+        className="summary"
+        aria-expanded={session ? open : undefined}
+        onClick={() => (session ? setOpen(!open) : setView("profile"))}
+      >
+        {session ? (
           <>
-            <span className="handle">{repo?.handle ?? state.session.did}</span>
+            <span className="handle">{name}</span>
             {/* Keyed so wearing a new one reads it again: the trigger and
                 the control that changed it are separate readers. */}
-            <Avatar
-              key={worn}
-              session={state.session}
-              name={repo?.handle ?? state.session.did}
-            />
+            <Avatar key={worn} session={session} name={name} />
           </>
         ) : (
           "Sign in"
-        )
-      }
-      actions={
-        session && (
-          <button type="button" onClick={signOut}>
-            Sign out
-          </button>
-        )
-      }
-    >
-      {state.status === "in" ? (
-        <Account
-          session={state.session}
-          repo={repo}
-          failed={failed}
-          onWorn={() => setWorn((n) => n + 1)}
-        />
-      ) : (
-        <SignIn
-          signIn={signIn}
-          error={state.status === "out" ? state.error : undefined}
-          going={state.status === "signing"}
-        />
+        )}
+      </button>
+
+      {session && open && (
+        <menu className="account-menu">
+          <li>
+            <button type="button" onClick={() => go("profile")}>
+              Profile
+            </button>
+          </li>
+          <li>
+            <button type="button" onClick={() => go("about")}>
+              About
+            </button>
+          </li>
+          <li>
+            <button type="button" onClick={signOut}>
+              Sign out
+            </button>
+          </li>
+        </menu>
       )}
-    </Modal>
+
+      {view !== null &&
+        (session ? (
+          <Panel title={TITLES[view]} onShut={() => setView(null)}>
+            {view === "profile" ? (
+              <Account
+                session={session}
+                repo={repo}
+                failed={failed}
+                onWorn={() => setWorn((n) => n + 1)}
+              />
+            ) : (
+              <Particulars status={status} loaded={loaded} />
+            )}
+          </Panel>
+        ) : (
+          <Panel title="Sign in" onShut={() => setView(null)}>
+            <SignIn
+              signIn={signIn}
+              error={state.status === "out" ? state.error : undefined}
+              going={state.status === "signing"}
+            />
+          </Panel>
+        ))}
+    </div>
   );
 }
 
