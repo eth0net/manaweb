@@ -753,7 +753,7 @@ function Editing({
           </p>
         )}
 
-        <dl className="stack-grid">
+        <dl className="panel-grid">
           <dt>Printing</dt>
           <dd>
             {printings.length > 1 && shown ? (

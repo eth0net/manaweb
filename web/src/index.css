@@ -1085,7 +1085,7 @@ dialog::backdrop {
 
 /* The label against one edge and what it changes against the other, so a
    panel of short answers uses the width it has. */
-.stack-grid {
+.panel-grid {
   align-items: center;
   column-gap: 0.75rem;
   display: grid;
@@ -1093,14 +1093,14 @@ dialog::backdrop {
   row-gap: 0.625rem;
 }
 
-.stack-grid dt {
+.panel-grid dt {
   font-size: 0.75rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.stack-grid dd {
+.panel-grid dd {
   justify-self: end;
   margin: 0;
   max-width: 100%;
@@ -1108,26 +1108,26 @@ dialog::backdrop {
 
 /* The gap between rows is the spacing, so the first and last thing in a cell
    bring none of their own. */
-.stack-grid dd > :first-child {
+.panel-grid dd > :first-child {
   margin-top: 0;
 }
 
-.stack-grid dd > :last-child {
+.panel-grid dd > :last-child {
   margin-bottom: 0;
 }
 
-.stack-grid .scratch-find input {
+.panel-grid .scratch-find input {
   margin: 0.375rem 0 0;
 }
 
 /* Where a label and what it changes no longer fit on one line. */
 @media (max-width: 22rem) {
-  .stack-grid {
+  .panel-grid {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 0.25rem;
   }
 
-  .stack-grid dd {
+  .panel-grid dd {
     justify-self: start;
     margin: 0 0 0.375rem;
   }
