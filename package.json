@@ -14,9 +14,9 @@
     "sealed": "bun web/vite/sealed.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.4",
+    "@biomejs/biome": "2.6.7",
     "@types/bun": "^1.4.4",
-    "fake-indexeddb": "^6.2.7",
+    "fake-indexeddb": "^6.2.8",
     "typescript": "^7.0.2"
   }
 }
