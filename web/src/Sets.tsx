@@ -11,11 +11,13 @@ import { type Catalog, product } from "./catalog";
 import { matches, parse } from "./catalog/query";
 import { normalize } from "./catalog/search";
 import { type Listed, label, narrow } from "./catalog/sets";
+import { worth } from "./collection/cards";
 import { useOwning } from "./collection/context";
 import { Colors } from "./filters/Colors";
 import { More } from "./filters/Filters";
 import { Modes } from "./Nav";
 import { CardPanel, type Shown } from "./Printings";
+import { usePreference } from "./preferences";
 import { amend, useSettings } from "./router";
 
 export const SETS = "/sets";
@@ -265,44 +267,47 @@ export function SetList({
   onPick: (code: string) => void;
 }) {
   const owning = useOwning();
+  const treatments = usePreference("treatments");
   const owned = useMemo(
-    () =>
-      catalog.bySet(new Map((owning?.printings ?? []).map((id) => [id, 1]))),
-    [catalog, owning?.printings],
+    () => catalog.bySet(worth(owning, treatments.held)),
+    [catalog, owning, treatments.held],
   );
 
   return (
     <ul className="sets">
-      {sets.map(({ set, printings }) => (
-        <li key={set[0]}>
-          <button
-            type="button"
-            className="link"
-            aria-pressed={chosen?.includes(set[0])}
-            onClick={() => onPick(set[0])}
-          >
-            {set[1]}
-          </button>
-          <span>
-            {set[0].toUpperCase()} · {set[3].slice(0, 4)} ·{" "}
-            {product(set[2]) && <>{product(set[2])} · </>}
-            {/* What is owned against what exists, once either is worth
-                comparing: an empty collection would read 0 of everything.
-                todo(settings): counting treatments as well as printings. */}
-            {owned.get(set[0]) ? (
-              <>
-                {owned.get(set[0])?.toLocaleString()} of{" "}
-                {printings.toLocaleString()}
-              </>
-            ) : (
-              <>
-                {printings.toLocaleString()} printing
-                {printings === 1 ? "" : "s"}
-              </>
-            )}
-          </span>
-        </li>
-      ))}
+      {sets.map(({ set, printings, treatments: made }) => {
+        const exists = treatments.held ? made : printings;
+        return (
+          <li key={set[0]}>
+            <button
+              type="button"
+              className="link"
+              aria-pressed={chosen?.includes(set[0])}
+              onClick={() => onPick(set[0])}
+            >
+              {set[1]}
+            </button>
+            <span>
+              {set[0].toUpperCase()} · {set[3].slice(0, 4)} ·{" "}
+              {product(set[2]) && <>{product(set[2])} · </>}
+              {/* What is owned against what exists, once either is worth
+                comparing: an empty collection would read 0 of everything. */}
+              {owned.get(set[0]) ? (
+                <>
+                  {owned.get(set[0])?.toLocaleString()} of{" "}
+                  {exists.toLocaleString()}
+                </>
+              ) : (
+                <>
+                  {exists.toLocaleString()}{" "}
+                  {treatments.held ? "treatment" : "printing"}
+                  {exists === 1 ? "" : "s"}
+                </>
+              )}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

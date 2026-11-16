@@ -1154,6 +1154,12 @@ dialog::backdrop {
   max-width: 100%;
 }
 
+/* What a setting means, under both columns rather than squeezed into one. */
+.panel-grid .aside {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
 /* The gap between rows is the spacing, so the first and last thing in a cell
    bring none of their own. */
 .panel-grid dd > :first-child {

@@ -40,8 +40,21 @@ test("the account menu offers what used to sit beside it", () => {
   fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
 
   expect(view.getByRole("button", { name: "Profile" })).toBeTruthy();
+  expect(view.getByRole("button", { name: "Settings" })).toBeTruthy();
   expect(view.getByRole("button", { name: "About" })).toBeTruthy();
   expect(view.getByRole("button", { name: "Sign out" })).toBeTruthy();
+});
+
+// The first app preference, and what the surface exists to hold.
+test("what a set counts is set from the menu", () => {
+  const view = render(
+    <Menu account={signedIn()} status={status} loaded={null} />,
+  );
+
+  fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
+  fireEvent.click(view.getByRole("button", { name: "Settings" }));
+
+  expect(view.getByLabelText("Count treatments")).toBeTruthy();
 });
 
 // The entries lead somewhere, and choosing one puts the menu away.

@@ -8,12 +8,14 @@ import { Panel } from "./Modal";
 import { bare, wear } from "./oauth/profile";
 import { type Repo, read } from "./oauth/records";
 import type { Session } from "./oauth/useSession";
+import { Settings } from "./Settings";
 import type { Status } from "./useCatalog";
 
-type View = "profile" | "about";
+type View = "profile" | "settings" | "about";
 
 const TITLES: Record<View, string> = {
   profile: "Profile",
+  settings: "Settings",
   about: "About Manaweb",
 };
 
@@ -112,6 +114,11 @@ export function Menu({
             </button>
           </li>
           <li>
+            <button type="button" onClick={() => go("settings")}>
+              Settings
+            </button>
+          </li>
+          <li>
             <button type="button" onClick={() => go("about")}>
               About
             </button>
@@ -134,6 +141,8 @@ export function Menu({
                 failed={failed}
                 onWorn={() => setWorn((n) => n + 1)}
               />
+            ) : view === "settings" ? (
+              <Settings />
             ) : (
               <Particulars status={status} loaded={loaded} />
             )}
