@@ -361,19 +361,19 @@ what lets someone see what came second and say it was that one. Behind a
 setting, since most people are being asked to recognize their own card rather
 than to read a Hamming distance.
 
-Preferences have had nowhere to live (`todo(settings)`), and the scanner is the
-first thing to need them locally rather than on a PDS: a foil or set prior held
-for a session, and a switch for showing the numbers, are the same one store in
-the browser and none of it is worth a record. The cards have their own already,
-being cards rather than a preference.
+Preferences live in the browser rather than on a PDS, the scanner being the
+first thing to want them: a foil or set prior held for a session, and a switch
+for showing the numbers, are the same one store and none of it is worth a
+record. The cards have their own already, being cards rather than a preference.
 
 **Two surfaces, and what a setting is about decides which.** A button in the
-corner of the viewfinder opens the scanner's: the torch and the lens, the
-priors above, the grade a scan is taken at, and whatever of the readout a
-tester is handed — everything describing the pile in front of the camera or the
-device being held over it. What describes the person instead, a price source or
-a theme, belongs under the account menu with the rest of the app's, and is the
-half that eventually wants a record rather than this browser.
+corner of the viewfinder opens the scanner's, holding the grade a scan is taken
+at and how a read is shown. The torch and the lens join it once a device has
+been asked whether it has either, as do the priors above and whatever of the
+readout a tester is handed — everything describing the pile in front of the
+camera or the device being held over it. What describes the person instead, a
+price source or a theme, belongs under the account menu with the rest of the
+app's, and is the half that eventually wants a record rather than this browser.
 
 **A session setting is a default, and every scan shows it applied.** A read
 answers with the stack it would make — the printing, and the finish, grade and
