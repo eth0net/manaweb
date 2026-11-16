@@ -266,7 +266,8 @@ export function SetList({
 }) {
   const owning = useOwning();
   const owned = useMemo(
-    () => catalog.bySet(owning?.printings ?? []),
+    () =>
+      catalog.bySet(new Map((owning?.printings ?? []).map((id) => [id, 1]))),
     [catalog, owning?.printings],
   );
 

@@ -3,7 +3,7 @@ import type { SetRow } from "./index";
 import { type Listed, label, narrow } from "./sets";
 
 function listed(set: SetRow, printings = 1): Listed {
-  return { set, printings };
+  return { set, printings, treatments: printings };
 }
 
 const SETS: Listed[] = [

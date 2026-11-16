@@ -3,7 +3,7 @@
 
 import { kind, type SetRow, words } from "./index";
 
-export type Listed = { set: SetRow; printings: number };
+export type Listed = { set: SetRow; printings: number; treatments: number };
 
 // By name or by code, so "inv" finds Invasion and "lea" finds Alpha.
 export function narrow(sets: Listed[], filter: string): Listed[] {

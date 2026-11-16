@@ -60,7 +60,7 @@ const PRINTS = JSON.stringify({
   ],
   // biome-ignore format: a positional row reads as a row
   prints: [
-    [ID("0101"), 0, "48", 1, 1, 0, 0, 0, null, 0, 0, 0],
+    [ID("0101"), 0, "48", 2, 1, 0, 0, 0, null, 0, 0, 0],
     [ID("0102"), 1, "329★", 3, 1, 0, 0, 1, "祖先の記憶", null, 2, 0],
     [ID("0103"), 0, "203", 1, 0, 0, 0, 0, null, 0, 0, null],
   ],
@@ -150,11 +150,39 @@ describe("a catalog read from its two files", () => {
     expect(catalog.locate(new Set([printKey("m10", "329★")]))).toEqual(
       new Map([["m10/329★", ID("0102")]]),
     );
-    expect(catalog.bySet([ID("0101"), ID("0103")])).toEqual(
+    expect(
+      catalog.bySet(
+        new Map([
+          [ID("0101"), 1],
+          [ID("0103"), 1],
+        ]),
+      ),
+    ).toEqual(new Map([["lea", 2]]));
+    // A printing counts for its finishes where treatments are being counted.
+    expect(catalog.bySet(new Map([[ID("0101"), 2]]))).toEqual(
       new Map([["lea", 2]]),
     );
     const found = catalog.resolve([ID("0103")]);
     expect(found.get(ID("0103"))?.card.name).toBe("Forest");
+  });
+
+  // One printing of m10 made two ways, which is the whole difference between
+  // asking which cards you have and asking whether you have both finishes.
+  // The foil-only row above leaves a gap in the mask, which a count of how
+  // far it shifts rather than of its bits reads as two.
+  test("a set counts its printings and the ways they were made", () => {
+    const sets = held()
+      .sets()
+      .map(({ set, printings, treatments }) => [
+        set[0],
+        printings,
+        treatments,
+      ]);
+
+    expect(sets).toEqual([
+      ["lea", 2, 2],
+      ["m10", 1, 2],
+    ]);
   });
 
   test("a column this client has no reader for is read past", () => {
