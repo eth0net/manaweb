@@ -1,0 +1,4 @@
+# Loaded before every test file. `virtual:built` is Vite's, so the stamp has
+# nothing to import from without it — see `web/src/testing/built.ts`.
+[test]
+preload = ["./web/src/testing/built.ts"]
