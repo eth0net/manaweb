@@ -1,5 +1,10 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent as Keyed,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Particulars } from "./About";
 import { Avatar } from "./Avatar";
 import type { Loaded } from "./catalog/load";
@@ -37,6 +42,9 @@ export function Menu({
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View | null>(null);
   const held = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const items = useRef<(HTMLButtonElement | null)[]>([]);
+  const [at, setAt] = useState(0);
 
   useEffect(() => {
     if (state.status !== "in") {
@@ -65,7 +73,9 @@ export function Menu({
       if (!held.current?.contains(event.target as Node)) setOpen(false);
     };
     const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      trigger.current?.focus();
     };
     document.addEventListener("pointerdown", away);
     document.addEventListener("keydown", key);
@@ -74,6 +84,12 @@ export function Menu({
       document.removeEventListener("keydown", key);
     };
   }, [open]);
+
+  // The arrows move which entry is the menu's one stop; this is what makes
+  // that the entry a reader is on.
+  useEffect(() => {
+    if (open) items.current[at]?.focus();
+  }, [open, at]);
 
   // Only the page-load read takes the menu away. Signing in keeps it, or the
   // dialog holding the form is torn down with the failure still to report.
@@ -86,13 +102,51 @@ export function Menu({
     setView(to);
   }
 
+  // Back where the press came from, which a dialog does for itself and a
+  // menu of plain controls does not.
+  function shut() {
+    setOpen(false);
+    trigger.current?.focus();
+  }
+
+  const entries = [
+    { name: "Profile", press: () => go("profile") },
+    { name: "Settings", press: () => go("settings") },
+    { name: "About", press: () => go("about") },
+    { name: "Sign out", press: signOut },
+  ];
+
+  function steer(event: Keyed<HTMLDivElement>) {
+    const last = entries.length - 1;
+    const moves: Record<string, number> = {
+      ArrowDown: at === last ? 0 : at + 1,
+      ArrowUp: at === 0 ? last : at - 1,
+      Home: 0,
+      End: last,
+    };
+    const to = moves[event.key];
+    if (to !== undefined) {
+      event.preventDefault();
+      setAt(to);
+      return;
+    }
+    // Out of the menu rather than through it, as a menu's own key does.
+    if (event.key === "Tab") shut();
+  }
+
   return (
     <div className="account" ref={held}>
       <button
+        ref={trigger}
         type="button"
         className="summary"
+        aria-haspopup={session ? "menu" : undefined}
         aria-expanded={session ? open : undefined}
-        onClick={() => (session ? setOpen(!open) : setView("profile"))}
+        onClick={() => {
+          if (!session) return setView("profile");
+          setAt(0);
+          setOpen(!open);
+        }}
       >
         {session ? (
           <>
@@ -107,28 +161,23 @@ export function Menu({
       </button>
 
       {session && open && (
-        <menu className="account-menu">
-          <li>
-            <button type="button" onClick={() => go("profile")}>
-              Profile
+        <div className="account-menu" role="menu" onKeyDown={steer}>
+          {entries.map((entry, index) => (
+            <button
+              key={entry.name}
+              ref={(node) => {
+                items.current[index] = node;
+              }}
+              type="button"
+              role="menuitem"
+              // One stop for the menu, the arrows moving within it.
+              tabIndex={index === at ? 0 : -1}
+              onClick={entry.press}
+            >
+              {entry.name}
             </button>
-          </li>
-          <li>
-            <button type="button" onClick={() => go("settings")}>
-              Settings
-            </button>
-          </li>
-          <li>
-            <button type="button" onClick={() => go("about")}>
-              About
-            </button>
-          </li>
-          <li>
-            <button type="button" onClick={signOut}>
-              Sign out
-            </button>
-          </li>
-        </menu>
+          ))}
+        </div>
       )}
 
       {view !== null &&

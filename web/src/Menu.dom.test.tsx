@@ -39,10 +39,10 @@ test("the account menu offers what used to sit beside it", () => {
 
   fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
 
-  expect(view.getByRole("button", { name: "Profile" })).toBeTruthy();
-  expect(view.getByRole("button", { name: "Settings" })).toBeTruthy();
-  expect(view.getByRole("button", { name: "About" })).toBeTruthy();
-  expect(view.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  expect(view.getByRole("menuitem", { name: "Profile" })).toBeTruthy();
+  expect(view.getByRole("menuitem", { name: "Settings" })).toBeTruthy();
+  expect(view.getByRole("menuitem", { name: "About" })).toBeTruthy();
+  expect(view.getByRole("menuitem", { name: "Sign out" })).toBeTruthy();
 });
 
 // The first app preference, and what the surface exists to hold.
@@ -52,7 +52,7 @@ test("what a set counts is set from the menu", () => {
   );
 
   fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
-  fireEvent.click(view.getByRole("button", { name: "Settings" }));
+  fireEvent.click(view.getByRole("menuitem", { name: "Settings" }));
 
   expect(view.getByLabelText("Count treatments")).toBeTruthy();
 });
@@ -64,10 +64,10 @@ test("what the app is opens from the menu", () => {
   );
 
   fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
-  fireEvent.click(view.getByRole("button", { name: "About" }));
+  fireEvent.click(view.getByRole("menuitem", { name: "About" }));
 
   expect(view.getByText("Build")).toBeTruthy();
-  expect(view.queryByRole("button", { name: "Profile" })).toBeNull();
+  expect(view.queryByRole("menuitem", { name: "Profile" })).toBeNull();
 });
 
 // A press anywhere else, which is what the menu has instead of a backdrop.
@@ -77,11 +77,11 @@ test("a press away from the menu puts it back", () => {
   );
 
   fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
-  expect(view.getByRole("button", { name: "Profile" })).toBeTruthy();
+  expect(view.getByRole("menuitem", { name: "Profile" })).toBeTruthy();
 
   fireEvent.pointerDown(document.body);
 
-  expect(view.queryByRole("button", { name: "Profile" })).toBeNull();
+  expect(view.queryByRole("menuitem", { name: "Profile" })).toBeNull();
 });
 
 // There is no picture to hang a menu off, so the press is the form itself.
@@ -93,4 +93,67 @@ test("signed out the press is the sign-in form", () => {
   fireEvent.click(view.getByRole("button", { name: "Sign in" }));
 
   expect(view.getByLabelText(/Enter your handle/)).toBeTruthy();
+});
+
+// A menu button's own keys: the arrows move within it rather than tabbing
+// through every entry to reach the last.
+test("the arrows move through the entries and wrap", () => {
+  const view = render(
+    <Menu account={signedIn()} status={status} loaded={null} />,
+  );
+  fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
+
+  const menu = view.getByRole("menu");
+  expect(document.activeElement).toBe(
+    view.getByRole("menuitem", { name: "Profile" }),
+  );
+
+  fireEvent.keyDown(menu, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(
+    view.getByRole("menuitem", { name: "Settings" }),
+  );
+
+  fireEvent.keyDown(menu, { key: "ArrowUp" });
+  fireEvent.keyDown(menu, { key: "ArrowUp" });
+  expect(document.activeElement).toBe(
+    view.getByRole("menuitem", { name: "Sign out" }),
+  );
+
+  fireEvent.keyDown(menu, { key: "Home" });
+  expect(document.activeElement).toBe(
+    view.getByRole("menuitem", { name: "Profile" }),
+  );
+
+  fireEvent.keyDown(menu, { key: "End" });
+  expect(document.activeElement).toBe(
+    view.getByRole("menuitem", { name: "Sign out" }),
+  );
+});
+
+// Only one stop, so tabbing leaves the menu instead of walking it.
+test("one entry at a time is in the tab order", () => {
+  const view = render(
+    <Menu account={signedIn()} status={status} loaded={null} />,
+  );
+  fireEvent.click(view.getByRole("button", { name: /did:plc:abc/ }));
+
+  const stops = view
+    .getAllByRole("menuitem")
+    .filter((one) => one.getAttribute("tabindex") === "0");
+
+  expect(stops).toHaveLength(1);
+});
+
+// Where the press came from, which a dialog does for itself.
+test("escape puts the menu away and the focus back", () => {
+  const view = render(
+    <Menu account={signedIn()} status={status} loaded={null} />,
+  );
+  const press = view.getByRole("button", { name: /did:plc:abc/ });
+  fireEvent.click(press);
+
+  fireEvent.keyDown(document, { key: "Escape" });
+
+  expect(view.queryByRole("menu")).toBeNull();
+  expect(document.activeElement).toBe(press);
 });
