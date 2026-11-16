@@ -97,6 +97,26 @@ function settle(key: Preference, found: unknown): void {
   announce();
 }
 
+// Set without the store behind it, and marked read so the store does not
+// answer over the top. For a test that wants a screen already set one way.
+export function preset<K extends Preference>(
+  key: K,
+  value: (typeof KEPT)[K],
+): void {
+  asked.add(key);
+  held.set(key, value);
+  announce();
+}
+
+// Back to knowing nothing, including that it has read. One process holds
+// these for every test in a file, so one test's change is the next one's
+// starting point without this.
+export function forget(): void {
+  held.clear();
+  asked.clear();
+  announce();
+}
+
 export function usePreference<K extends Preference>(
   key: K,
 ): Setting<(typeof KEPT)[K]> {
