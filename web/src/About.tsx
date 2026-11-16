@@ -16,11 +16,27 @@ export function About({
 }) {
   return (
     <Modal trigger="summary" title="About Manaweb" label="About">
+      <Particulars status={status} loaded={loaded} />
+    </Modal>
+  );
+}
+
+// The same without a dialog around it, for a menu that is already open on
+// something else.
+export function Particulars({
+  status,
+  loaded,
+}: {
+  status: Status;
+  loaded: Loaded | null;
+}) {
+  return (
+    <>
       {loaded && <Catalog loaded={loaded} status={status} />}
       <h3>Build</h3>
       <p className="quiet">{stamp()}</p>
       <Licenses />
-    </Modal>
+    </>
   );
 }
 
