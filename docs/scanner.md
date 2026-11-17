@@ -930,6 +930,9 @@ has none of this.
   of the frame, so neither is working from more of it than the other. What is
   left to measure is what the glass does to the picture rather than how much of
   it there is — and that is the sample cards' answer, not a capability list's.
+  A run of the readout now names what it kept answering and through which
+  camera, which is the instrument; `local/notes/lens-comparison.md` is the
+  protocol it waits on, twelve cards shot under each lens in turn.
 - **Whether an accept should take a vote.** The margin reads one frame, and a
   search has already read thirty — glare and a phantom both move between frames
   where a card does not. Cheap, because the frames are already there. What it
