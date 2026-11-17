@@ -54,6 +54,21 @@ export function able(stream: MediaStream | null): string | null {
   );
 }
 
+// Every camera the device will name, which it only does once one of them has
+// been allowed. iOS hands back a fused back camera by default and lists the
+// lenses behind it separately, and which lens is in front of a card at arm's
+// length is not a thing the fused one is deciding for this.
+export async function cameras(): Promise<string> {
+  const found = await navigator.mediaDevices.enumerateDevices();
+  return JSON.stringify(
+    found
+      .filter((one) => one.kind === "videoinput")
+      .map((one) => ({ label: one.label, deviceId: one.deviceId })),
+    null,
+    2,
+  );
+}
+
 // A camera, or a reason there is none worth putting in front of someone.
 export async function open(): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {

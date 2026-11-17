@@ -20,7 +20,7 @@ import { CONDITIONS } from "../collection/cards";
 import { Panel } from "../Modal";
 import { describe } from "../Printing";
 import { Link } from "../router";
-import { able, frame, open } from "./camera";
+import { able, cameras, frame, open } from "./camera";
 import type { Quad } from "./engine";
 import { engine, index } from "./load";
 import { Outline } from "./Outline";
@@ -103,6 +103,14 @@ export function Scan({
   const [problem, setProblem] = useState<string | null>(null);
   const solid = useSwitch(SOLID);
   const [tuning, setTuning] = useState(false);
+  // Development only: asked once the camera is allowed, there being no
+  // labels to read before that.
+  const [lenses, setLenses] = useState("");
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || camera !== "on") return;
+    cameras().then(setLenses, () => setLenses(""));
+  }, [camera]);
   // Development only: which held frame a report is being written about, and
   // what to say once one has gone.
   const [telling, setTelling] = useState<string | null>(null);
@@ -376,7 +384,10 @@ export function Scan({
                 which no real device has been asked for yet. */}
             {import.meta.env.DEV && camera === "on" && (
               <dd className="aside">
-                <pre className="scan-able">{able(stream.current)}</pre>
+                <pre className="scan-able">
+                  {able(stream.current)}
+                  {lenses}
+                </pre>
               </dd>
             )}
           </dl>
