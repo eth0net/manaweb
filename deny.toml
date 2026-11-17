@@ -14,6 +14,16 @@ ignore = [
   # nobody else has, and the file re-derives from Scryfall if it ever looks
   # wrong.
   "RUSTSEC-2026-0459",
+  # todo(object_store): lift both once it moves off chrono. 0.14.2 is the
+  # current one and still depends on it, so there is nothing to upgrade to.
+  # https://rustsec.org/advisories/RUSTSEC-2026-0543 — chrono is unmaintained,
+  # every version. No vulnerability named: it reaches us through the
+  # timestamps object_store puts on a request, and our own use of it is two
+  # lines of a test.
+  "RUSTSEC-2026-0543",
+  # https://rustsec.org/advisories/RUSTSEC-2026-0542 — humantime, for wrapping
+  # chrono. Same path and the same reasoning.
+  "RUSTSEC-2026-0542",
 ]
 
 [licenses]
