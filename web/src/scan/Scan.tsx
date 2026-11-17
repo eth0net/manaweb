@@ -20,7 +20,7 @@ import { CONDITIONS } from "../collection/cards";
 import { Panel } from "../Modal";
 import { describe } from "../Printing";
 import { Link } from "../router";
-import { frame, open } from "./camera";
+import { able, frame, open } from "./camera";
 import type { Quad } from "./engine";
 import { engine, index } from "./load";
 import { Outline } from "./Outline";
@@ -372,6 +372,13 @@ export function Scan({
                 onChange={(event) => solid.flip(event.target.checked)}
               />
             </dd>
+            {/* Development only: what a torch or a lens would be set through,
+                which no real device has been asked for yet. */}
+            {import.meta.env.DEV && camera === "on" && (
+              <dd className="aside">
+                <pre className="scan-able">{able(stream.current)}</pre>
+              </dd>
+            )}
           </dl>
         </Panel>
       )}

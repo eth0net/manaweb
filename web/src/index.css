@@ -1152,6 +1152,16 @@ dialog::backdrop {
   max-width: 100%;
 }
 
+/* Development only: a dump nobody is meant to read in prose. */
+.scan-able {
+  font-size: 0.6875rem;
+  margin: 0;
+  max-height: 14rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 /* What a setting means, under both columns rather than squeezed into one. */
 .panel-grid .aside {
   grid-column: 1 / -1;

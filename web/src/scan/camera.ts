@@ -33,6 +33,27 @@ export function sized(
   };
 }
 
+// What the device will let anyone set, read off the track it is already
+// running. `getCapabilities` is not in every browser and what it answers with
+// is not a fixed set, so this hands back whatever is there rather than asking
+// for the things it hopes to find — `docs/scanner.md`.
+export function able(stream: MediaStream | null): string | null {
+  const track = stream?.getVideoTracks()[0];
+  if (!track) return null;
+  const reads = track as MediaStreamTrack & {
+    getCapabilities?: () => unknown;
+  };
+  return JSON.stringify(
+    {
+      label: track.label,
+      capabilities: reads.getCapabilities?.() ?? "not implemented",
+      settings: track.getSettings(),
+    },
+    null,
+    2,
+  );
+}
+
 // A camera, or a reason there is none worth putting in front of someone.
 export async function open(): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
