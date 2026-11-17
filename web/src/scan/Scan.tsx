@@ -106,6 +106,7 @@ export function Scan({
   // Development only: asked once the camera is allowed, there being no
   // labels to read before that.
   const [lenses, setLenses] = useState("");
+  const [copied, setCopied] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!import.meta.env.DEV || camera !== "on") return;
@@ -344,7 +345,10 @@ export function Scan({
       <button
         type="button"
         className="scan-tune"
-        onClick={() => setTuning(true)}
+        onClick={() => {
+          setCopied(null);
+          setTuning(true);
+        }}
       >
         Settings
       </button>
@@ -384,6 +388,24 @@ export function Scan({
                 which no real device has been asked for yet. */}
             {import.meta.env.DEV && camera === "on" && (
               <dd className="aside">
+                <p className="actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const said = `${able(stream.current) ?? ""}\n${lenses}`;
+                      navigator.clipboard?.writeText(said).then(
+                        () => setCopied(true),
+                        () => setCopied(false),
+                      );
+                    }}
+                  >
+                    {copied === null
+                      ? "Copy"
+                      : copied
+                        ? "Copied"
+                        : "Could not copy"}
+                  </button>
+                </p>
                 <pre className="scan-able">
                   {able(stream.current)}
                   {lenses}
