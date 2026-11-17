@@ -366,6 +366,16 @@ first thing to want them: a foil or set prior held for a session, and a switch
 for showing the numbers, are the same one store and none of it is worth a
 record. The cards have their own already, being cards rather than a preference.
 
+**What a camera allows, measured on an iPhone.** A torch is there and settable,
+so it is a setting rather than a wish. Zoom runs from 0.5 to 10, the half being
+the ultra-wide. White balance offers manual beside continuous. Exposure is
+absent entirely — no mode, no compensation, no iso — so nothing can be done
+about glare by asking. Focus is the one that reads as available and is not:
+`focusDistance` names a minimum of two centimeters and no `focusMode` is
+offered, so there is no manual to put it in and no distance to apply. That
+settles tap-to-focus as a wish on this device, and the frame comes back 720 by
+1280 off a sensor that will do 4032 by 3024.
+
 **Two surfaces, and what a setting is about decides which.** A button in the
 corner of the viewfinder opens the scanner's, holding the grade a scan is taken
 at and how a read is shown. The torch and the lens join it once a device has
@@ -882,10 +892,12 @@ has none of this.
 - **Whether the read belongs on a worker.** It would not make a read shorter.
   It would keep it off the thread drawing the viewfinder, and let the next
   frame be grabbed while the last one is still being read.
-- **What a camera will allow.** Nothing here has asked a real device for
-  `getCapabilities()`. Whether focus, zoom or exposure can be set at all
-  decides whether tap-to-focus is a feature or a wish, and fifteen centimeters
-  is exactly where continuous autofocus hunts.
+- **Which lens a fused camera is using.** An iPhone answers a request for the
+  environment-facing camera with a Back Triple Camera carrying one device id,
+  and chooses between the lenses behind it itself. The ultra-wide is the one
+  that focuses close, so the choice matters at the distance a card is held at,
+  and `enumerateDevices` is where the others are named — once one has been
+  allowed, since the labels are empty before that.
 - **Whether an accept should take a vote.** The margin reads one frame, and a
   search has already read thirty — glare and a phantom both move between frames
   where a card does not. Cheap, because the frames are already there. What it
