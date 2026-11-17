@@ -2,21 +2,29 @@
 // invented — see `docs/search.md`. Their API answers each query and ours
 // answers the same one, and the two lists of names are compared.
 //
-//     bun run check
+//     bun run check          their answers from the last day where there are any
+//     bun run check --live    every answer fetched again
 //
 // Not part of `just check`: it needs the network, their service and a built
 // catalog, and it answers a question about our implementation rather than
 // about this commit.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Catalog } from "../../web/src/catalog";
 import { parse } from "../../web/src/catalog/query";
 
 process.chdir(dirname(dirname(import.meta.dir)));
 
-// Their guidance is 50–100ms between requests, and we are in no hurry.
+// Their guidance is 50–100ms between requests, and we are in no hurry. It is
+// the whole run repeated that gets a 429 rather than any one call, so the
+// answers are kept and the pause is only taken where one is fetched.
 const WAIT = 120;
+
+// A day: well inside how fast their data moves, and well outside an hour of
+// changing our own half. `--live` is the run that settles anything.
+const KEEP = 24 * 60 * 60 * 1000;
+const ANSWERS = join(import.meta.dir, ".answers.json");
 
 const WHERE = process.env.MANAWEB_CATALOG ?? "catalog";
 
@@ -27,6 +35,27 @@ const PAPER = "game:paper -is:digital";
 interface Answered {
   names: Set<string>;
   truncated: boolean;
+}
+
+// One of their answers as it is kept, with when it was asked for.
+interface Kept {
+  names: string[];
+  truncated: boolean;
+  at: number;
+}
+
+function answers(): Record<string, Kept> {
+  try {
+    return JSON.parse(readFileSync(ANSWERS, "utf8")) as Record<string, Kept>;
+  } catch {
+    // Absent, or written by a version that spelled it differently.
+    return {};
+  }
+}
+
+function since(at: number): string {
+  const hours = Math.round((Date.now() - at) / 3_600_000);
+  return hours < 1 ? "under an hour" : `${hours}h`;
 }
 
 function held(): Catalog {
@@ -99,30 +128,71 @@ const queries = readFileSync(join(import.meta.dir, "queries.txt"), "utf8")
 const catalog = held();
 console.log(`catalog ${catalog.version}, ${queries.length} queries\n`);
 
+const live = process.argv.includes("--live");
+// What this run asked about, which after a full pass is the whole file: a
+// query reworded in `queries.txt` leaves no answer behind.
+const kept: Record<string, Kept> = {};
+let whole = false;
+const before = answers();
+
 let differed = 0;
-for (const query of queries) {
-  const them = await theirs(query);
-  const us = ours(catalog, query);
+let asked = 0;
+let oldest = Date.now();
 
-  const short = missing(them.names, us);
-  const extra = missing(us, them.names);
-  const same = short.length === 0 && extra.length === 0;
+try {
+  for (const query of queries) {
+    const was = live ? undefined : before[query];
+    const fresh = was && Date.now() - was.at < KEEP ? was : undefined;
 
-  const note = them.truncated ? " (theirs truncated at 3 pages)" : "";
-  console.log(
-    `  ${same ? "ok  " : "DIFF"}  ${query}${note}\n` +
-      `        theirs ${them.names.size}, ours ${us.size}`,
-  );
-  show("only theirs:", short);
-  show("only ours:", extra);
-  if (!same) differed++;
+    let them: Answered;
+    if (fresh) {
+      them = { names: new Set(fresh.names), truncated: fresh.truncated };
+      kept[query] = fresh;
+      oldest = Math.min(oldest, fresh.at);
+    } else {
+      them = await theirs(query);
+      kept[query] = {
+        names: [...them.names],
+        truncated: them.truncated,
+        at: Date.now(),
+      };
+      asked += 1;
+    }
 
-  await Bun.sleep(WAIT);
+    const us = ours(catalog, query);
+    const short = missing(them.names, us);
+    const extra = missing(us, them.names);
+    const same = short.length === 0 && extra.length === 0;
+
+    const note = them.truncated ? " (theirs truncated at 3 pages)" : "";
+    const age = fresh ? ` (theirs ${since(fresh.at)} old)` : "";
+    console.log(
+      `  ${same ? "ok  " : "DIFF"}  ${query}${note}${age}\n` +
+        `        theirs ${them.names.size}, ours ${us.size}`,
+    );
+    show("only theirs:", short);
+    show("only ours:", extra);
+    if (!same) differed++;
+
+    if (!fresh) await Bun.sleep(WAIT);
+  }
+  whole = true;
+} finally {
+  // Written even where a call failed, so a run that stopped partway keeps the
+  // answers it did get — and prunes nothing, not having seen every query.
+  const all = whole ? kept : { ...before, ...kept };
+  writeFileSync(ANSWERS, JSON.stringify(all));
 }
 
+const reused = queries.length - asked;
+console.log(
+  reused === 0
+    ? "\nevery answer theirs just now"
+    : `\n${reused} of ${queries.length} answers kept from before, oldest ${since(oldest)} — \`--live\` asks again`,
+);
 console.log(
   differed === 0
-    ? "\nall green"
-    : `\n${differed} of ${queries.length} queries differ`,
+    ? "all green"
+    : `${differed} of ${queries.length} queries differ`,
 );
 process.exit(differed === 0 ? 0 : 1);

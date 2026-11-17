@@ -280,11 +280,15 @@ The list is kept in a database of its own rather than under whoever is signed
 in. The pile in front of the camera belongs to the device holding it, and an
 account only comes into it once there is a reason for one.
 
-**A list holds either a session or a file, so it carries which.** A box being
-worked through and an import under review are both piles nobody has committed
-yet, and a device holds one at a time; what differs is what the receipt says
-they were read out of, and whether a row has a line behind it —
-[`scryfall.md`](scryfall.md).
+**A list holds either a session or a file, so it carries which, and the two
+are kept apart.**
+A box being worked through and an import under review are both piles nobody has
+committed yet, but they are reached from different tabs and neither waits on
+the other: a file part way through does not take the camera away, and a box in
+front of it does not stop a CSV being read in. They are stored under a key
+each, differ in what the receipt says they were read out of, and in whether a
+row has a line behind it — [`scryfall.md`](scryfall.md). One of each is the
+ceiling: a second file replaces the first only once somebody says so.
 
 Nothing caps it. A thousand scans weigh about a megabyte and fold in well under
 a millisecond, so an afternoon spent emptying a box costs nothing worth
@@ -292,6 +296,11 @@ imposing a limit over. Nearly all of that weight is the artworks each scan
 matched, which a row read off a file carries none of. The ceiling that may
 exist is a thousand rows drawn at once, which wants a phone to answer and not a
 laptop.
+
+**Where a list lands is settled by the press that lands it.** The container,
+and the arithmetic that follows from one — how much joins what is already held,
+how much sits beside it — wait inside that press, none of them being a fact
+about the list. Folding one stack into another is, so that stays on the screen.
 
 It asks nothing of the lexicons: `container` is already a field a card may
 carry, `source` already says what the cards were read out of, and the file a
@@ -352,19 +361,19 @@ what lets someone see what came second and say it was that one. Behind a
 setting, since most people are being asked to recognize their own card rather
 than to read a Hamming distance.
 
-Preferences have had nowhere to live (`todo(settings)`), and the scanner is the
-first thing to need them locally rather than on a PDS: a foil or set prior held
-for a session, and a switch for showing the numbers, are the same one store in
-the browser and none of it is worth a record. The cards have their own already,
-being cards rather than a preference.
+Preferences live in the browser rather than on a PDS, the scanner being the
+first thing to want them: a foil or set prior held for a session, and a switch
+for showing the numbers, are the same one store and none of it is worth a
+record. The cards have their own already, being cards rather than a preference.
 
 **Two surfaces, and what a setting is about decides which.** A button in the
-corner of the viewfinder opens the scanner's: the torch and the lens, the
-priors above, the grade a scan is taken at, and whatever of the readout a
-tester is handed — everything describing the pile in front of the camera or the
-device being held over it. What describes the person instead, a price source or
-a theme, belongs under the account menu with the rest of the app's, and is the
-half that eventually wants a record rather than this browser.
+corner of the viewfinder opens the scanner's, holding the grade a scan is taken
+at and how a read is shown. The torch and the lens join it once a device has
+been asked whether it has either, as do the priors above and whatever of the
+readout a tester is handed — everything describing the pile in front of the
+camera or the device being held over it. What describes the person instead, a
+price source or a theme, belongs under the account menu with the rest of the
+app's, and is the half that eventually wants a record rather than this browser.
 
 **A session setting is a default, and every scan shows it applied.** A read
 answers with the stack it would make — the printing, and the finish, grade and
@@ -896,7 +905,21 @@ has none of this.
   the wrong locked set reads as a scanner that has quietly stopped working. A
   reason has to reach the screen without arriving as a verdict about a card
   that was never matched in the first place.
+- **Where a card named by hand comes in.** A card that will not scan, or one
+  nobody has in front of them, has no way onto the list today, and the same
+  press would serve a collection as well as this list. It also settles what a
+  removal means: naming a card by hand leaves nothing to be wrong about, so
+  taking a row off cannot stand as a verdict on a reading.
 - **What belongs behind a build flag rather than a setting.** The readout is
   development-only because it began as an instrument, which also means a tester
   holding their own phone cannot reach it. Some of it may be worth a preference
   instead. Open until there is a tester who is not the author.
+- **What a wide screen is for.** Every screen is a phone's, and a laptop gets
+  the same column with empty margins either side. A row is a strip of text that
+  could be a table, or a cell with as many beside it as the width takes —
+  landscape, the shape the row already has, or portrait with the text under the
+  artwork. The collection's own grid asks the same thing.
+- **What the header says twice.** The count is in the tally, in the keep and in
+  the line under it; the file name, the format and the row order take a line
+  above a picker naming where it all goes. A third of a phone screen before the
+  first card is the symptom.

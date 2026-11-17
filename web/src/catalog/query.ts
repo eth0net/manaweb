@@ -2,7 +2,7 @@
 // which terms the artifact can answer.
 
 import { COLORS } from "./columns";
-import type { Card, Print } from "./index";
+import { type Card, kind, type Print } from "./index";
 import { normalize } from "./search";
 
 export type Op = ":" | "=" | "!=" | ">" | "<" | ">=" | "<=";
@@ -238,6 +238,8 @@ const KEYS = new Set([
   "set",
   "e",
   "edition",
+  "st",
+  "settype",
   "cn",
   "number",
   "a",
@@ -358,6 +360,8 @@ const PRINTED = new Set([
   "set",
   "e",
   "edition",
+  "st",
+  "settype",
   "cn",
   "number",
   "a",
@@ -428,6 +432,9 @@ function holds(
     case "e":
     case "edition":
       return print?.set === value.toLowerCase();
+    case "st":
+    case "settype":
+      return print?.setKind === kind(value);
     case "cn":
     case "number":
       return print?.collectorNumber === value;

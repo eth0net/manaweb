@@ -7,25 +7,26 @@ import {
   useState,
 } from "react";
 import { CardRow } from "./CardRow";
-import type { Catalog, SetRow } from "./catalog";
+import { type Catalog, product } from "./catalog";
 import { matches, parse } from "./catalog/query";
 import { normalize } from "./catalog/search";
+import { type Listed, label, narrow } from "./catalog/sets";
+import { worth } from "./collection/cards";
 import { useOwning } from "./collection/context";
 import { Colors } from "./filters/Colors";
 import { More } from "./filters/Filters";
 import { Modes } from "./Nav";
 import { CardPanel, type Shown } from "./Printings";
+import { usePreference } from "./preferences";
 import { amend, useSettings } from "./router";
 
-export const SETS = "/cards/sets";
+export const SETS = "/sets";
 
 // How many rows are added at a time. A set is unbounded where a search is
-// capped — The List holds 5,740 printings — and a row costs a tenth of a
+// capped — The List holds ~5,700 printings — and a row costs a tenth of a
 // millisecond to build, so the whole of that one is half a second before
 // anything is on screen.
 const PAGE = 600;
-
-export type Listed = { set: SetRow; printings: number };
 
 // Browsing answers "what did this set hold", which a name you have to know
 // first cannot. Searching is the other half, and its own place.
@@ -250,24 +251,6 @@ export function useSets(catalog: Catalog): Listed[] {
   );
 }
 
-// By name or by code, so "inv" finds Invasion and "lea" finds Alpha.
-export function narrow(sets: Listed[], filter: string): Listed[] {
-  const wanted = filter.trim().toLowerCase();
-  if (!wanted) return sets;
-  return sets.filter(
-    ({ set }) =>
-      set[1].toLowerCase().includes(wanted) || set[0].includes(wanted),
-  );
-}
-
-// One set is worth naming; a handful is only worth counting.
-export function label(sets: Listed[], chosen: string[]): string {
-  if (chosen.length === 0) return "All sets";
-  if (chosen.length > 1) return `${chosen.length} sets`;
-  const only = chosen[0] as string;
-  return sets.find(({ set }) => set[0] === only)?.set[1] ?? only.toUpperCase();
-}
-
 // Browsed or picked from, which is the same list either way: what one press
 // does is the caller's.
 export function SetList({
@@ -284,42 +267,47 @@ export function SetList({
   onPick: (code: string) => void;
 }) {
   const owning = useOwning();
+  const treatments = usePreference("treatments");
   const owned = useMemo(
-    () => catalog.bySet(owning?.printings ?? []),
-    [catalog, owning?.printings],
+    () => catalog.bySet(worth(owning, treatments.held)),
+    [catalog, owning, treatments.held],
   );
 
   return (
     <ul className="sets">
-      {sets.map(({ set, printings }) => (
-        <li key={set[0]}>
-          <button
-            type="button"
-            className="link"
-            aria-pressed={chosen?.includes(set[0])}
-            onClick={() => onPick(set[0])}
-          >
-            {set[1]}
-          </button>
-          <span>
-            {set[0].toUpperCase()} · {set[3].slice(0, 4)} ·{" "}
-            {/* What is owned against what exists, once either is worth
-                comparing: an empty collection would read 0 of everything.
-                todo(settings): counting treatments as well as printings. */}
-            {owned.get(set[0]) ? (
-              <>
-                {owned.get(set[0])?.toLocaleString()} of{" "}
-                {printings.toLocaleString()}
-              </>
-            ) : (
-              <>
-                {printings.toLocaleString()} printing
-                {printings === 1 ? "" : "s"}
-              </>
-            )}
-          </span>
-        </li>
-      ))}
+      {sets.map(({ set, printings, treatments: made }) => {
+        const exists = treatments.held ? made : printings;
+        return (
+          <li key={set[0]}>
+            <button
+              type="button"
+              className="link"
+              aria-pressed={chosen?.includes(set[0])}
+              onClick={() => onPick(set[0])}
+            >
+              {set[1]}
+            </button>
+            <span>
+              {set[0].toUpperCase()} · {set[3].slice(0, 4)} ·{" "}
+              {product(set[2]) && <>{product(set[2])} · </>}
+              {/* What is owned against what exists, once either is worth
+                comparing: an empty collection would read 0 of everything. */}
+              {owned.get(set[0]) ? (
+                <>
+                  {owned.get(set[0])?.toLocaleString()} of{" "}
+                  {exists.toLocaleString()}
+                </>
+              ) : (
+                <>
+                  {exists.toLocaleString()}{" "}
+                  {treatments.held ? "treatment" : "printing"}
+                  {exists === 1 ? "" : "s"}
+                </>
+              )}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

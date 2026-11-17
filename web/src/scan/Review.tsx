@@ -14,12 +14,18 @@ import {
 } from "../catalog";
 import { FLOOR } from "../catalog/artwork";
 import { parse } from "../catalog/query";
-import { CONDITIONS, type Holdings, type Owned } from "../collection/cards";
+import {
+  CONDITIONS,
+  COPIES,
+  type Holdings,
+  type Owned,
+} from "../collection/cards";
 import { IMPORT } from "../import/Import";
 import { plan, weigh } from "../import/plan";
 import { digest, sha } from "../import/receipt";
 import { begin, useImport } from "../import/runner";
-import { brief, describe, hasArt } from "../Printing";
+import { Panel } from "../Modal";
+import { brief, describe, edition, hasArt } from "../Printing";
 import { Link } from "../router";
 import type { Said } from "./frames";
 import { SCAN } from "./Scan";
@@ -27,19 +33,21 @@ import {
   cards,
   choose,
   copies,
-  cycled,
+  counted,
   drop,
+  dropping,
   type Entry,
   type Finishes,
   joinable,
+  kept,
   merged,
-  minus,
   offered,
-  plus,
   referenced,
   refinish,
   regraded,
   reported,
+  type Source,
+  settled,
   sure,
 } from "./scratch";
 import type { Scratch } from "./store";
@@ -57,25 +65,51 @@ async function stamped(owned: Owned[], at: string): Promise<string> {
   return `sha256-${await sha(`${at}\n${await digest(owned)}`)}`;
 }
 
+// A file's receipt is the file's: its own name and its own digest, taken when
+// it was read rather than off the list somebody has since been editing.
+async function receipt(
+  source: Source,
+  owned: Owned[],
+  at: string,
+): Promise<{ source: string; file?: string; digest: string }> {
+  if (source.at === "file") {
+    return { source: source.format, file: source.file, digest: source.digest };
+  }
+  return { source: SOURCE, digest: await stamped(owned, at) };
+}
+
 type Found = { card: Card; print: Print };
+
+// Held rather than written fresh, so the screen a list does not belong to
+// hands everything reading it the same empty one each render.
+const NONE: Entry[] = [];
 type Change = Scratch["change"];
 
 export function Review({
+  at,
   catalog,
   scratch,
   session,
   owning,
   container,
-  tools,
+  where,
 }: {
+  at: Source["at"];
   catalog: Catalog;
   scratch: Scratch;
   session: OAuthSession | null;
   owning: Holdings;
   container: string | null;
-  tools: ReactNode;
+  // Where a keep would file them, which nothing before a keep decides.
+  where: ReactNode;
 }) {
-  const { list, change } = scratch;
+  const { change } = scratch;
+  // One list to a device, and it belongs to the flow that made it. The other
+  // screen holds nothing rather than somebody else's cards.
+  const list = scratch.source.at === at ? scratch.list : NONE;
+
+  // What a keep would write, which is every row but the ones struck off.
+  const live = useMemo(() => kept(list), [list]);
 
   // Changes only when a scan or a removal moves them, so a press on a count
   // does not send the catalog looking again.
@@ -91,43 +125,52 @@ export function Review({
     [prints],
   );
 
+  const back = at === "file" ? IMPORT : SCAN;
+
   const running = useImport();
   const [keeping, setKeeping] = useState(false);
+  const [filing, setFiling] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [problem, setProblem] = useState("");
+
+  // Which row has the panel open, rather than a panel apiece: a list of
+  // thousands would mount every one of them to show a single dialog.
+  const [editing, setEditing] = useState<string | null>(null);
+  // Looked up each render rather than held: a panel open over a row somebody
+  // has since changed has to show what the row says now.
+  const edited = list.find((one) => one.id === editing) ?? null;
 
   // What keeping the list does to the collection, which is the arithmetic a
   // file is asked for before it lands.
   const weight = useMemo(() => {
-    if (!owning.ready || list.length === 0) return null;
-    const owned = cards(list, container);
+    if (!owning.ready || live.length === 0) return null;
+    const owned = cards(live, container);
     const at = new Date().toISOString();
     return weigh(plan(owned, owning.stacks, at), owning.stacks);
-  }, [container, list, owning.ready, owning.stacks]);
+  }, [container, live, owning.ready, owning.stacks]);
 
   // Stacks whose printing the collection already holds but which the plan
   // did not join. A grade apart is the usual reason, and nothing else on this
   // page would say so.
   const apart = useMemo(() => {
     if (!owning.ready || !weight) return 0;
-    const known = list.filter(
+    const known = live.filter(
       (one) => owning.owned(one.scryfallId, one.finish) > 0,
     ).length;
     return Math.max(0, known - weight.joined);
-  }, [list, owning, weight]);
+  }, [live, owning, weight]);
 
   async function keep() {
     setKeeping(true);
     setProblem("");
     try {
-      const owned = cards(list, container);
+      const owned = cards(live, container);
       const at = new Date().toISOString();
       const weighed = weigh(plan(owned, owning.stacks, at), owning.stacks);
       // The list is the only copy of these cards, so it goes only once the
       // job that carries them is written down.
       const why = await begin(owned, {
-        source: SOURCE,
-        digest: await stamped(owned, at),
+        ...(await receipt(scratch.source, owned, at)),
         cards: weighed.adding,
         stacks: owned.length,
         createdAt: at,
@@ -141,7 +184,15 @@ export function Review({
       setProblem(failed instanceof Error ? failed.message : String(failed));
     } finally {
       setKeeping(false);
+      setFiling(false);
     }
+  }
+
+  // Struck where it stands rather than taken away: the press that was not
+  // meant is undone by the row it was aimed at, and nothing moves under the
+  // next one.
+  function strike(one: Entry, dropped: boolean): void {
+    change((held) => dropping(held, one.id, dropped));
   }
 
   // The list is the only copy of these cards, so the press that throws them
@@ -160,34 +211,42 @@ export function Review({
     return (
       <>
         <p className="quiet">
-          <Link className="link" to={SCAN}>
-            Back to the camera
+          <Link className="link" to={back}>
+            {at === "file" ? "Back to importing" : "Back to the camera"}
           </Link>
         </p>
         {scratch.problem && <p className="warn">{scratch.problem}</p>}
         {problem ? (
           <p className="warn">{problem}</p>
+        ) : !scratch.ready ? (
+          // Empty and unread look alike, and this is the screen somebody
+          // would read as the cards having gone.
+          <p className="quiet">Looking for what was left here…</p>
         ) : (
-          <p className="quiet">Nothing scanned yet.</p>
+          <p className="quiet">
+            {at === "file"
+              ? "Nothing left of that file."
+              : "Nothing scanned yet."}
+          </p>
         )}
       </>
     );
   }
 
-  const held = copies(list);
-  const joins = joinable(list);
+  const held = copies(live);
+  const joins = joinable(live);
 
   return (
     <>
       <div className="scratch-head">
-        <Link className="link" to={SCAN}>
+        <Link className="link" to={back}>
           Back
         </Link>
         <p className="tally">
           {held.toLocaleString()} card{held === 1 ? "" : "s"}
           <span className="quiet">
             {" "}
-            · {list.length} stack{list.length === 1 ? "" : "s"}
+            · {live.length} stack{live.length === 1 ? "" : "s"}
           </span>
         </p>
         <button
@@ -199,8 +258,6 @@ export function Review({
           Clear
         </button>
       </div>
-
-      {tools}
 
       {clearing ? (
         <p className="scratch-clear" aria-live="polite">
@@ -215,63 +272,46 @@ export function Review({
             Leave them here
           </button>
         </p>
-      ) : session ? (
-        // An import in flight owns the same job record, so keeping now would
-        // take the place of one already half written.
-        running.at !== "none" && running.at !== "done" ? (
-          <p className="warn scratch-does">
-            An import holds the place these would go.{" "}
-            <Link className="link" to={IMPORT}>
-              Finish or discard it
-            </Link>
-            . These cards wait here meanwhile.
-          </p>
-        ) : !owning.ready ? (
-          // Planned against an empty collection, every copy reads as new and
-          // the receipt records a count nothing supports.
-          <p className="quiet scratch-does">Reading what you already own…</p>
-        ) : (
-          <p className="scratch-does">
+      ) : (
+        <div className="scratch-does">
+          {!session ? (
+            <span className="quiet">Sign in to keep</span>
+          ) : // An import in flight owns the same job record, so keeping now
+          // would take the place of one already half written.
+          running.at !== "none" && running.at !== "done" ? (
+            <span className="warn">
+              An import holds the place these would go.{" "}
+              <Link className="link" to={IMPORT}>
+                Finish or discard it
+              </Link>
+              . These cards wait here meanwhile.
+            </span>
+          ) : !owning.ready ? (
+            // Planned against an empty collection, every copy reads as new
+            // and the receipt records a count nothing supports.
+            <span className="quiet">Reading what you already own…</span>
+          ) : (
             <button
               type="button"
-              onClick={() => void keep()}
+              onClick={() => setFiling(true)}
               disabled={keeping}
             >
-              Keep {held.toLocaleString()} card{held === 1 ? "" : "s"}
+              {keeping ? "Keeping\u2026" : "Add to collection"}
             </button>
-          </p>
-        )
-      ) : (
-        <p className="quiet scratch-does">Sign in to keep</p>
-      )}
-
-      {joins > 0 && (
-        <p>
+          )}
+          {/* Dead rather than gone: a press that comes and goes with the
+              list moves every row under it on the way past. */}
           <button
             type="button"
             onClick={() => change((held) => merged(held))}
-            disabled={keeping}
+            disabled={keeping || joins === 0}
           >
-            Join {joins} stack{joins === 1 ? "" : "s"} of a card already here
+            Join duplicates
           </button>
-        </p>
-      )}
-
-      {weight && weight.joined > 0 && (
-        <p className="quiet">
-          {weight.joined.toLocaleString()} of them join a stack you already
-          hold.
-        </p>
-      )}
-
-      {apart > 0 && (
-        <p className="quiet">
-          {apart.toLocaleString()}{" "}
-          {apart === 1 ? "is a printing" : "are printings"} you own already but
-          filed otherwise — another grade, or another place — so{" "}
-          {apart === 1 ? "it stays a stack" : "they stay stacks"} of
-          {apart === 1 ? " its" : " their"} own.
-        </p>
+          {session && owning.error && (
+            <span className="warn">{owning.error}</span>
+          )}
+        </div>
       )}
 
       {scratch.problem && <p className="warn">{scratch.problem}</p>}
@@ -282,15 +322,77 @@ export function Review({
         {list.map((one) => (
           <Stack
             key={one.id}
-            catalog={catalog}
             one={one}
             prints={prints}
-            finishes={finishes}
-            change={change}
             frozen={keeping}
+            scanned={scratch.source.at === "scan"}
+            onEdit={() => setEditing(one.id)}
+            onStrike={(dropped) => strike(one, dropped)}
+            onClear={() => change((held) => drop(held, one.id))}
           />
         ))}
       </ul>
+
+      {filing && (
+        <Panel
+          title="Add to collection"
+          onShut={() => setFiling(false)}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setFiling(false)}
+                disabled={keeping}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="chosen"
+                onClick={() => void keep()}
+                disabled={keeping}
+              >
+                {keeping
+                  ? "Keeping\u2026"
+                  : `Keep ${held.toLocaleString()} card${held === 1 ? "" : "s"}`}
+              </button>
+            </>
+          }
+        >
+          {where}
+
+          {weight && weight.joined > 0 && (
+            <p className="quiet">
+              {weight.joined.toLocaleString()} of them join a stack you already
+              hold.
+            </p>
+          )}
+
+          {apart > 0 && (
+            <p className="quiet">
+              {apart.toLocaleString()}{" "}
+              {apart === 1 ? "is a printing" : "are printings"} you own already
+              but filed otherwise — another grade, or another place — so{" "}
+              {apart === 1 ? "it stays a stack" : "they stay stacks"} of
+              {apart === 1 ? " its" : " their"} own.
+            </p>
+          )}
+        </Panel>
+      )}
+
+      {edited && (
+        <Editing
+          key={edited.id}
+          catalog={catalog}
+          one={edited}
+          prints={prints}
+          finishes={finishes}
+          change={change}
+          frozen={keeping}
+          scanned={scratch.source.at === "scan"}
+          onShut={() => setEditing(null)}
+        />
+      )}
     </>
   );
 }
@@ -316,7 +418,7 @@ export function Finding({
   onPick,
 }: {
   catalog: Catalog;
-  onPick: (print: Print) => void;
+  onPick: (print: Print, card: Card) => void;
 }) {
   const [text, setText] = useState("");
   const [card, setCard] = useState<Card | null>(null);
@@ -342,34 +444,201 @@ export function Finding({
           setCard(null);
         }}
       />
-      <ul className="scratch-prints">
-        {!card &&
-          found.map((one) => (
-            <li key={one.index}>
-              <button type="button" onClick={() => setCard(one)}>
-                {one.name}
-              </button>
-            </li>
-          ))}
-        {printings.map((print) => (
-          <li key={print.id}>
-            <button type="button" onClick={() => onPick(print)}>
-              {describe(print)}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {(found.length > 0 || printings.length > 0) && (
+        <ul className="scratch-prints">
+          {!card &&
+            found.map((one) => (
+              <li key={one.index}>
+                <button type="button" onClick={() => setCard(one)}>
+                  {one.name}
+                </button>
+              </li>
+            ))}
+          {card &&
+            printings.map((print) => (
+              <li key={print.id}>
+                <button type="button" onClick={() => onPick(print, card)}>
+                  {describe(print)}
+                </button>
+              </li>
+            ))}
+        </ul>
+      )}
     </div>
   );
 }
 
 function Stack({
+  one,
+  prints,
+  frozen,
+  scanned,
+  onEdit,
+  onStrike,
+  onClear,
+}: {
+  one: Entry;
+  prints: Map<string, Found>;
+  frozen: boolean;
+  scanned: boolean;
+  onEdit: () => void;
+  onStrike: (dropped: boolean) => void;
+  onClear: () => void;
+}) {
+  const held = prints.get(one.scryfallId) ?? null;
+  const named = held ? cardName(held.card.name, held.print, APP) : null;
+  // A badge of its own rather than a line or a button: the row is itself the
+  // press that answers it.
+  const doubt =
+    scanned && ((!sure(one) && !one.picked) || one.detected === false);
+
+  const name = named ? named.text : "this stack";
+
+  return (
+    <li className={one.dropped ? "scratch-gone" : undefined}>
+      <div className="scratch-card">
+        <button
+          type="button"
+          className="scratch-open"
+          aria-haspopup={one.dropped ? undefined : "dialog"}
+          onClick={one.dropped ? () => onStrike(false) : onEdit}
+          disabled={frozen}
+        >
+          {held && hasArt(held.print) ? (
+            <img
+              className="scratch-art"
+              src={image(held.print.id, "small")}
+              alt=""
+            />
+          ) : (
+            <span className="scratch-art scratch-blank" />
+          )}
+          <span className="scratch-what">
+            <span
+              className={named ? "scratch-name" : "scratch-name scratch-wraps"}
+            >
+              <span className="quiet">{one.quantity}&times;</span>{" "}
+              {named ? (
+                <span lang={named.lang}>{named.text}</span>
+              ) : (
+                <span className="quiet">
+                  No printing in this catalog carries it
+                </span>
+              )}
+            </span>
+            <span className="scratch-meta quiet">{meta(held, one)}</span>
+            <span className="scratch-badges">
+              <span className="badge">{one.finish}</span>
+              <span className="badge">
+                {one.condition ? words(one.condition) : "ungraded"}
+              </span>
+              {doubt && <span className="badge warn">unsure</span>}
+            </span>
+          </span>
+        </button>
+        <span className="scratch-acts">
+          {one.dropped ? (
+            <>
+              <button
+                type="button"
+                aria-label={`Put ${name} back`}
+                onClick={() => onStrike(false)}
+                disabled={frozen}
+              >
+                <Back />
+              </button>
+              <button
+                type="button"
+                aria-label={`Clear ${name} off the screen`}
+                onClick={onClear}
+                disabled={frozen}
+              >
+                <Cross />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                aria-label="Change this stack"
+                aria-haspopup="dialog"
+                onClick={onEdit}
+                disabled={frozen}
+              >
+                <Pencil />
+              </button>
+              <button
+                type="button"
+                aria-label="Take this stack off the list"
+                onClick={() => onStrike(true)}
+                disabled={frozen}
+              >
+                <Bin />
+              </button>
+            </>
+          )}
+        </span>
+      </div>
+    </li>
+  );
+}
+
+// Drawn rather than set in type, so the four match whatever font a phone
+// falls back to — `licenses/README.md` says where they came from.
+function Pencil() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M12 4H6C4.89543 4 4 4.89543 4 6V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V12M9 15V12.5L17.75 3.75C18.4404 3.05964 19.5596 3.05964 20.25 3.75V3.75C20.9404 4.44036 20.9404 5.55964 20.25 6.25L15.5 11L11.5 15H9Z" />
+    </svg>
+  );
+}
+
+function Bin() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M6 7V18C6 19.1046 6.89543 20 8 20H16C17.1046 20 18 19.1046 18 18V7M6 7H5M6 7H8M18 7H19M18 7H16M10 11V16M14 11V16M8 7V5C8 3.89543 8.89543 3 10 3H14C15.1046 3 16 3.89543 16 5V7M8 7H16" />
+    </svg>
+  );
+}
+
+function Back() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M14.5 20L15.3182 19.1429C18.9628 15.3247 16.2565 9 10.9781 9H6M6 9L10 13M6 9L10 5" />
+    </svg>
+  );
+}
+
+function Cross() {
+  return (
+    <svg viewBox="0 0 24 24" className="stroked" aria-hidden="true">
+      <path d="M6 6L18 18M18 6L6 18" />
+    </svg>
+  );
+}
+
+// The printing and the line it was read off, on one line because neither
+// fills one.
+function meta(held: Found | null, one: Entry): string {
+  return [
+    held ? brief(held.print) : "",
+    one.line === undefined ? "" : `Line ${one.line}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+// Everything about a stack, the printing and the count included. Nothing
+// lands until Confirm.
+function Editing({
   catalog,
   one,
   prints,
   finishes,
   change,
   frozen,
+  scanned,
+  onShut,
 }: {
   catalog: Catalog;
   one: Entry;
@@ -377,12 +646,52 @@ function Stack({
   finishes: Finishes;
   change: Change;
   frozen: boolean;
+  scanned: boolean;
+  onShut: () => void;
 }) {
   const held = prints.get(one.scryfallId) ?? null;
-  const made = finishes(one.scryfallId);
-  const others = one.matched.flatMap(({ prints: ids }) => ids);
+  const others = (one.matched ?? []).flatMap(({ prints: ids }) => ids);
+  // Null until a printing is pressed, so confirming a panel nobody touched
+  // does not file the reader's guess as somebody's answer.
+  const [picked, setPicked] = useState<Found | null>(null);
+  const [quantity, setQuantity] = useState(one.quantity);
+  const [finish, setFinish] = useState(one.finish);
+  const [condition, setCondition] = useState(one.condition);
   const [sending, setSending] = useState(false);
   const [trouble, setTrouble] = useState("");
+
+  // A printing named by search is in no list the catalog resolved for this
+  // page, so what it was made in comes off the printing itself.
+  const made: Finishes = (id) =>
+    id === picked?.print.id ? picked.print.finishes : finishes(id);
+
+  const shown = picked ?? held;
+  const makes = made(shown?.print.id ?? one.scryfallId);
+
+  // Every printing of the card in hand, which is what a picker offers once
+  // the card itself is settled.
+  const printings = useMemo(
+    () => (shown ? catalog.prints(shown.card.index) : []),
+    [catalog, shown],
+  );
+
+  function take(print: Print, card: Card): void {
+    setPicked({ card, print });
+    if (!print.finishes.includes(finish)) setFinish(settled(print.finishes));
+  }
+
+  function confirm(): void {
+    change((list) => {
+      const now = picked ? choose(list, one.id, picked.print.id, made) : list;
+      const grade = regraded(
+        refinish(now, one.id, finish, made),
+        one.id,
+        condition,
+      );
+      return counted(grade, one.id, quantity);
+    });
+    onShut();
+  }
 
   // Reported before it goes, since the frame goes with the stack.
   async function send(answer: string | null): Promise<void> {
@@ -410,40 +719,115 @@ function Stack({
     }
   }
 
-  async function nothing(): Promise<void> {
-    if (import.meta.env.DEV) await send(null);
-    change((list) => drop(list, one.id));
-  }
-
   return (
-    <li>
-      <div className="scratch-card">
-        {held && hasArt(held.print) && (
-          <img
-            src={image(held.print.id, "small")}
-            alt=""
-            width="48"
-            height="67"
-          />
+    <Panel
+      title="Change this stack"
+      onShut={onShut}
+      actions={
+        <>
+          <button type="button" onClick={onShut}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="chosen"
+            onClick={confirm}
+            disabled={frozen}
+          >
+            Confirm
+          </button>
+        </>
+      }
+    >
+      <div className="stack-edit">
+        {scanned && !sure(one) && !one.picked && (
+          <p className="warn">
+            {(one.margin ?? 0) >= FLOOR
+              ? "This art is on more than one printing."
+              : "Nearest, but not by much."}
+          </p>
         )}
-        <div className="scratch-what">
-          <Title held={held} short />
-          <p className="scratch-badges">
-            <Finish
-              one={one}
-              made={made}
-              finishes={finishes}
-              change={change}
-              frozen={frozen}
-            />
+        {scanned && one.detected === false && (
+          <p className="quiet">
+            No outline was found, so the frame was read whole.
+          </p>
+        )}
+
+        <dl className="panel-grid">
+          <dt>Printing</dt>
+          <dd>
+            {printings.length > 1 && shown ? (
+              <select
+                aria-label="Printing"
+                value={shown.print.id}
+                onChange={(event) => {
+                  const print = printings.find(
+                    (one) => one.id === event.target.value,
+                  );
+                  if (print) take(print, shown.card);
+                }}
+              >
+                {printings.map((print) => (
+                  <option key={print.id} value={print.id}>
+                    {edition(print)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="quiet">
+                {shown ? edition(shown.print) : "Not in this catalog"}
+              </span>
+            )}
+          </dd>
+
+          <dt>Copies</dt>
+          <dd>
+            <div className="scratch-count">
+              <button
+                type="button"
+                aria-label="One fewer"
+                onClick={() => setQuantity((was) => Math.max(1, was - 1))}
+              >
+                &minus;
+              </button>
+              <span className="tally">{quantity}</span>
+              <button
+                type="button"
+                aria-label="One more"
+                onClick={() => setQuantity((was) => Math.min(COPIES, was + 1))}
+              >
+                +
+              </button>
+            </div>
+          </dd>
+
+          <dt>Finish</dt>
+          <dd>
+            {makes.length > 1 ? (
+              <fieldset className="scratch-finishes" aria-label="Finish">
+                {makes.map((was) => (
+                  <button
+                    key={was}
+                    type="button"
+                    className={was === finish ? "chosen" : undefined}
+                    aria-pressed={was === finish}
+                    onClick={() => setFinish(was)}
+                  >
+                    {was}
+                  </button>
+                ))}
+              </fieldset>
+            ) : (
+              <p className="quiet">Only made in {finish}.</p>
+            )}
+          </dd>
+
+          <dt>Condition</dt>
+          <dd>
             <select
-              className="scratch-grade"
               aria-label="Condition"
-              value={one.condition}
-              onChange={(event) =>
-                change((list) => regraded(list, one.id, event.target.value))
-              }
-              disabled={frozen}
+              value={condition}
+              onChange={(event) => setCondition(event.target.value)}
             >
               <option value="">ungraded</option>
               {CONDITIONS.map((grade) => (
@@ -452,163 +836,71 @@ function Stack({
                 </option>
               ))}
             </select>
-            {one.reported && <small className="quiet">reported</small>}
-          </p>
-          {!sure(one) && !one.picked && (
-            <small className="warn">
-              {one.margin >= FLOOR
-                ? "This art is on more than one printing."
-                : "Nearest, but not by much."}
-            </small>
-          )}
-          {!one.detected && (
-            <small className="quiet">
-              No outline was found, so the frame was read whole.
-            </small>
-          )}
-        </div>
-        <div className="scratch-count">
-          <button
-            type="button"
-            onClick={() => change((list) => minus(list, one.id))}
-            aria-label="One fewer"
-            disabled={frozen}
-          >
-            &minus;
-          </button>
-          <span className="tally">{one.quantity}</span>
-          <button
-            type="button"
-            onClick={() => change((list) => plus(list, one.id))}
-            aria-label="One more"
-            disabled={frozen}
-          >
-            +
-          </button>
-        </div>
-      </div>
+          </dd>
+        </dl>
 
-      <details>
-        <summary>Not this one</summary>
-        {made.length > 1 && (
-          <p className="scratch-finishes">
-            {made.map((finish) => (
-              <button
-                key={finish}
-                type="button"
-                className={finish === one.finish ? "chosen" : undefined}
-                aria-pressed={finish === one.finish}
-                onClick={() =>
-                  change((list) => refinish(list, one.id, finish, finishes))
-                }
-                disabled={frozen}
-              >
-                {finish}
-              </button>
-            ))}
-          </p>
+        {(scanned || !shown) && (
+          <>
+            <h3>Read as</h3>
+            {others.length > 0 && (
+              <ul className="scratch-prints">
+                {others.map((id) => {
+                  const other = prints.get(id);
+                  if (!other) return null;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        className={
+                          other.print.id === shown?.print.id
+                            ? "chosen"
+                            : undefined
+                        }
+                        aria-pressed={other.print.id === shown?.print.id}
+                        onClick={() => take(other.print, other.card)}
+                      >
+                        <Title held={other} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <Finding catalog={catalog} onPick={take} />
+          </>
         )}
 
-        <ul className="scratch-prints">
-          {others.map((id) => {
-            const other = prints.get(id);
-            if (!other) return null;
-            return (
-              <li key={id}>
-                <button
-                  type="button"
-                  className={id === one.scryfallId ? "chosen" : undefined}
-                  aria-pressed={id === one.scryfallId}
-                  onClick={() =>
-                    change((list) => choose(list, one.id, id, finishes))
-                  }
-                  disabled={frozen}
-                >
-                  <Title held={other} />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-
-        <Finding
-          catalog={catalog}
-          onPick={(print) =>
-            change((list) =>
-              choose(list, one.id, print.id, () => print.finishes),
-            )
-          }
-        />
-
-        <p className="scratch-report">
-          <button
-            type="button"
-            onClick={() => void nothing()}
-            disabled={frozen || sending}
-          >
-            Nothing like it
-          </button>
-          {import.meta.env.DEV && (
+        {import.meta.env.DEV && scanned && (
+          <p className="scratch-report">
             <button
               type="button"
               onClick={() => void send(one.picked ? one.scryfallId : null)}
               disabled={frozen || sending}
             >
               {sending
-                ? "Reporting…"
+                ? "Reporting\u2026"
                 : one.reported
                   ? "Report again"
                   : "Report"}
             </button>
-          )}
-        </p>
-        {import.meta.env.DEV && (
+          </p>
+        )}
+        {import.meta.env.DEV && scanned && (
           <small className="quiet">
             {one.picked
               ? `Reports as ${held ? describe(held.print) : one.scryfallId}.`
-              : "Reports the frame and no answer — name the card first to say what it was."}
+              : "Reports the frame and no answer \u2014 name the card first to say what it was."}
           </small>
         )}
         {trouble && <small className="warn">{trouble}</small>}
-      </details>
-    </li>
+      </div>
+    </Panel>
   );
 }
 
-// `short` is the list row, where the set's name wraps to three lines and the
-// artist settles nothing; the fold tells printings apart and wants both.
-// One press is the next finish the printing was made in, so two of them are
-// a toggle. Always shown, so the tags line up down the list.
-function Finish({
-  one,
-  made,
-  finishes,
-  change,
-  frozen,
-}: {
-  one: Entry;
-  made: string[];
-  finishes: Finishes;
-  change: Change;
-  frozen: boolean;
-}) {
-  if (made.length < 2) {
-    return <span className="badge locked">{one.finish}</span>;
-  }
-
-  return (
-    <button
-      type="button"
-      className="badge"
-      onClick={() => change((list) => cycled(list, one.id, finishes))}
-      disabled={frozen}
-    >
-      {one.finish}
-    </button>
-  );
-}
-
-function Title({ held, short }: { held: Found | null; short?: boolean }) {
+// Names a printing well enough to tell it from another of the same card,
+// which is what every list of them here is for.
+function Title({ held }: { held: Found | null }) {
   if (!held) {
     return (
       <span className="quiet">No printing in this catalog carries it</span>
@@ -620,9 +912,7 @@ function Title({ held, short }: { held: Found | null; short?: boolean }) {
     <span>
       <span lang={named.lang}>{named.text}</span>
       <br />
-      <small className="quiet">
-        {short ? brief(held.print) : describe(held.print)}
-      </small>
+      <small className="quiet">{describe(held.print)}</small>
     </span>
   );
 }

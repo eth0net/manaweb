@@ -37,6 +37,29 @@ export type Owned = Fields<Main>;
 // `value.quantity` alone.
 export type Stack = Held<Owned> & { waiting?: number };
 
+// What each printing a collection holds counts for: one apiece, or the
+// finishes held of it, which is the same question the denominator changes to.
+export function worth(
+  owning: Holdings | null,
+  treatments: boolean,
+): Map<string, number> {
+  const tally = new Map<string, number>();
+  if (!owning) return tally;
+  if (!treatments) {
+    for (const id of owning.printings) tally.set(id, 1);
+    return tally;
+  }
+  const finishes = new Map<string, Set<string>>();
+  for (const stack of owning.stacks) {
+    const { scryfallId, finish } = stack.value;
+    const held = finishes.get(scryfallId) ?? new Set<string>();
+    held.add(finish);
+    finishes.set(scryfallId, held);
+  }
+  for (const [id, held] of finishes) tally.set(id, held.size);
+  return tally;
+}
+
 // A stack no record holds yet, so there is nothing to write to.
 const WAITING = "waiting:";
 

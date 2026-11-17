@@ -1,4 +1,4 @@
-// Name search over the whole catalog. A scan of 37,000 names costs a few
+// Name search over the whole catalog. A scan of ~37,000 names costs a few
 // milliseconds, so there is no index. Ranking is in `docs/search.md`.
 
 export interface Index {

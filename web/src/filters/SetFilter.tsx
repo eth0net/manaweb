@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import type { Catalog } from "../catalog";
+import { label, narrow } from "../catalog/sets";
 import { Modal } from "../Modal";
 import { amend, useSettings } from "../router";
-import { label, narrow, SetList, useSets } from "../Sets";
+import { SetList, useSets } from "../Sets";
 import { KEY, read, write } from "../terms";
 
 // Which sets the search is narrowed to, written into the query as the `s:`
@@ -22,7 +23,7 @@ export function SetFilter({
   const sets = useMemo(() => narrow(all, filter), [all, filter]);
   const chosen = useMemo(() => read(text, KEY.set).values, [text]);
 
-  // Picked first, or unpicking one means finding it again among 989.
+  // Picked first, or unpicking one means finding it again among ~1,000.
   const ordered = useMemo(() => {
     if (chosen.length === 0) return sets;
     const picked = (one: string) => chosen.includes(one);

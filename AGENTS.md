@@ -25,10 +25,12 @@ is on plain `//` notes; `///` and `//!` are the cargo docs and earn the room,
 and TypeScript has neither marker, so a comment there is always a note. Write
 it that way first rather than trimming after — `just prose` fails on any eight
 words a comment shares with a doc, or one doc with another, because prose said
-twice drifts apart and figures said twice go stale. Lexicon descriptions say
-what a field is, never why — measured against Bluesky, WhiteWind and Leaflet,
-real ones run to a median of 48 characters and Leaflet describes no fields at
-all. Reasoning belongs in `docs/`.
+twice drifts apart and figures said twice go stale. A figure measured off the
+catalog goes stale with no second copy to blame, so write one as a size rather
+than a count: `~37,000` names, not 37,000. Lexicon descriptions say what a
+field is, never why — measured against Bluesky, WhiteWind and Leaflet, real
+ones run to a median of 48 characters and Leaflet describes no fields at all.
+Reasoning belongs in `docs/`.
 
 Deferred work is marked at the line it affects. `todo(<the thing>)` waits on
 something that does not exist yet — `todo(settings)`, say — and carries its
@@ -232,8 +234,9 @@ backend:
    The OAuth client metadata document is committed at
    `web/public/oauth/client-metadata.json`, not generated.
 5. **Done** — the web client: OAuth, reads from own PDS, writes back, and
-   imports a CSV, parsed and planned against what is held, then landed whole
-   and drained into records at whatever the PDS will take. Measured end to end
+   imports a CSV, read into a list of its own and reviewed there before
+   anything is written, then planned against what is held, landed whole and
+   drained into records at whatever the PDS will take. Measured end to end
    against a limited one. Deployed to Pages, reading the catalog from the
    bucket it is uploaded to. Search speaks most of Scryfall's syntax, held to
    their own answers by `just scryfall-search`; a service worker holds the

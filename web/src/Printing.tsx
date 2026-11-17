@@ -4,6 +4,7 @@ import {
   cardName,
   language,
   type Print,
+  product,
   words,
 } from "./catalog";
 
@@ -51,12 +52,24 @@ export function twoSided(print: Print): boolean {
 export function describe(print: Print) {
   return [
     `${print.setName} · ${print.set.toUpperCase()} #${print.collectorNumber}`,
+    // Every printing in a promo set carries the promo flag too, and the row
+    // below already says it.
+    print.flags.includes(print.setKind) ? null : product(print.setKind),
     print.rarity,
     print.artist,
     ...print.flags.map(words),
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+// The one line a picker shows, the set being what tells two printings of a
+// card apart.
+export function edition(print: Print) {
+  return [
+    `${print.setName} #${print.collectorNumber}`,
+    ...print.flags.map(words),
+  ].join(" \u00b7 ");
 }
 
 // The same printing for a list row: rarity takes the letter a collector line

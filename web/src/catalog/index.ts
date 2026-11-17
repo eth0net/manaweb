@@ -155,7 +155,7 @@ export interface Card {
   edhrecRank: number | null;
   // `3/3`, or a loyalty or defense alone. The type line says which.
   stats: string | null;
-  // Absent unless the card has two sides, which 1,025 of them do.
+  // Absent unless the card has two sides, which ~1,000 of them do.
   faces: Face[] | null;
   // Named by the file, so a flag the artifact gains needs nothing here.
   flags: string[];
@@ -165,6 +165,9 @@ export interface Print {
   id: string;
   set: string;
   setName: string;
+  // What kind of thing the set is — an expansion, a precon, a Secret Lair.
+  // A taxonomy Scryfall adds to, so it stays a string.
+  setKind: string;
   // The set's day, which is the only date a printing has.
   released: string;
   collectorNumber: string;
@@ -266,8 +269,48 @@ export function language(code: string): string {
 }
 
 // A camelCase name from the artifact as something to put on screen.
+// How many bits are set, which for a finishes mask is the number of ways
+// that printing was made.
+function ways(mask: number): number {
+  let count = 0;
+  for (let left = mask; left !== 0; left >>= 1) count += left & 1;
+  return count;
+}
+
 export function words(name: string): string {
-  return name.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  return name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .toLowerCase();
+}
+
+// A card's own, or what its faces carry joined the way its name and type line
+// already are. Scryfall leaves the cost null where only one face has one and
+// never joins the stats at all — see `docs/search.md`.
+export function across(
+  card: Pick<Card, "manaCost" | "stats" | "faces">,
+  field: "manaCost" | "stats",
+): string | null {
+  const own = card[field];
+  if (own) return own;
+  // An empty string, not null, is how a back face with no cost arrives.
+  const said = (card.faces ?? []).map((one) => one[field]).filter(Boolean);
+  return said.length > 0 ? said.join(" // ") : null;
+}
+
+// Their spelling is snake_case, and no set type holds a space or a hyphen, so
+// either is read as the underscore somebody meant.
+export function kind(value: string): string {
+  return value.toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+// The sets nobody needs told about: a card is in an expansion unless it is
+// somewhere more particular, and the particular ones are where to look for a
+// copy. Null for the two that go without saying.
+const PLAIN = new Set(["expansion", "core"]);
+
+export function product(kind: string): string | null {
+  return PLAIN.has(kind) ? null : words(kind);
 }
 
 // A bitmask against the list the file names it with.
@@ -286,6 +329,7 @@ export class Catalog {
   #languages: Int32Array;
   // How many printings each set holds, tallied on the same pass.
   #setSizes: Int32Array;
+  #setTreatments: Int32Array;
 
   // The files as fetched, each read a batch at a time so its parsed form
   // never exists whole beside the columns it becomes — see
@@ -323,6 +367,7 @@ export class Catalog {
 
     this.#languages = new Int32Array(cards.rows);
     this.#setSizes = new Int32Array(prints.tables.sets.length);
+    this.#setTreatments = new Int32Array(prints.tables.sets.length);
     for (let card = 0; card < cards.rows; card++) {
       let langs = 0;
       const end = this.#offsets[card + 1] as number;
@@ -330,6 +375,9 @@ export class Catalog {
         langs |= 1 << (this.#prints.lang[at] as number);
         const set = this.#prints.set[at] as number;
         this.#setSizes[set] = (this.#setSizes[set] as number) + 1;
+        this.#setTreatments[set] =
+          (this.#setTreatments[set] as number) +
+          ways(this.#prints.finishes[at] as number);
       }
       this.#languages[card] = langs;
     }
@@ -488,18 +536,20 @@ export class Catalog {
     };
   }
 
-  // How many of the given printings each set holds, by code. One scan rather
-  // than an index: a collection is small and this is asked once per change.
-  bySet(ids: Iterable<string>): Map<string, number> {
-    const wanted = ids instanceof Set ? ids : new Set(ids);
+  // What the given printings come to in each set, by code, each worth what
+  // the map says: one apiece, or the finishes held of it where treatments are
+  // counted. One scan rather than an index: a collection is small and this is
+  // asked once per change.
+  bySet(wanted: Map<string, number>): Map<string, number> {
     const tally = new Map<string, number>();
     if (wanted.size === 0) return tally;
 
     const cols = this.#prints;
     for (let at = 0; at < cols.rows; at++) {
-      if (!wanted.has(cols.id(at))) continue;
+      const worth = wanted.get(cols.id(at));
+      if (worth === undefined) continue;
       const set = cols.tables.sets[cols.set[at] as number] as SetRow;
-      tally.set(set[0], (tally.get(set[0]) ?? 0) + 1);
+      tally.set(set[0], (tally.get(set[0]) ?? 0) + worth);
     }
     return tally;
   }
@@ -563,11 +613,13 @@ export class Catalog {
     return found;
   }
 
-  // Every set with a paper printing, and how many each holds.
-  sets(): { set: SetRow; printings: number }[] {
+  // Every set with a paper printing, and how many each holds — as printings,
+  // and as the finishes those were made in, which is the larger denominator.
+  sets(): { set: SetRow; printings: number; treatments: number }[] {
     return this.#prints.tables.sets.map((set, at) => ({
       set,
       printings: this.#setSizes[at] as number,
+      treatments: this.#setTreatments[at] as number,
     }));
   }
 
@@ -640,6 +692,7 @@ export class Catalog {
       id: cols.id(at),
       set: set[0],
       setName: set[1],
+      setKind: set[2],
       released: set[3],
       collectorNumber: cols.number(at),
       finishes: decode(cols.finishes[at] as number, tables.finishes),

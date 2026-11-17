@@ -2,35 +2,58 @@
 // what holds the list decides where it is kept — `docs/scanner.md`.
 
 import { FLOOR } from "../catalog/artwork";
-import { COPIES, type Owned } from "../collection/cards";
+import { COPIES, joins, merge, type Owned, stack } from "../collection/cards";
 import type { Read } from "./read";
 
 // One artwork the frame came near, and every printing carrying it.
 export type Matched = { distance: number; prints: string[] };
 
+// What a list was read out of — `docs/scanner.md`. A file carries what its
+// receipt will say, the digest being the file's rather than the list's.
+export type Source =
+  | { at: "scan" }
+  | { at: "file"; format: string; file: string; digest: string };
+
+export const SCANNED: Source = { at: "scan" };
+
+// The four fields below are a scan's: a row read off a file has a line behind
+// it instead, and nothing that came near an artwork.
 export type Entry = {
   id: string;
   at: string;
+  // Which line of the file this was.
+  line?: number;
   // Bits between the nearest artwork and the next.
-  margin: number;
+  margin?: number;
   // False where no outline was found and the framing was guessed at.
-  detected: boolean;
+  detected?: boolean;
   // Nearest first. A printing is picked out of these, so changing one costs
   // no second photograph.
-  matched: Matched[];
+  matched?: Matched[];
   scryfallId: string;
   // Whether a person said so. An index proposing a printing and somebody
   // agreeing it is the card in their hand are different claims, and only the
   // second one may be reported as an answer.
   picked?: boolean;
   // When a frame of this stack was last sent back. Kept on the entry rather
-  // than in a component, so it survives the fold closing and the tab dying.
+  // than in a component, so it survives the panel closing and the tab dying.
   reported?: string;
+  // Struck off without being taken off: nothing keeps it, and the row stays
+  // where it was in case the press was not meant.
+  dropped?: boolean;
   finish: string;
   // What the stack is kept at, `""` being ungraded — `docs/scanner.md`.
   condition: string;
   quantity: number;
+  // What a file said that a scan never does. Carried whole rather than field
+  // by field, so a column the reader learns next is not one a review drops.
+  rest?: Rest;
 };
+
+export type Rest = Omit<
+  Owned,
+  "scryfallId" | "finish" | "quantity" | "createdAt" | "condition"
+>;
 
 // What the catalog says a printing was made in, passed in so nothing here
 // needs a catalog of its own.
@@ -41,13 +64,15 @@ const NONFOIL = "nonfoil";
 // Whether the reader settled it on its own. Two conditions, because the
 // margin measures the artwork and an artwork is not a printing.
 export function sure(one: Entry): boolean {
-  return one.margin >= FLOOR && (one.matched[0]?.prints.length ?? 0) === 1;
+  return (
+    (one.margin ?? 0) >= FLOOR && (one.matched?.[0]?.prints.length ?? 0) === 1
+  );
 }
 
 // The printings the winning artwork carries. One is an answer; several is a
 // question the bottom line of the card would settle and nothing reads yet.
 export function among(one: Entry): string[] {
-  return one.matched[0]?.prints ?? [];
+  return one.matched?.[0]?.prints ?? [];
 }
 
 // One scan, one stack. Null where nothing it matched is a printing the
@@ -120,12 +145,35 @@ export function minus(list: Entry[], id: string): Entry[] {
   });
 }
 
+// What a panel settles on rather than a press at a time. One is the floor:
+// taking the stack away is the list's own move.
+export function counted(list: Entry[], id: string, quantity: number): Entry[] {
+  const held = Math.min(Math.max(1, Math.trunc(quantity)), COPIES);
+  return list.map((one) => (one.id === id ? { ...one, quantity: held } : one));
+}
+
 export function reported(list: Entry[], id: string, at: string): Entry[] {
   return list.map((one) => (one.id === id ? { ...one, reported: at } : one));
 }
 
 export function drop(list: Entry[], id: string): Entry[] {
   return list.filter((one) => one.id !== id);
+}
+
+// Struck through rather than taken away, so what somebody changes their mind
+// about comes back with everything it held.
+export function dropping(
+  list: Entry[],
+  id: string,
+  dropped: boolean,
+): Entry[] {
+  return list.map((one) => (one.id === id ? { ...one, dropped } : one));
+}
+
+// The rows a keep writes. The last gate before a record, so a row struck off
+// cannot reach one whatever counted it on the way.
+export function kept(list: Entry[]): Entry[] {
+  return list.filter((one) => !one.dropped);
 }
 
 // Any printing, not only one the scan matched. Holding it to the matches
@@ -154,7 +202,7 @@ export function choose(
 // Whether the index had this printing anywhere in what it returned. False
 // against a person's own answer is the strongest thing a report can say.
 export function offered(one: Entry, scryfallId: string): boolean {
-  return one.matched.some(({ prints }) => prints.includes(scryfallId));
+  return (one.matched ?? []).some(({ prints }) => prints.includes(scryfallId));
 }
 
 // Every printing the list needs a catalog row for. The matches alone leave
@@ -164,7 +212,8 @@ export function referenced(list: Entry[]): string[] {
   const all = new Set<string>();
   for (const one of list) {
     all.add(one.scryfallId);
-    for (const { prints } of one.matched) for (const id of prints) all.add(id);
+    for (const { prints } of one.matched ?? [])
+      for (const id of prints) all.add(id);
   }
   return [...all].sort();
 }
@@ -209,27 +258,52 @@ export function regraded(
 
 // Stacks of one printing become one, on request. Scanning records what
 // somebody saw, and arrival is the wrong moment to tidy that away.
+//
+// Held to the identity a record is written under rather than to a key of its
+// own: a file's rows differ in ways a scan's never do, and two that a write
+// would keep apart must not be joined here.
 export function merged(list: Entry[]): Entry[] {
-  const into = new Map<string, Entry>();
+  const into = new Map<string, number>();
   const kept: Entry[] = [];
 
   for (const one of list) {
-    const key = `${one.scryfallId}\t${one.finish}\t${one.condition}`;
-    const held = into.get(key);
-    if (held) {
-      // A stack the ceiling has closed stays the one to try, so what follows
-      // still joins it where there is room.
-      if (held.quantity + one.quantity <= COPIES) {
-        held.quantity += one.quantity;
-      } else kept.push({ ...one });
+    // A row nothing keeps joins nothing: it is here to be put back as it was.
+    if (one.dropped) {
+      kept.push({ ...one });
       continue;
     }
-    const copy = { ...one };
-    kept.push(copy);
-    into.set(key, copy);
+
+    const mine = record(one);
+    const at = into.get(stack(mine));
+
+    if (at === undefined) {
+      into.set(stack(mine), kept.length);
+      kept.push({ ...one });
+      continue;
+    }
+
+    // A stack the ceiling has closed stays the one to try, so what follows
+    // still joins it where there is room.
+    const held = kept[at] as Entry;
+    if (joins(record(held), mine)) kept[at] = folded(held, one);
+    else kept.push({ ...one });
   }
 
   return kept;
+}
+
+// The stack that replaces both: what the list holds of the first, and what
+// the two records come to together.
+function folded(held: Entry, one: Entry): Entry {
+  const { scryfallId, finish, quantity, createdAt, condition, ...rest } =
+    merge(record(held), record(one));
+
+  return {
+    ...held,
+    quantity,
+    at: createdAt,
+    ...(Object.keys(rest).length > 0 ? { rest } : {}),
+  };
 }
 
 // Stacks a merge would take away, so it is offered only where it does
@@ -239,17 +313,25 @@ export function joinable(list: Entry[]): number {
 }
 
 export function copies(list: Entry[]): number {
-  return list.reduce((sum, one) => sum + one.quantity, 0);
+  return kept(list).reduce((sum, one) => sum + one.quantity, 0);
 }
 
 // The list as cards, for the path that writes them.
 export function cards(list: Entry[], container: string | null): Owned[] {
-  return list.map((one) => ({
+  return kept(list).map((one) => record(one, container));
+}
+
+// The record one stack stands for, which is what decides whether two of them
+// are one.
+function record(one: Entry, container: string | null = null): Owned {
+  return {
+    // First, so what the list itself holds wins where the two overlap.
+    ...one.rest,
     scryfallId: one.scryfallId,
     finish: one.finish,
     quantity: one.quantity,
     createdAt: one.at,
     ...(one.condition ? { condition: one.condition } : {}),
     ...(container ? { container } : {}),
-  }));
+  };
 }

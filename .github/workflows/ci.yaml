@@ -119,14 +119,12 @@ jobs:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      # One scope for the client and the tools: the tools import the client's
-      # own modules, so a change to those has to typecheck against both.
-      - run: bun run lint
-      - run: bun run types
-      # Not optional: a runner orders the files differently from a laptop, and
-      # one of them puts the rendering tests before what they would reach.
-      - run: bun test --isolate
-      - run: bun run build
+      # The recipe a laptop runs, rather than its steps copied: one scope for
+      # the client and the tools, which import the client's own modules;
+      # `--isolate` because a runner orders the test files differently; and
+      # the build read back for the routes that are only meant to exist in
+      # development.
+      - run: bun run check
 
   msrv:
     name: minimum supported rust version

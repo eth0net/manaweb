@@ -3,12 +3,18 @@ import { About } from "./About";
 import { CatalogUpdate } from "./CatalogStatus";
 import { Collection } from "./collection/Collection";
 import { useCollection } from "./collection/cards";
-import { useContainers } from "./collection/containers";
+import { type Containers, useContainers } from "./collection/containers";
 import { Owning } from "./collection/context";
-import { Destination } from "./collection/Destination";
+import { Destination, Places } from "./collection/Destination";
 import { CATALOG } from "./config";
 import { EXPORT, Export } from "./export/Export";
-import { IMPORT, Import, ImportStatus } from "./import/Import";
+import {
+  IMPORT,
+  Import,
+  ImportStatus,
+  REVIEWING,
+  ReviewStatus,
+} from "./import/Import";
 import { attach, useWaiting } from "./import/runner";
 import { Menu } from "./Menu";
 import { Nav } from "./Nav";
@@ -19,8 +25,16 @@ import { SETS, SetView } from "./Sets";
 import { Soon } from "./Soon";
 import { Review } from "./scan/Review";
 import { REVIEW, SCAN, Scan } from "./scan/Scan";
+import type { Source } from "./scan/scratch";
 import { useGrade, useScratch } from "./scan/store";
 import { useCatalog } from "./useCatalog";
+
+// The chosen container by name, for a screen that has to say which one its
+// arithmetic assumed.
+function named(containers: Containers, chosen: string | null): string | null {
+  if (!chosen) return null;
+  return containers.held.find((one) => one.uri === chosen)?.value.name ?? null;
+}
 
 export function App() {
   const status = useCatalog();
@@ -31,7 +45,10 @@ export function App() {
   const containers = useContainers(signedIn);
   const [chosen, choose] = useState<string | null>(null);
   const waiting = useWaiting();
-  const scratch = useScratch();
+  // Two piles nobody has committed, kept apart: a box in front of the camera
+  // is not a file somebody is partway through.
+  const scanning = useScratch("scan");
+  const importing = useScratch("file");
   const grading = useGrade();
   const collection = useCollection(signedIn, chosen, waiting);
   const path = usePath();
@@ -61,6 +78,41 @@ export function App() {
     </>
   );
 
+  // The same choice without the tool around it: a keep is all it decides, so
+  // on a review it waits inside the press that decides.
+  const places = signedIn && (
+    <Places
+      containers={containers}
+      owning={collection}
+      chosen={chosen}
+      onChoose={choose}
+    />
+  );
+
+  // One screen under either tab, holding the list that flow made and no
+  // other: what a scan read in is not what an import is waiting on.
+  const reviewing = (at: Source["at"]) =>
+    load.status === "ready" ? (
+      <Review
+        at={at}
+        catalog={load.catalog}
+        scratch={at === "file" ? importing : scanning}
+        session={signedIn}
+        owning={collection}
+        container={chosen}
+        where={places}
+      />
+    ) : load.status === "loading" ? (
+      <p className="quiet">The catalog is still loading.</p>
+    ) : (
+      // Every row is drawn out of the catalog, so there is no list to draw.
+      // The cards are still saved; what is missing is what names them.
+      <p className="warn">
+        No catalog at <code>{CATALOG}</code>: {load.error}. The cards waiting
+        here are still here.
+      </p>
+    );
+
   return (
     <main>
       <header>
@@ -70,14 +122,20 @@ export function App() {
             Manaweb
           </Link>
         </h1>
-        {/* todo(settings): profile, settings, about and sign out as one menu
-            off the picture; sign in stays a button, there being none. */}
         <div className="controls">
-          <About
+          {/* Signed in it hangs off the picture; signed out there is none,
+              so it stands on its own beside the form. */}
+          {!signedIn && (
+            <About
+              status={status}
+              loaded={load.status === "ready" ? load : null}
+            />
+          )}
+          <Menu
+            account={account}
             status={status}
             loaded={load.status === "ready" ? load : null}
           />
-          <Menu account={account} />
         </div>
       </header>
 
@@ -105,33 +163,31 @@ export function App() {
 
             {here === SCAN &&
               (path === REVIEW ? (
-                load.status === "ready" ? (
-                  <Review
-                    catalog={load.catalog}
-                    scratch={scratch}
-                    session={signedIn}
-                    owning={collection}
-                    container={chosen}
-                    tools={destination}
-                  />
-                ) : (
-                  <p className="quiet">The catalog is still loading.</p>
-                )
+                reviewing("scan")
               ) : (
                 <Scan
                   catalog={load.status === "ready" ? load.catalog : null}
                   manifest={load.status === "ready" ? load.manifest : null}
-                  scratch={scratch}
+                  scratch={scanning}
                   grading={grading}
                 />
               ))}
 
+            {here === "/collection" && (
+              <ReviewStatus path={path} scratch={importing} />
+            )}
+
             {here === "/collection" &&
-              (path === IMPORT ? (
+              (path === REVIEWING ? (
+                reviewing("file")
+              ) : path === IMPORT ? (
                 <Import
                   session={signedIn}
                   owning={collection}
                   catalog={load.status === "ready" ? load.catalog : null}
+                  scratch={importing}
+                  container={chosen}
+                  place={named(containers, chosen)}
                 />
               ) : path === EXPORT ? (
                 <Export

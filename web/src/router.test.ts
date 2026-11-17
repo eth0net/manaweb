@@ -23,18 +23,25 @@ test("pressing the tab you are in drops the search too", () => {
   expect(entry("/cards", "/cards?q=bolt")).toBe("/cards");
 });
 
+// Sets are a root of their own, so nothing about the path says which tab to
+// mark: the bar reads it off the tab that claims the root.
+test("a root beside the tab's own is still that tab", () => {
+  expect(known("/sets")).toBe(true);
+  expect(tab("/sets")).toBe(HOME);
+});
+
 // A set is a setting on the list rather than a page under it, so the press
 // that leaves it is not also the press that leaves browsing.
 test("leaving a set goes to the sets, not past them to the cards", () => {
-  expect(entry("/cards", "/cards/sets?set=lea")).toBe("/cards/sets");
+  expect(entry("/cards", "/sets?set=lea")).toBe("/sets");
 });
 
 test("a second press is what gets out of the sets", () => {
-  expect(entry("/cards", "/cards/sets")).toBe("/cards");
+  expect(entry("/cards", "/sets")).toBe("/cards");
 });
 
 test("what a set was filtered to goes with the set", () => {
-  expect(entry("/cards", "/cards/sets?set=lea&colors=W")).toBe("/cards/sets");
+  expect(entry("/cards", "/sets?set=lea&colors=W")).toBe("/sets");
 });
 
 // The container's address holds slashes of its own, so there is no segment

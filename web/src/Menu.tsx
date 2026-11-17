@@ -1,19 +1,50 @@
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { useEffect, useState } from "react";
+import {
+  type KeyboardEvent as Keyed,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Particulars } from "./About";
 import { Avatar } from "./Avatar";
+import type { Loaded } from "./catalog/load";
 import { SCOPES } from "./config";
-import { Modal } from "./Modal";
+import { Panel } from "./Modal";
 import { bare, wear } from "./oauth/profile";
 import { type Repo, read } from "./oauth/records";
 import type { Session } from "./oauth/useSession";
+import { Settings } from "./Settings";
+import type { Status } from "./useCatalog";
 
-// Who you are, and nothing else: under a sign-in form an index version and a
-// license read as its terms. The rest is in `About`.
-export function Menu({ account }: { account: Session }) {
+type View = "profile" | "settings" | "about";
+
+const TITLES: Record<View, string> = {
+  profile: "Profile",
+  settings: "Settings",
+  about: "About Manaweb",
+};
+
+// Everything hanging off the picture: who you are, what the app is, and the
+// way out. Signed out there is no picture, so the press is the sign-in form.
+export function Menu({
+  account,
+  status,
+  loaded,
+}: {
+  account: Session;
+  status: Status;
+  loaded: Loaded | null;
+}) {
   const { state, signIn, signOut } = account;
   const [repo, setRepo] = useState<Repo | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [worn, setWorn] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<View | null>(null);
+  const held = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const items = useRef<(HTMLButtonElement | null)[]>([]);
+  const [at, setAt] = useState(0);
 
   useEffect(() => {
     if (state.status !== "in") {
@@ -34,54 +65,147 @@ export function Menu({ account }: { account: Session }) {
     };
   }, [state]);
 
+  // A press anywhere else and the escape key, which is what a dialog would
+  // have brought with it.
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: PointerEvent) => {
+      if (!held.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      trigger.current?.focus();
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+
+  // The arrows move which entry is the menu's one stop; this is what makes
+  // that the entry a reader is on.
+  useEffect(() => {
+    if (open) items.current[at]?.focus();
+  }, [open, at]);
+
   // Only the page-load read takes the menu away. Signing in keeps it, or the
   // dialog holding the form is torn down with the failure still to report.
   if (state.status === "restoring") return <span className="quiet">…</span>;
   const session = state.status === "in" ? state.session : null;
+  const name = repo?.handle ?? session?.did ?? "";
+
+  function go(to: View) {
+    setOpen(false);
+    setView(to);
+  }
+
+  // Back where the press came from, which a dialog does for itself and a
+  // menu of plain controls does not.
+  function shut() {
+    setOpen(false);
+    trigger.current?.focus();
+  }
+
+  const entries = [
+    { name: "Profile", press: () => go("profile") },
+    { name: "Settings", press: () => go("settings") },
+    { name: "About", press: () => go("about") },
+    { name: "Sign out", press: signOut },
+  ];
+
+  function steer(event: Keyed<HTMLDivElement>) {
+    const last = entries.length - 1;
+    const moves: Record<string, number> = {
+      ArrowDown: at === last ? 0 : at + 1,
+      ArrowUp: at === 0 ? last : at - 1,
+      Home: 0,
+      End: last,
+    };
+    const to = moves[event.key];
+    if (to !== undefined) {
+      event.preventDefault();
+      setAt(to);
+      return;
+    }
+    // Out of the menu rather than through it, as a menu's own key does.
+    if (event.key === "Tab") shut();
+  }
 
   return (
-    <Modal
-      trigger="summary"
-      title={session ? "Account" : "Sign in"}
-      label={
-        state.status === "in" ? (
+    <div className="account" ref={held}>
+      <button
+        ref={trigger}
+        type="button"
+        className="summary"
+        aria-haspopup={session ? "menu" : undefined}
+        aria-expanded={session ? open : undefined}
+        onClick={() => {
+          if (!session) return setView("profile");
+          setAt(0);
+          setOpen(!open);
+        }}
+      >
+        {session ? (
           <>
-            <span className="handle">{repo?.handle ?? state.session.did}</span>
+            <span className="handle">{name}</span>
             {/* Keyed so wearing a new one reads it again: the trigger and
                 the control that changed it are separate readers. */}
-            <Avatar
-              key={worn}
-              session={state.session}
-              name={repo?.handle ?? state.session.did}
-            />
+            <Avatar key={worn} session={session} name={name} />
           </>
         ) : (
           "Sign in"
-        )
-      }
-      actions={
-        session && (
-          <button type="button" onClick={signOut}>
-            Sign out
-          </button>
-        )
-      }
-    >
-      {state.status === "in" ? (
-        <Account
-          session={state.session}
-          repo={repo}
-          failed={failed}
-          onWorn={() => setWorn((n) => n + 1)}
-        />
-      ) : (
-        <SignIn
-          signIn={signIn}
-          error={state.status === "out" ? state.error : undefined}
-          going={state.status === "signing"}
-        />
+        )}
+      </button>
+
+      {session && open && (
+        <div className="account-menu" role="menu" onKeyDown={steer}>
+          {entries.map((entry, index) => (
+            <button
+              key={entry.name}
+              ref={(node) => {
+                items.current[index] = node;
+              }}
+              type="button"
+              role="menuitem"
+              // One stop for the menu, the arrows moving within it.
+              tabIndex={index === at ? 0 : -1}
+              onClick={entry.press}
+            >
+              {entry.name}
+            </button>
+          ))}
+        </div>
       )}
-    </Modal>
+
+      {view !== null &&
+        (session ? (
+          <Panel title={TITLES[view]} onShut={() => setView(null)}>
+            {view === "profile" ? (
+              <Account
+                session={session}
+                repo={repo}
+                failed={failed}
+                onWorn={() => setWorn((n) => n + 1)}
+              />
+            ) : view === "settings" ? (
+              <Settings />
+            ) : (
+              <Particulars status={status} loaded={loaded} />
+            )}
+          </Panel>
+        ) : (
+          <Panel title="Sign in" onShut={() => setView(null)}>
+            <SignIn
+              signIn={signIn}
+              error={state.status === "out" ? state.error : undefined}
+              going={state.status === "signing"}
+            />
+          </Panel>
+        ))}
+    </div>
   );
 }
 

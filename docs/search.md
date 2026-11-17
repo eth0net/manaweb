@@ -9,9 +9,20 @@ the device, so the only limit is which parts of it someone chose to hold.
 Filtering was the wrong first instinct: almost everything is a real card
 someone can own. Only digital printings can't be, which makes them a category
 error rather than a preference, so they are excluded outright and no toggle
-reaches them. Un-sets, special editions and oversized cards stay searchable —
-Unfinity acorn cards are Legacy-legal, and someone with a 30th Anniversary Mox
-searching and finding nothing is a worse failure than a noisy result.
+reaches them.
+
+**Extras take Scryfall's line rather than one of our own** — `funny` sets,
+playtest cards and the handful they delist for their content. Theirs is the
+answer the community already expects, and adopting it spends none of our own
+judgment on a question we would otherwise re-decide per set; where it turns out
+wrong we diverge from a known baseline rather than from nothing. Decided
+2026-11-03, and not built: it belongs with the filter UI, syntax nobody can
+find being no way to offer anything.
+
+**A default and never a floor.** Unfinity's non-acorn cards are Legacy-legal,
+and someone with a 30th Anniversary Mox searching and finding nothing is a
+worse failure than a noisy result — so whatever hides them has to be one press
+from showing them again.
 
 The noise was mostly a grouping problem. Paper alone runs to six figures of
 printings across tens of thousands of cards, so "Forest" returned hundreds of
@@ -202,7 +213,7 @@ Three things fall out of that:
 ### What runs against the pair today
 
 Everything the artifact carries, which is most of it: `c:` and `id:` with their
-comparisons, `mv:`, `m:`, `t:`, `pow:`, `tou:`, `r:`, `s:`, `cn:`, `a:`,
+comparisons, `mv:`, `m:`, `t:`, `pow:`, `tou:`, `r:`, `s:`, `st:`, `cn:`, `a:`,
 `lang:`, `layout:`, `year:`, the flag predicates as `is:` and `not:`, and
 names. Mana pips are parsed out of the cost string, so per-color filtering
 needs no new column.
@@ -226,6 +237,14 @@ means the same thing in both places.
 under test; `in:rare` asks whether the card was ever printed that way,
 whichever printing is being tested. `in:` also takes a set or a language, and
 `in:paper` is always true because paper is all the artifact carries.
+
+**`st:` is what a set was, which is how a product is asked for.** A code is a
+thing to remember and a kind is not: of the 1,000 sets the catalog holds, 46
+are precons, 26 boxed products, 26 duel decks and 18 masterpiece series, so
+`st:commander t:creature` is the question somebody actually has. The value is
+Scryfall's own snake_case and the taxonomy is theirs to extend, so it stays a
+string and an unknown one simply matches nothing. A hyphen or a space is read
+as the underscore it stands for, no set type containing either.
 
 **`is:commander` is a bit, not a derivation.** A deck is headed by a legendary
 creature or a legendary Spacecraft, and by anything whose text says so — 49
@@ -257,18 +276,29 @@ compares the names. Outside `check`, because it needs their service and answers
 a question about the implementation rather than about a commit. It is how
 "borrow the syntax" stays true rather than becoming approximately true.
 
+**Their half is kept for a day, and `--live` is the run that counts.** Asking
+them 25 times is fine; asking them 25 times an hour while our own half is being
+changed is what earns a 429, and a penalty outlasts the hour. So an answer
+under a day old is reused, every line says how old theirs was, and the summary
+says how many were. A day behind costs nothing mid-iteration — their data moves
+slower than that and ours is a built artifact anyway — but it would cost the
+whole point of the tool to finish on a kept answer, so finish on `--live`.
+
 The first run, over eighteen queries, put every divergence in one of three
-piles:
+piles. **This is what that run found, not where it stands** — for that, see
+[What we still answer differently](#what-we-still-answer-differently).
 - **Faces.** Scryfall matches a face; we hold one row per card.
-  `Kytheon, Hero   of Akros // Gideon, Battle-Forged` is a one-mana white
-  creature on its front and neither to us, and every `A // B` miss is this.
-  Closing it wants face data in the artifact — the same column-or-part decision
-  as oracle text, and the largest single thing between us and their results.
+  `Kytheon, Hero of Akros // Gideon, Battle-Forged` was a one-mana white
+  creature on its front and neither to us, and every `A // B` miss was this.
+  **Spent**: faces ride in the base pair and a term the card cannot answer is
+  put to them.
 - **A stale artifact.** `is:commander` found nothing against a catalog built
   before the flag existed. Worth knowing the check catches that.
 - **Cards they omit.** Crusade, Imprison, Invoke Prejudice and Jihad are
   withdrawn as offensive and Scryfall leaves them out of search; we return
-  them. A divergence to decide on rather than fix by accident.
+  them. A divergence to decide on rather than fix by accident, and
+  **the one
+  of the three still open**.
 
 ## Card languages
 
@@ -353,7 +383,7 @@ English with cards in Japanese is a real preference and so is the reverse.
 
 ## What we still answer differently
 
-Measured 2026-09-22 with `check-scryfall-search`, which puts the same query to
+Measured 2026-09-22 with `just scryfall-search`, which puts the same query to
 both. Before faces, eleven of its queries were missing results and every
 missing card was two-sided; after, one query is, and four cards.
 
