@@ -386,6 +386,22 @@ is asked for exactly, or the fused one comes back instead. The labels are the
 device's own words and another phone has other ones, so the choice is offered
 rather than matched on.
 
+**What each one will focus at, and what that is worth.** `focusDistance` names
+a minimum and nothing else, and on one phone it separates the back cameras
+cleanly: two centimeters for the ultra-wide, twenty for the wide, a hundred and
+thirty-five for the telephoto. Those are the distances the card was held at to
+focus, so the figure predicts the behavior rather than describing a limit
+nothing reaches. A fused camera reports the best of what is behind it — the
+triple says two centimeters and hunts at fifteen anyway — so the figure is
+worth having only against a camera that is one lens. The two are told apart
+without reading a label: a fused one offers zoom below 1, being able to drop to
+its own ultra-wide, and a single lens starts at 1.
+
+**Reading any of that means opening the camera it belongs to.** Enumerating
+names devices and nothing more; capabilities come off a live track. Choosing a
+lens by what it can focus at therefore costs an open apiece, in front of
+somebody, which is a thing to offer rather than to do unasked.
+
 **The lens decides how close a card is held, not how big it looks.** Framed to
 two thirds of the width, the ultra-wide focuses at five to ten centimeters and
 the wide at twenty; the telephoto wants most of a room. The ultra-wide is the
