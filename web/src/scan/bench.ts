@@ -216,6 +216,9 @@ export function energy(
 // A frame larger than `LONGEST` is being scaled inside the draw, and that is
 // a cost nothing else here would show.
 export interface Settled {
+  // Which camera it actually is. A bare lens chosen by id faces the same way
+  // as the fused one, so nothing else here tells two runs apart.
+  label: string;
   width: number | null;
   height: number | null;
   rate: number | null;
@@ -235,6 +238,7 @@ export function settled(video: HTMLVideoElement | null): Settled | null {
   if (!track) return null;
   const got = track.getSettings();
   return {
+    label: track.label,
     width: got.width ?? null,
     height: got.height ?? null,
     rate: got.frameRate ?? null,

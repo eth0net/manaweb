@@ -209,6 +209,8 @@ export function Readout({
       {camera && (
         <p className="tally">
           <small>
+            {camera.label || "unnamed"}
+            <br />
             camera {camera.width ?? "?"}x{camera.height ?? "?"} ·{" "}
             {camera.rate === null ? "?" : camera.rate.toFixed(0)}/s ·{" "}
             {camera.facing ?? "unsaid"}
