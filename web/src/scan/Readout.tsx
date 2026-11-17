@@ -72,10 +72,6 @@ export function Readout({
   const [kept, setKept] = useState(false);
   const [camera, setCamera] = useState<Settled | null>(null);
 
-  // Read where the panel opens rather than per frame: a track settles once
-  // and `getSettings` is a question for the camera, not for the loop.
-  useEffect(() => setCamera(settled(video.current)), [video]);
-
   const take = useCallback(
     (clock?: Grab): Picture | null => {
       if (!video.current) return null;
@@ -85,7 +81,10 @@ export function Readout({
     [video],
   );
 
+  // Where a run starts rather than per frame, and not once at the top: another
+  // lens replaces the track under a panel that is already open.
   const ready = useCallback(async () => {
+    setCamera(settled(video.current));
     const [held, artworks] = await Promise.all([engine(), index(manifest)]);
     if (!artworks) throw new Error("No artwork index to scan against");
     holding.current = artworks;
@@ -95,7 +94,7 @@ export function Readout({
       hashes: artworks.hashes,
     };
     return { held, artworks };
-  }, [manifest]);
+  }, [manifest, video]);
 
   const stop = useCallback(() => {
     run.current += 1;
