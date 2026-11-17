@@ -376,6 +376,23 @@ offered, so there is no manual to put it in and no distance to apply. That
 settles tap-to-focus as a wish on this device, and the frame comes back 720 by
 1280 off a sensor that will do 4032 by 3024.
 
+**A lens can be chosen even where focus cannot.** Asking for the
+environment-facing camera is answered with a fused one — a Back Triple Camera —
+that switches lenses on its own judgment, which is the judgment nothing here
+can override. `enumerateDevices` names the rest once a camera has been allowed,
+the labels being empty before that: seven inputs on one phone, among them the
+ultra-wide, the wide and the telephoto with a device id each. Named, a device
+is asked for exactly, or the fused one comes back instead. The labels are the
+device's own words and another phone has other ones, so the choice is offered
+rather than matched on.
+
+**The lens decides how close a card is held, not how big it looks.** Framed to
+two thirds of the width, the ultra-wide focuses at five to ten centimeters and
+the wide at twenty; the telephoto wants most of a room. The ultra-wide is the
+one that reaches a comfortable distance over a box, and the framing that suits
+it keeps the card in the middle of the frame, which is the part of a wide lens
+that bends it least.
+
 **Two surfaces, and what a setting is about decides which.** A button in the
 corner of the viewfinder opens the scanner's, holding the grade a scan is taken
 at and how a read is shown. The torch and the lens join it once a device has
@@ -892,12 +909,11 @@ has none of this.
 - **Whether the read belongs on a worker.** It would not make a read shorter.
   It would keep it off the thread drawing the viewfinder, and let the next
   frame be grabbed while the last one is still being read.
-- **Which lens a fused camera is using.** An iPhone answers a request for the
-  environment-facing camera with a Back Triple Camera carrying one device id,
-  and chooses between the lenses behind it itself. The ultra-wide is the one
-  that focuses close, so the choice matters at the distance a card is held at,
-  and `enumerateDevices` is where the others are named — once one has been
-  allowed, since the labels are empty before that.
+- **Whether the lens that focuses also reads better.** Held where each one
+  focuses, the ultra-wide and the wide put the same card across the same share
+  of the frame, so neither is working from more of it than the other. What is
+  left to measure is what the glass does to the picture rather than how much of
+  it there is — and that is the sample cards' answer, not a capability list's.
 - **Whether an accept should take a vote.** The margin reads one frame, and a
   search has already read thirty — glare and a phantom both move between frames
   where a card does not. Cheap, because the frames are already there. What it
