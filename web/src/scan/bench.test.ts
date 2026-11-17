@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { energy, quantile, summarize, type Timing } from "./bench";
 
-function timing(total: number, detected: boolean): Timing {
+function timing(
+  total: number,
+  detected: boolean,
+  artwork: number | null = null,
+  distance = 0,
+  sure = detected,
+): Timing {
   return {
     frame: 1,
     draw: 0.4,
@@ -12,7 +18,9 @@ function timing(total: number, detected: boolean): Timing {
     total,
     detected,
     margin: detected ? 6 : 0,
-    sure: detected,
+    sure,
+    artwork,
+    distance: artwork === null ? null : distance,
   };
 }
 
@@ -46,6 +54,44 @@ describe("what a run is reported as", () => {
     const tally = summarize([timing(10, true), timing(30, false)], 1000);
     expect(tally?.stages.draw).toBe(0.4);
     expect(tally?.stages.readback).toBe(0.6);
+  });
+
+  test("names what a run kept answering, commonest first", () => {
+    const tally = summarize(
+      [
+        timing(10, true, 9, 3),
+        timing(10, true, 7, 10),
+        timing(10, true, 7, 4),
+        timing(10, false),
+      ],
+      4000,
+    );
+    expect(tally?.said).toEqual([
+      { artwork: 7, frames: 2, distance: 4 },
+      { artwork: 9, frames: 1, distance: 3 },
+    ]);
+  });
+
+  // A lens that cannot settle is the case this is here to show, so the list
+  // has to stop somewhere short of one row per frame.
+  test("names only the first few answers", () => {
+    const tally = summarize(
+      [1, 2, 3, 4, 5].map((at) => timing(10, true, at, at)),
+      5000,
+    );
+    expect(tally?.said).toHaveLength(3);
+  });
+
+  test("counts the frames an accept would have taken", () => {
+    const tally = summarize(
+      [
+        timing(10, true, 7, 3),
+        timing(12, true, 7, 3, false),
+        timing(30, false),
+      ],
+      3000,
+    );
+    expect(tally?.sure).toBe(1);
   });
 
   test("has nothing to say about no frames", () => {

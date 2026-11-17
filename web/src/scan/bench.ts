@@ -32,6 +32,9 @@ export interface Timing {
   detected: boolean;
   margin: number;
   sure: boolean;
+  // Which artwork came back and how far it was, null where none did.
+  artwork: number | null;
+  distance: number | null;
 }
 
 // Null where the camera had no frame to give.
@@ -64,21 +67,39 @@ export function timed(
       detected: found?.quad != null,
       margin: found?.margin ?? 0,
       sure: found?.sure ?? false,
+      artwork: found?.found[0]?.artwork ?? null,
+      distance: found?.found[0]?.distance ?? null,
     },
   };
 }
+
+// One of a run's answers: how many frames named that artwork, and the median
+// distance they put it at.
+export interface Said {
+  artwork: number;
+  frames: number;
+  distance: number;
+}
+
+// How many of a run's answers to name. A lens that cannot settle on one says
+// so in three.
+const MOST = 3;
 
 export interface Tally {
   frames: number;
   // Reads a second over the whole run, not off the last frame.
   fps: number;
   detected: number;
+  // Frames whose margin cleared the floor, which is what an accept turns on.
+  sure: number;
   total: { p50: number; p90: number; worst: number };
   stages: Record<"frame" | Half | Stage, number>;
   // Medians of the two cases apart, which is the split the budget turns on.
   // Null where the run held none of that kind.
   found: number | null;
   guessed: number | null;
+  // What the run kept answering, commonest first.
+  said: Said[];
 }
 
 export function summarize(
@@ -99,6 +120,7 @@ export function summarize(
     frames: frames.length,
     fps: elapsed > 0 ? (frames.length * 1000) / elapsed : 0,
     detected: frames.filter((one) => one.detected).length,
+    sure: frames.filter((one) => one.sure).length,
     total: {
       p50: quantile(totals, 0.5),
       p90: quantile(totals, 0.9),
@@ -132,7 +154,29 @@ export function summarize(
     },
     found: cut(frames.filter((one) => one.detected)),
     guessed: cut(frames.filter((one) => !one.detected)),
+    said: answers(frames),
   };
+}
+
+// The artwork rather than the printing: whether the glass found the right
+// picture is what a lens is being asked, and which printing carries it is the
+// stage after.
+function answers(frames: readonly Timing[]): Said[] {
+  const by = new Map<number, number[]>();
+  for (const one of frames) {
+    if (one.artwork === null) continue;
+    const held = by.get(one.artwork) ?? [];
+    held.push(one.distance ?? 0);
+    by.set(one.artwork, held);
+  }
+  return [...by]
+    .map(([artwork, distances]) => ({
+      artwork,
+      frames: distances.length,
+      distance: quantile(distances, 0.5),
+    }))
+    .sort((one, two) => two.frames - one.frames)
+    .slice(0, MOST);
 }
 
 // Nearest rank, which wants no interpolating over the couple of hundred

@@ -8,12 +8,19 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Catalog, Manifest } from "../catalog";
+import {
+  appLanguage,
+  type Catalog,
+  cardName,
+  type Manifest,
+} from "../catalog";
+import type { Artworks } from "../catalog/artwork";
 import { stamp } from "../stamp";
 import {
   energy,
   type Kept,
   MEASURING,
+  type Said,
   type Settled,
   type Sharpest,
   send,
@@ -38,6 +45,8 @@ const SHOTS = 5;
 // inside the thing being measured.
 const EVERY = 10;
 
+const APP = appLanguage();
+
 export function Readout({
   video,
   catalog,
@@ -52,6 +61,9 @@ export function Readout({
   // What the numbers were measured against, which is what makes two runs
   // comparable.
   const about = useRef<Kept["index"]>(null);
+  // Held so the panel can name what a run answered rather than print the
+  // artwork's number at someone holding the card.
+  const holding = useRef<Artworks | null>(null);
   const [one, setOne] = useState<Timing | null>(null);
   const [tally, setTally] = useState<Tally | null>(null);
   const [running, setRunning] = useState(false);
@@ -76,6 +88,7 @@ export function Readout({
   const ready = useCallback(async () => {
     const [held, artworks] = await Promise.all([engine(), index(manifest)]);
     if (!artworks) throw new Error("No artwork index to scan against");
+    holding.current = artworks;
     about.current = {
       version: artworks.version,
       rows: artworks.rows,
@@ -225,7 +238,9 @@ export function Readout({
       {tally && (
         <p className="tally">
           {tally.frames} frames · {tally.fps.toFixed(1)}/s · {tally.detected}{" "}
-          found
+          found · {tally.sure} sure
+          <br />
+          <small>{answered(catalog, holding.current, tally.said)}</small>
           <br />
           total p50 {ms(tally.total.p50)} · p90 {ms(tally.total.p90)} · worst{" "}
           {ms(tally.total.worst)}
@@ -279,6 +294,27 @@ export function Readout({
       </div>
     </div>
   );
+}
+
+// What the run kept coming back with, as the card rather than as the index
+// row it was retrieved from.
+function answered(
+  catalog: Catalog,
+  index: Artworks | null,
+  said: readonly Said[],
+): string {
+  if (said.length === 0) return "named nothing";
+  return said
+    .map((one) => {
+      const print = index
+        ? catalog.artwork(index.faces(one.artwork)[0] ?? -1)[0]
+        : undefined;
+      const name = print
+        ? cardName(print.card.name, print.print, APP).text
+        : `#${one.artwork}`;
+      return `${name} x${one.frames} d${one.distance}`;
+    })
+    .join(" \u00b7 ");
 }
 
 function ms(of: number): string {
