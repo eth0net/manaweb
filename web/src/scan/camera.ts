@@ -58,6 +58,8 @@ export function able(stream: MediaStream | null): string | null {
 // been allowed. iOS hands back a fused back camera by default and lists the
 // lenses behind it separately, and which lens is in front of a card at arm's
 // length is not a thing the fused one is deciding for this.
+export type Lens = { label: string; deviceId: string };
+
 export async function cameras(): Promise<string> {
   const found = await navigator.mediaDevices.enumerateDevices();
   return JSON.stringify(
@@ -70,7 +72,7 @@ export async function cameras(): Promise<string> {
 }
 
 // A camera, or a reason there is none worth putting in front of someone.
-export async function open(): Promise<MediaStream> {
+export async function open(deviceId?: string): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     // A page has no camera at all unless it is a secure context, and the LAN
     // address a phone reaches a dev server on is not one. That is the usual
@@ -83,7 +85,19 @@ export async function open(): Promise<MediaStream> {
     );
   }
   try {
-    return await navigator.mediaDevices.getUserMedia(WANTED);
+    // Named, a device is asked for exactly: the fused camera a facing mode
+    // answers with picks its own lens, and the point of naming one is not to
+    // be given that back.
+    return await navigator.mediaDevices.getUserMedia(
+      deviceId
+        ? {
+            video: {
+              ...(WANTED.video as MediaTrackConstraints),
+              deviceId: { exact: deviceId },
+            },
+          }
+        : WANTED,
+    );
   } catch (failed: unknown) {
     throw new Error(why(failed));
   }

@@ -20,7 +20,7 @@ import { CONDITIONS } from "../collection/cards";
 import { Panel } from "../Modal";
 import { describe } from "../Printing";
 import { Link } from "../router";
-import { able, cameras, frame, open } from "./camera";
+import { able, cameras, frame, type Lens, open } from "./camera";
 import type { Quad } from "./engine";
 import { engine, index } from "./load";
 import { Outline } from "./Outline";
@@ -107,6 +107,7 @@ export function Scan({
   // labels to read before that.
   const [lenses, setLenses] = useState("");
   const [copied, setCopied] = useState<boolean | null>(null);
+  const [lens, setLens] = useState("");
 
   useEffect(() => {
     if (!import.meta.env.DEV || camera !== "on") return;
@@ -152,42 +153,47 @@ export function Scan({
 
   useEffect(() => stop, [stop]);
 
-  const start = useCallback(async () => {
-    run.current += 1;
-    const mine = run.current;
-    setSession((was) => was + 1);
-    setCamera("opening");
-    setProblem(null);
-    try {
-      // Both before the camera opens, so the wait is one rather than two and
-      // the first scan is not the one that pays for the index.
-      if (manifest) await Promise.all([engine(), index(manifest)]);
-      const held = await open();
-      // Opening a camera takes long enough to leave the page in, or to
-      // cancel and ask again, and whatever ran meanwhile had nothing to stop.
-      if (run.current !== mine) {
-        for (const track of held.getTracks()) track.stop();
-        return;
-      }
-      stream.current = held;
-      if (video.current) {
-        video.current.srcObject = held;
-        await video.current.play();
-      }
-      if (run.current !== mine) {
+  // The lens is handed in where a choice has just been made: the state
+  // holding it is not set yet when the press that changed it runs.
+  const start = useCallback(
+    async (pick?: string) => {
+      run.current += 1;
+      const mine = run.current;
+      setSession((was) => was + 1);
+      setCamera("opening");
+      setProblem(null);
+      try {
+        // Both before the camera opens, so the wait is one rather than two and
+        // the first scan is not the one that pays for the index.
+        if (manifest) await Promise.all([engine(), index(manifest)]);
+        const held = await open((pick ?? lens) || undefined);
+        // Opening a camera takes long enough to leave the page in, or to
+        // cancel and ask again, and whatever ran meanwhile had nothing to stop.
+        if (run.current !== mine) {
+          for (const track of held.getTracks()) track.stop();
+          return;
+        }
+        stream.current = held;
+        if (video.current) {
+          video.current.srcObject = held;
+          await video.current.play();
+        }
+        if (run.current !== mine) {
+          stop();
+          return;
+        }
+        setCamera("on");
+      } catch (failed: unknown) {
+        // Cancelling clears `srcObject`, which rejects a pending `play`. That
+        // is the cancel working, not something to report.
+        if (run.current !== mine) return;
+        const why = said(failed);
         stop();
-        return;
+        setProblem(why);
       }
-      setCamera("on");
-    } catch (failed: unknown) {
-      // Cancelling clears `srcObject`, which rejects a pending `play`. That
-      // is the cancel working, not something to report.
-      if (run.current !== mine) return;
-      const why = said(failed);
-      stop();
-      setProblem(why);
-    }
-  }, [manifest, stop]);
+    },
+    [lens, manifest, stop],
+  );
 
   const take = useCallback(async () => {
     if (!catalog || !manifest || !video.current) return;
@@ -388,6 +394,29 @@ export function Scan({
                 which no real device has been asked for yet. */}
             {import.meta.env.DEV && camera === "on" && (
               <dd className="aside">
+                <p className="field">
+                  <label htmlFor="scan-lens">Camera</label>
+                  <select
+                    id="scan-lens"
+                    value={lens}
+                    onChange={(event) => {
+                      const picked = event.target.value;
+                      setLens(picked);
+                      setTuning(false);
+                      stop();
+                      void start(picked);
+                    }}
+                  >
+                    <option value="">
+                      Whatever the facing mode answers with
+                    </option>
+                    {(JSON.parse(lenses || "[]") as Lens[]).map((one) => (
+                      <option key={one.deviceId} value={one.deviceId}>
+                        {one.label}
+                      </option>
+                    ))}
+                  </select>
+                </p>
                 <p className="actions">
                   <button
                     type="button"
