@@ -128,6 +128,21 @@ and a configuration can draw across several sets at once. So products browse
 beside cards and sets rather than inside one, and what a product holds is a
 list in its own right instead of a filter over the set it was published under.
 
+**Both directions are wanted, and they are one index read two ways.** A sheet
+row names a card and a product at once, so opening a product to ask what could
+come out of it and opening a card to ask where it can be got cost the same
+table.
+
+**The card's own view is two lists, never one.** A fixed printing in a bundle
+and a one-in-thousands pull from a collector booster are different kinds of
+claim, and running them together is the lie warned of above. Exact contents
+first, plainly; sheet draws second, each carrying the odds that put it there.
+
+**Completion is that pool against the collection.** Nothing new comes out of a
+set's play boosters once every card their sheets draw from is already held. The
+holdings answer it with no further table, and it belongs to a configuration
+rather than to a product, a box inheriting whatever its pack is.
+
 ## What this costs to run
 
 Per-table CSV, not the whole dump: `AllPrintings.json.gz` is 183.9MB and
@@ -188,3 +203,6 @@ so it is no laundering step for anything Scryfall's terms already govern.
   saying otherwise earns one.
 - **The order a product's contents read in**, once one product recurses into
   another and a decklist runs to a hundred cards.
+- **What a chance reads as.** A weight on a sheet is not the odds out of a
+  pack: those want the variant's own weight, the picks the slot takes and the
+  sheet's total behind them. Exact arithmetic, and nobody has written it down.
