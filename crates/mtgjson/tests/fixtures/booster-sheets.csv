@@ -1,0 +1,9 @@
+setCode,boosterName,sheetName,sheetIsFoil,sheetHasBalanceColors,sheetTotalWeight
+BLB,play,land,false,false,50
+BLB,play,common,false,false,81
+BLB,play,uncommon,false,false,100
+BLB,play,rareMythicWithShowcase,false,false,840
+BLB,play,wildcard,false,false,22680000
+BLB,play,foil,true,false,5670000
+BLB,play,specialGuest,false,false,10
+BLB,play,foilLand,true,false,50

@@ -7,6 +7,7 @@
 //!
 //! Reasoning, figures and what the tables cost are in `docs/products.md`.
 
+mod booster;
 mod client;
 mod contents;
 mod deck;
@@ -17,6 +18,7 @@ mod product;
 mod rows;
 mod table;
 
+pub use booster::{Pull, Sheet, Slot, Variant};
 pub use client::{Client, USER_AGENT};
 pub use contents::{Chance, Contents, Named, Pack, Piece, Printing, Sealed, Variable};
 pub use deck::{Board, Deck};

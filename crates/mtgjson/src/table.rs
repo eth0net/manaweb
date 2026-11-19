@@ -13,6 +13,15 @@ pub enum Table {
     /// The same for tokens, which [`Self::CardIdentifiers`] leaves out — and
     /// a decklist's `tokens` board is not the only place they appear.
     TokenIdentifiers,
+    /// What each variant of each booster takes from each sheet.
+    SetBoosterContents,
+    /// How often each of those variants is the one in the wrapper.
+    SetBoosterContentWeights,
+    /// Each sheet a booster draws from, and its cards' weights summed.
+    SetBoosterSheets,
+    /// Every card on every sheet. 4.2MB against the other three at 100KB
+    /// together, so the odds cost almost nothing beside the pool itself.
+    SetBoosterSheetCards,
 }
 
 impl Table {
@@ -23,6 +32,10 @@ impl Table {
             Self::SetDecks => "setDecks",
             Self::CardIdentifiers => "cardIdentifiers",
             Self::TokenIdentifiers => "tokenIdentifiers",
+            Self::SetBoosterContents => "setBoosterContents",
+            Self::SetBoosterContentWeights => "setBoosterContentWeights",
+            Self::SetBoosterSheets => "setBoosterSheets",
+            Self::SetBoosterSheetCards => "setBoosterSheetCards",
         }
     }
 }

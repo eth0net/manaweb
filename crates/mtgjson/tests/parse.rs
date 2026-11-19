@@ -1,12 +1,14 @@
-//! Parsing tests against real MTGJSON tables, captured 2026-11-03 from build
-//! `5.3.0+20261103`.
+//! Parsing tests against real MTGJSON tables, unmodified. The products, decks
+//! and identifiers were captured 2026-11-03 from build `5.3.0+20261103`, the
+//! booster tables 2026-11-19 from `5.3.0+20261118`.
 //!
-//! The fixtures are the fewest products that cover every shape a `contents`
-//! entry takes, unmodified, plus the decks and identifiers they reach.
+//! The product fixtures are the fewest that cover every shape a `contents`
+//! entry takes, plus the decks and identifiers they reach. The booster ones
+//! are `blb`'s play config, which `docs/products.md` works through.
 
 use std::io::Cursor;
 
-use manaweb_mtgjson::{Deck, Identity, Meta, Product, Rows};
+use manaweb_mtgjson::{Deck, Identity, Meta, Product, Pull, Rows, Sheet, Slot, Variant};
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 
@@ -15,6 +17,10 @@ const DECKS: &str = include_str!("fixtures/decks.csv");
 const IDENTITIES: &str = include_str!("fixtures/identities.csv");
 const TOKEN_IDENTITIES: &str = include_str!("fixtures/token-identities.csv");
 const META: &str = include_str!("fixtures/meta.json");
+const BOOSTER_CONTENTS: &str = include_str!("fixtures/booster-contents.csv");
+const BOOSTER_WEIGHTS: &str = include_str!("fixtures/booster-weights.csv");
+const BOOSTER_SHEETS: &str = include_str!("fixtures/booster-sheets.csv");
+const BOOSTER_SHEET_CARDS: &str = include_str!("fixtures/booster-sheet-cards.csv");
 
 async fn collect<T: DeserializeOwned + Send + 'static>(csv: &str) -> Vec<T> {
     let mut rows = Rows::new(Cursor::new(csv.as_bytes().to_vec()));
@@ -253,4 +259,96 @@ async fn an_etched_entry_is_foil_as_well() {
         "the fixture should hold an etched entry"
     );
     assert!(etched.iter().all(|card| card.is_foil));
+}
+
+/// The least and greatest a sheet is picked over every variant of a config,
+/// counting a variant the sheet is missing from as none of it.
+fn picks(slots: &[Slot], sheet: &str) -> (u32, u32) {
+    let variants: Vec<u32> = {
+        let mut held: Vec<u32> = slots.iter().map(|slot| slot.booster_index).collect();
+        held.sort_unstable();
+        held.dedup();
+        held
+    };
+    let over: Vec<u32> = variants
+        .iter()
+        .map(|index| {
+            slots
+                .iter()
+                .find(|slot| slot.booster_index == *index && slot.sheet_name == sheet)
+                .map_or(0, |slot| slot.sheet_picks)
+        })
+        .collect();
+    (
+        over.iter().copied().min().unwrap_or(0),
+        over.iter().copied().max().unwrap_or(0),
+    )
+}
+
+/// What a wrapper prints is the picks alone — no weight is read here, which is
+/// the whole point: the slot line needs three of the four tables not at all.
+#[tokio::test]
+async fn a_wrapper_s_line_falls_out_of_the_picks() {
+    let slots: Vec<Slot> = collect(BOOSTER_CONTENTS).await;
+
+    assert_eq!(picks(&slots, "common"), (6, 7));
+    assert_eq!(picks(&slots, "uncommon"), (3, 3));
+    assert_eq!(picks(&slots, "rareMythicWithShowcase"), (1, 1));
+    // Absent from two of the four variants, which is where the zero comes
+    // from rather than from a variant picking none of it.
+    assert_eq!(picks(&slots, "specialGuest"), (0, 1));
+    // Two sheets, and no variant draws from both.
+    assert_eq!(picks(&slots, "land"), (0, 1));
+    assert_eq!(picks(&slots, "foilLand"), (0, 1));
+}
+
+#[tokio::test]
+async fn a_variant_s_weight_is_a_share_of_its_config() {
+    let variants: Vec<Variant> = collect(BOOSTER_WEIGHTS).await;
+    let total: u32 = variants.iter().map(|one| one.booster_weight).sum();
+
+    assert_eq!(variants.len(), 4);
+    assert_eq!(total, 1000);
+    // The commonest variant, which is the one with no Special Guest in it.
+    let most = variants
+        .iter()
+        .max_by_key(|one| one.booster_weight)
+        .expect("fixture has variants");
+    assert_eq!(most.booster_index, 0);
+    assert_eq!(most.booster_weight, 788);
+}
+
+#[tokio::test]
+async fn only_the_foil_sheets_say_they_are_foil() {
+    let sheets: Vec<Sheet> = collect(BOOSTER_SHEETS).await;
+    let foil: Vec<&str> = sheets
+        .iter()
+        .filter(|sheet| sheet.sheet_is_foil)
+        .map(|sheet| sheet.sheet_name.as_str())
+        .collect();
+
+    assert_eq!(sheets.len(), 8);
+    assert_eq!(foil, ["foil", "foilLand"]);
+    // The denominator a pull's own weight sits over, given rather than summed.
+    let rares = sheets
+        .iter()
+        .find(|sheet| sheet.sheet_name == "rareMythicWithShowcase")
+        .expect("fixture has the rare sheet");
+    assert_eq!(rares.sheet_total_weight, 840);
+}
+
+/// A sheet is not a uniform draw, which is what makes a pull's weight worth
+/// carrying rather than counting the rows.
+#[tokio::test]
+async fn a_pull_carries_its_own_weight() {
+    let pulls: Vec<Pull> = collect(BOOSTER_SHEET_CARDS).await;
+    let mut rares: Vec<u32> = pulls
+        .iter()
+        .filter(|pull| pull.sheet_name == "rareMythicWithShowcase")
+        .map(|pull| pull.card_weight)
+        .collect();
+    rares.sort_unstable();
+
+    assert_eq!(rares, [1, 2, 4, 8, 12]);
+    assert!(pulls.iter().all(|pull| pull.card_weight > 0));
 }
