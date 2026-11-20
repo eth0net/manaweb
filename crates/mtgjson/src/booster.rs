@@ -21,20 +21,24 @@ pub struct Slot {
 /// How often a variant is the one in the wrapper.
 ///
 /// Out of the config's own total rather than out of anything fixed: the four
-/// `blb` play variants weigh 788, 12, 197 and 3.
+/// `blb` play variants weigh 788, 12, 197 and 3. Scaled as [`Sheet`]'s totals
+/// are, and the largest in the table sits within a factor of four of what 32
+/// bits hold.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Variant {
     pub set_code: String,
     pub booster_name: String,
     pub booster_index: u32,
-    pub booster_weight: u32,
+    pub booster_weight: u64,
 }
 
 /// A sheet a slot draws from, and what its cards' weights add up to.
 ///
 /// `sheet_total_weight` is the denominator a pull's own weight sits over, and
-/// is given rather than summed so a partial read still divides.
+/// is given rather than summed so a partial read still divides. It is scaled
+/// to a common denominator rather than counted, so it runs to fourteen digits
+/// where `mh3`'s wildcard sheet totals 1,509,042,889,200.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sheet {
@@ -45,7 +49,7 @@ pub struct Sheet {
     /// Whether the sheet is drawn to even out colors, which makes a pull's
     /// weight an approximation rather than the whole story.
     pub sheet_has_balance_colors: bool,
-    pub sheet_total_weight: u32,
+    pub sheet_total_weight: u64,
 }
 
 /// One card on one sheet, which is the pool a pack can draw from.
@@ -59,5 +63,5 @@ pub struct Pull {
     pub booster_name: String,
     pub sheet_name: String,
     pub card_uuid: Uuid,
-    pub card_weight: u32,
+    pub card_weight: u64,
 }

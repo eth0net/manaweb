@@ -4,7 +4,8 @@
 //!
 //! The product fixtures are the fewest that cover every shape a `contents`
 //! entry takes, plus the decks and identifiers they reach. The booster ones
-//! are `blb`'s play config, which `docs/products.md` works through.
+//! are two play configs: `blb`'s, which `docs/products.md` works through, and
+//! `mh3`'s, whose weights are scaled far past what 32 bits hold.
 
 use std::io::Cursor;
 
@@ -261,6 +262,19 @@ async fn an_etched_entry_is_foil_as_well() {
     assert!(etched.iter().all(|card| card.is_foil));
 }
 
+/// The two sets the booster fixtures hold, which share no sheet name.
+const BLB: &str = "BLB";
+const MH3: &str = "MH3";
+
+/// What one sheet's cards weigh together, as the table gives it.
+fn total(sheets: &[Sheet], set: &str, sheet: &str) -> u64 {
+    sheets
+        .iter()
+        .find(|one| one.set_code == set && one.sheet_name == sheet)
+        .unwrap_or_else(|| panic!("fixture has no {set} {sheet} sheet"))
+        .sheet_total_weight
+}
+
 /// The least and greatest a sheet is picked over every variant of a config,
 /// counting a variant the sheet is missing from as none of it.
 fn picks(slots: &[Slot], sheet: &str) -> (u32, u32) {
@@ -305,17 +319,25 @@ async fn a_wrapper_s_line_falls_out_of_the_picks() {
 #[tokio::test]
 async fn a_variant_s_weight_is_a_share_of_its_config() {
     let variants: Vec<Variant> = collect(BOOSTER_WEIGHTS).await;
-    let total: u32 = variants.iter().map(|one| one.booster_weight).sum();
+    let blb: Vec<&Variant> = variants.iter().filter(|one| one.set_code == BLB).collect();
+    let total: u64 = blb.iter().map(|one| one.booster_weight).sum();
 
-    assert_eq!(variants.len(), 4);
+    assert_eq!(blb.len(), 4);
     assert_eq!(total, 1000);
     // The commonest variant, which is the one with no Special Guest in it.
-    let most = variants
+    let most = blb
         .iter()
         .max_by_key(|one| one.booster_weight)
         .expect("fixture has variants");
     assert_eq!(most.booster_index, 0);
     assert_eq!(most.booster_weight, 788);
+    // Nothing fixes the total, so the other config's is its own.
+    let mh3: u64 = variants
+        .iter()
+        .filter(|one| one.set_code == MH3)
+        .map(|one| one.booster_weight)
+        .sum();
+    assert_eq!(mh3, 640);
 }
 
 #[tokio::test]
@@ -323,18 +345,16 @@ async fn only_the_foil_sheets_say_they_are_foil() {
     let sheets: Vec<Sheet> = collect(BOOSTER_SHEETS).await;
     let foil: Vec<&str> = sheets
         .iter()
-        .filter(|sheet| sheet.sheet_is_foil)
+        .filter(|sheet| sheet.set_code == BLB && sheet.sheet_is_foil)
         .map(|sheet| sheet.sheet_name.as_str())
         .collect();
 
-    assert_eq!(sheets.len(), 8);
     assert_eq!(foil, ["foil", "foilLand"]);
     // The denominator a pull's own weight sits over, given rather than summed.
-    let rares = sheets
-        .iter()
-        .find(|sheet| sheet.sheet_name == "rareMythicWithShowcase")
-        .expect("fixture has the rare sheet");
-    assert_eq!(rares.sheet_total_weight, 840);
+    assert_eq!(total(&sheets, BLB, "rareMythicWithShowcase"), 840);
+    // Scaled to a common denominator, so a 32-bit column is 366 times too
+    // narrow for it.
+    assert_eq!(total(&sheets, MH3, "wildcard"), 1_509_042_889_200);
 }
 
 /// A sheet is not a uniform draw, which is what makes a pull's weight worth
@@ -342,7 +362,7 @@ async fn only_the_foil_sheets_say_they_are_foil() {
 #[tokio::test]
 async fn a_pull_carries_its_own_weight() {
     let pulls: Vec<Pull> = collect(BOOSTER_SHEET_CARDS).await;
-    let mut rares: Vec<u32> = pulls
+    let mut rares: Vec<u64> = pulls
         .iter()
         .filter(|pull| pull.sheet_name == "rareMythicWithShowcase")
         .map(|pull| pull.card_weight)
@@ -351,4 +371,11 @@ async fn a_pull_carries_its_own_weight() {
 
     assert_eq!(rares, [1, 2, 4, 8, 12]);
     assert!(pulls.iter().all(|pull| pull.card_weight > 0));
+    // A single card can outgrow the column too, on a sheet scaled that far.
+    let widest = pulls
+        .iter()
+        .map(|pull| pull.card_weight)
+        .max()
+        .expect("fixture has pulls");
+    assert_eq!(widest, 8_059_369_395);
 }
