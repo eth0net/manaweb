@@ -5,7 +5,8 @@ Scryfall answers neither: a card object carries `booster: bool` and stops, and
 there is no product object at all.
 
 MTGJSON does, and it is the only feed that does. Figures below are measured
-against build `5.3.0+20261103` and the catalog of 2026-10-28.
+against build `5.3.0+20261103` and the catalog of 2026-10-28, the booster ones
+against `5.3.0+20261119`.
 
 ## What it carries
 
@@ -104,11 +105,22 @@ two places:
 A Special Guest takes a common's slot, which is why that row is a range, and
 the land is foil or it is not. Neither statement needs a probability behind it.
 
-**The pulls are `setBoosterSheetCards`** — 293,355 rows naming 78,994 distinct
-cards over 4,465 sheets, for the 205 sets carrying booster data at all. Its
-uuids resolve through the identifier table the boards already want. Held as
+**The pulls are `setBoosterSheetCards`** — 300,657 rows naming 79,807 distinct
+cards over 4,583 sheets, for the 206 sets carrying booster data at all. Held as
 positions into the catalog it comes to a few MB before compression, so it is
 not the part deciding how large any of this gets.
+
+**This side of the join is one-to-one**, which the decklist boards are not. All
+79,807 resolve, to exactly 79,807 printings, though 2,002 of them sit on a
+printing that has several uuids: a sheet names the whole card where a board
+names a part. So the pool needs no deduplicating, and a second uuid arriving
+against a printing already placed is a change in the feed rather than the
+multi-part case.
+
+**The weights do not fit 32 bits**, being scaled to a common denominator rather
+than counted. `mh3`'s wildcard sheet totals 1,509,042,889,200 and 1,750 pull
+rows across eight sheets pass the same mark, so a narrow column truncates most
+of the corpus silently or refuses the row.
 
 The weights exist and are exact, per variant and per card on a sheet. Leaving
 them off a screen is a decision about what a reader can act on rather than a

@@ -36,9 +36,8 @@ pub struct Variant {
 /// A sheet a slot draws from, and what its cards' weights add up to.
 ///
 /// `sheet_total_weight` is the denominator a pull's own weight sits over, and
-/// is given rather than summed so a partial read still divides. It is scaled
-/// to a common denominator rather than counted, so it runs to fourteen digits
-/// where `mh3`'s wildcard sheet totals 1,509,042,889,200.
+/// is given rather than summed so a partial read still divides. Fourteen
+/// digits at its widest, which is why it is not a `u32` — `docs/products.md`.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sheet {
