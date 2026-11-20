@@ -4,8 +4,9 @@
 //!
 //! The product fixtures are the fewest that cover every shape a `contents`
 //! entry takes, plus the decks and identifiers they reach. The booster ones
-//! are two play configs: `blb`'s, which `docs/products.md` works through, and
-//! `mh3`'s, whose weights are scaled far past what 32 bits hold.
+//! are `blb`'s play config, which `docs/products.md` works through, `mh3`'s,
+//! whose weights are scaled far past what 32 bits hold, and `blb`'s
+//! collector-sample, so that neither half of a config's key goes unread.
 
 use std::io::Cursor;
 
@@ -262,9 +263,14 @@ async fn an_etched_entry_is_foil_as_well() {
     assert!(etched.iter().all(|card| card.is_foil));
 }
 
-/// The two sets the booster fixtures hold, which share no sheet name.
+/// The two sets the booster fixtures hold.
 const BLB: &str = "BLB";
 const MH3: &str = "MH3";
+
+/// A variant index is numbered within its own config, so a set alone does not
+/// key one.
+const BLB_PLAY: (&str, &str) = (BLB, "play");
+const MH3_PLAY: (&str, &str) = (MH3, "play");
 
 /// What one sheet's cards weigh together, as the table gives it.
 fn total(sheets: &[Sheet], set: &str, sheet: &str) -> u64 {
@@ -277,9 +283,16 @@ fn total(sheets: &[Sheet], set: &str, sheet: &str) -> u64 {
 
 /// The least and greatest a sheet is picked over every variant of a config,
 /// counting a variant the sheet is missing from as none of it.
-fn picks(slots: &[Slot], sheet: &str) -> (u32, u32) {
+///
+/// A variant index belongs to its config and to no other, so both halves of
+/// the key are needed before any of them are compared.
+fn picks(slots: &[Slot], config: (&str, &str), sheet: &str) -> (u32, u32) {
+    let within: Vec<&Slot> = slots
+        .iter()
+        .filter(|slot| (slot.set_code.as_str(), slot.booster_name.as_str()) == config)
+        .collect();
     let variants: Vec<u32> = {
-        let mut held: Vec<u32> = slots.iter().map(|slot| slot.booster_index).collect();
+        let mut held: Vec<u32> = within.iter().map(|slot| slot.booster_index).collect();
         held.sort_unstable();
         held.dedup();
         held
@@ -287,7 +300,7 @@ fn picks(slots: &[Slot], sheet: &str) -> (u32, u32) {
     let over: Vec<u32> = variants
         .iter()
         .map(|index| {
-            slots
+            within
                 .iter()
                 .find(|slot| slot.booster_index == *index && slot.sheet_name == sheet)
                 .map_or(0, |slot| slot.sheet_picks)
@@ -305,15 +318,27 @@ fn picks(slots: &[Slot], sheet: &str) -> (u32, u32) {
 async fn a_wrapper_s_line_falls_out_of_the_picks() {
     let slots: Vec<Slot> = collect(BOOSTER_CONTENTS).await;
 
-    assert_eq!(picks(&slots, "common"), (6, 7));
-    assert_eq!(picks(&slots, "uncommon"), (3, 3));
-    assert_eq!(picks(&slots, "rareMythicWithShowcase"), (1, 1));
+    assert_eq!(picks(&slots, BLB_PLAY, "common"), (6, 7));
+    assert_eq!(picks(&slots, BLB_PLAY, "uncommon"), (3, 3));
+    assert_eq!(picks(&slots, BLB_PLAY, "rareMythicWithShowcase"), (1, 1));
     // Absent from two of the four variants, which is where the zero comes
     // from rather than from a variant picking none of it.
-    assert_eq!(picks(&slots, "specialGuest"), (0, 1));
+    assert_eq!(picks(&slots, BLB_PLAY, "specialGuest"), (0, 1));
     // Two sheets, and no variant draws from both.
-    assert_eq!(picks(&slots, "land"), (0, 1));
-    assert_eq!(picks(&slots, "foilLand"), (0, 1));
+    assert_eq!(picks(&slots, BLB_PLAY, "land"), (0, 1));
+    assert_eq!(picks(&slots, BLB_PLAY, "foilLand"), (0, 1));
+
+    // Six variants against the other's four, and the sheet names are its own.
+    assert_eq!(picks(&slots, MH3_PLAY, "common"), (5, 7));
+    assert_eq!(picks(&slots, MH3_PLAY, "newUncommon"), (3, 3));
+    assert_eq!(picks(&slots, MH3_PLAY, "rareMythicWithShowcase"), (0, 0));
+    // Two of the six take no land at all, so neither sheet reaches every
+    // variant and the pair does not cover the config either.
+    assert_eq!(picks(&slots, MH3_PLAY, "land"), (0, 1));
+    assert_eq!(picks(&slots, MH3_PLAY, "foilLand"), (0, 1));
+
+    // A sheet of the set's other config, which this one never draws from.
+    assert_eq!(picks(&slots, BLB_PLAY, "foilUncommon"), (0, 0));
 }
 
 #[tokio::test]
