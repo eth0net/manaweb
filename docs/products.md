@@ -122,6 +122,27 @@ than counted. `mh3`'s wildcard sheet totals 1,509,042,889,200 and 1,750 pull
 rows across eight sheets pass the same mark, so a narrow column truncates most
 of the corpus silently or refuses the row.
 
+**A weight is a denominator shared out, not a count.** `fin`'s play wildcard
+sheet totals 177,008,370,000,000 over 395 cards, and those cards carry twelve
+distinct weights between them — a dozen ordinary fractions, 1 in 115 to 1 in
+13,174, written over one number big enough to hold them all at once. Reduce a
+card's weight against its sheet and the fraction comes back small: nothing in
+the corpus needs a numerator past 3,626,733 or a denominator past
+3,006,380,000, and the 300,657 pull rows carry 2,046 distinct rates in all. A
+per-sheet divisor is no help, 4,563 of the 4,583 sheets being coprime already,
+and every sheet's total was checked to be its cards' weights summed.
+
+**64 bits is wide enough to hold a weight and not to multiply two.** A config's
+total against a sheet's reaches 221,260,462,500,000,000,000,000, which a `u64`
+passes twelve thousand times over, and a pack drawing on three of `fin`'s
+sheets at once wants a further nine digits. So odds are not the feed's integers
+multiplied together: reduce each rate first, where it is small enough to be
+dull, or carry it as a float, every value here sitting well inside what one
+holds exactly. The parsed columns stay as given — that layer owes the feed
+fidelity rather than arithmetic — and the reduction belongs where the index is
+built. 2,046 rates is also a table in the header and a code per row, which is
+what the catalog does with every other low-cardinality column.
+
 The weights exist and are exact, per variant and per card on a sheet. Leaving
 them off a screen is a decision about what a reader can act on rather than a
 gap in what we hold: every card a configuration draws from, listed under the
@@ -215,6 +236,6 @@ so it is no laundering step for anything Scryfall's terms already govern.
   saying otherwise earns one.
 - **The order a product's contents read in**, once one product recurses into
   another and a decklist runs to a hundred cards.
-- **What a chance reads as.** A weight on a sheet is not the odds out of a
-  pack: those want the variant's own weight, the picks the slot takes and the
-  sheet's total behind them. Exact arithmetic, and nobody has written it down.
+- **What a chance reads as**, as a sentence rather than as arithmetic. The
+  numbers are settled above; what a reader does with 1 in 13,174 is not, and a
+  balanced sheet makes it an approximation anyway.
