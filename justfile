@@ -14,7 +14,7 @@ deps:
 # every check CI runs that can run on one machine, and `engine-check`, which
 # CI cannot run at all
 [group('checks')]
-check: rust deny spell prose lexicons scanner engine-check ts
+check: rust deny spell prose compiler lexicons scanner engine-check ts
 
 # the Rust side, needing nothing but a cargo toolchain
 [group('checks')]
@@ -53,6 +53,12 @@ deny:
 [group('checks')]
 prose: deps
     cd tools/prose-check && bun run check
+
+# components the React Compiler skipped, against the ones it is allowed to
+# (needs bun)
+[group('checks')]
+compiler: deps
+    cd tools/compiler-check && bun run check
 
 # Deliberately outside `check`: it asks whether our search agrees with the
 # syntax we borrowed, which is a question about the implementation rather than

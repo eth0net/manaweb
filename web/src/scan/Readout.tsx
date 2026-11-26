@@ -67,7 +67,7 @@ export function Readout({
   const take = useCallback(
     (clock?: Grab): Picture | null => {
       if (!video.current) return null;
-      paper.current ??= document.createElement("canvas");
+      paper.current = paper.current ?? document.createElement("canvas");
       return frame(video.current, paper.current, clock);
     },
     [video],

@@ -11,6 +11,9 @@
         "typescript": "^7.0.2",
       },
     },
+    "tools/compiler-check": {
+      "name": "manaweb-compiler-check",
+    },
     "tools/fixture-check": {
       "name": "manaweb-fixture-check",
     },
@@ -420,6 +423,8 @@
     "lru-cache": ["lru-cache@10.4.3", "", {}, "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="],
 
     "lz-string": ["lz-string@1.5.0", "", { "bin": { "lz-string": "bin/bin.js" } }, "sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ=="],
+
+    "manaweb-compiler-check": ["manaweb-compiler-check@workspace:tools/compiler-check"],
 
     "manaweb-fixture-check": ["manaweb-fixture-check@workspace:tools/fixture-check"],
 
