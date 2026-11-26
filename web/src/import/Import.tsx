@@ -144,28 +144,6 @@ export function Import({
   const already =
     found && receipts.find((one) => one.value.digest === found.digest);
 
-  async function take(file: File | null) {
-    setFound(null);
-    setProblem("");
-    if (!file) return;
-
-    const text = await file.text();
-    const format = detect(header(text));
-    if (!format) {
-      setProblem(`Not a collection this reads. It knows ${NAMES}.`);
-      return;
-    }
-
-    // Needed whatever the file names its cards by: the review it goes to
-    // draws every row out of the catalog.
-    if (!catalog) {
-      setProblem("The catalog has not loaded, and reviewing a file needs it.");
-      return;
-    }
-
-    setFound(await reading(text, format, false, clip(file.name, FILE)));
-  }
-
   async function reading(
     text: string,
     format: Format,
@@ -197,6 +175,28 @@ export function Import({
       text,
       digest: await digest(stacks),
     };
+  }
+
+  async function take(file: File | null) {
+    setFound(null);
+    setProblem("");
+    if (!file) return;
+
+    const text = await file.text();
+    const format = detect(header(text));
+    if (!format) {
+      setProblem(`Not a collection this reads. It knows ${NAMES}.`);
+      return;
+    }
+
+    // Needed whatever the file names its cards by: the review it goes to
+    // draws every row out of the catalog.
+    if (!catalog) {
+      setProblem("The catalog has not loaded, and reviewing a file needs it.");
+      return;
+    }
+
+    setFound(await reading(text, format, false, clip(file.name, FILE)));
   }
 
   // Rows rather than stacks, and in the file's own order: what joins what is

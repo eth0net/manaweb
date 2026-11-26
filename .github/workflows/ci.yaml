@@ -71,6 +71,16 @@ jobs:
       - run: bun run check
         working-directory: tools/prose-check
 
+  compiler:
+    name: compiler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+        working-directory: tools/compiler-check
+
   scanner:
     name: scanner on wasm
     runs-on: ubuntu-latest

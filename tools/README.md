@@ -10,14 +10,20 @@ They divide by what answers them.
 
 ## Checks CI runs
 
-Green here means green there. `just check` runs all four.
+Green here means green there. `just check` runs all five.
 
 |                   | what it asks                                                           | recipe          |
 | ----------------- | ---------------------------------------------------------------------- | --------------- |
+| `compiler-check`  | which components the React Compiler skipped, against the allowed ones  | `just compiler` |
 | `lexicon-check`   | do the lexicons validate, and is a record that must be refused refused | `just lexicons` |
 | `prose-check`     | does a comment repeat a doc's sentence, or one doc another's           | `just prose`    |
 | `scanner-check`   | does the wasm engine answer what the native one does                   | `just scanner`  |
 | `lex-gen --check` | do the generated record types still match the lexicons                 | `just lexicons` |
+
+`compiler-check` is the one with a list beside it. `skipped.ts` names every
+component the compiler gives up on and why that one is left alone, and the
+check fails both on a skip nobody wrote down and on an entry that has stopped
+happening — so the list cannot quietly become a graveyard.
 
 ## The checks nothing runs for you
 

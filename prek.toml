@@ -68,6 +68,7 @@ hooks = [
 repo = "local"
 hooks = [
   { id = "biome", name = "biome check", entry = "bun run lint", language = "system", files = '\.(ts|tsx|css|md|ya?ml|json)$', pass_filenames = false, require_serial = true },
+  { id = "compiler", name = "components the compiler kept (just compiler)", entry = "cd tools/compiler-check && bun run check", language = "system", files = '^web/src/.*\.(ts|tsx)$|^tools/compiler-check/', pass_filenames = false, require_serial = true },
   { id = "tsc", name = "tsc", entry = "bun run types", language = "system", files = '\.(ts|tsx|css)$|(^|/)(package\.json|tsconfig\.json|biome\.json)$', pass_filenames = false, require_serial = true, stages = ["pre-push"] },
   # A process per file, as `bun run check` and CI both run them: a browser
   # faked twice in one process is what `AGENTS.md` says it is.
