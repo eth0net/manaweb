@@ -42,6 +42,17 @@ pub enum Error {
     )]
     ShapeSync { fields: String },
 
+    #[error("reading an mtgjson table failed: {0}")]
+    Mtgjson(#[from] manaweb_mtgjson::Error),
+
+    /// A sheet naming printings the cache has never held, which is this sync
+    /// having run before the Scryfall one it resolves against.
+    #[error(
+        "{missing} of {read} booster cards reach no printing, so nothing was replaced: \
+         sync Scryfall first, then this"
+    )]
+    MissingPrintings { missing: i64, read: i64 },
+
     #[error("serializing the catalog failed: {0}")]
     Json(#[from] serde_json::Error),
 

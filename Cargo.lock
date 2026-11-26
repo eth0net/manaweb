@@ -1284,6 +1284,7 @@ name = "manaweb-core"
 version = "0.22.0"
 dependencies = [
  "futures-util",
+ "manaweb-mtgjson",
  "manaweb-scanner",
  "manaweb-scryfall",
  "serde",
@@ -1292,6 +1293,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

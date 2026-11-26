@@ -6,7 +6,7 @@
 //! `d65aea8` did that to `0003` and nothing said so until a database would
 //! not open.
 
-const SHIPPED: [(i64, &str, &str); 6] = [
+const SHIPPED: [(i64, &str, &str); 7] = [
     (
         1,
         "0001_card_cache.sql",
@@ -36,6 +36,11 @@ const SHIPPED: [(i64, &str, &str); 6] = [
         6,
         "0006_sync_history.sql",
         "8bec7b84d9647382dca79edc93689ce9117f9049cccfc7084891124a7d281998e687bd8d7c04bd6b09aa7fe39c684cdc",
+    ),
+    (
+        7,
+        "0007_boosters.sql",
+        "2ed8381006b8962b7455e7f04d500739362c3eba6f8d8b3344c2d0b7de1aef275a87b1fa65b74c4521e50ce0b5f42e77",
     ),
 ];
 

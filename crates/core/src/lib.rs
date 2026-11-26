@@ -4,6 +4,7 @@
 //! User data lives in PDSes; this is the card cache and, later, the index over
 //! published records.
 
+pub mod boosters;
 pub mod cards;
 pub mod catalog;
 mod db;
