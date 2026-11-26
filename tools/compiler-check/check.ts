@@ -9,6 +9,7 @@
 import { createRequire } from "node:module";
 import { dirname, relative, resolve } from "node:path";
 import { Glob } from "bun";
+import { SKIPPED } from "./skipped";
 
 process.chdir(dirname(dirname(import.meta.dir)));
 
@@ -74,15 +75,45 @@ for (const pattern of SOURCE) {
   }
 }
 
-console.log("components:");
-if (skipped.length === 0) {
-  console.log(`  ok    ${compiled} compiled, none skipped`);
-  process.exit(0);
+// Counted per file and message, because a line number moves with every edit
+// above it and would make the list churn for nothing.
+const seen = new Map<string, Skipped[]>();
+for (const one of skipped) {
+  const key = `${one.file}\u0000${one.why}`;
+  seen.set(key, [...(seen.get(key) ?? []), one]);
 }
 
-skipped.sort((one, two) => one.file.localeCompare(two.file));
-for (const one of skipped) {
-  console.log(`  FAIL  ${one.file}:${one.line} skipped: ${one.why}`);
+let failed = false;
+const fail = (message: string) => {
+  console.log(`  FAIL  ${message}`);
+  failed = true;
+};
+
+console.log("components:");
+
+for (const allowed of SKIPPED) {
+  const key = `${allowed.file}\u0000${allowed.why}`;
+  const found = seen.get(key) ?? [];
+  seen.delete(key);
+  if (found.length === 0) {
+    fail(`${allowed.file} no longer skipped: drop it from skipped.ts`);
+  } else if (found.length !== allowed.count) {
+    fail(
+      `${allowed.file} skipped ${found.length} times, skipped.ts says ${allowed.count}: ${allowed.why}`,
+    );
+  }
 }
-console.log(`\n${skipped.length} skipped, ${compiled} compiled`);
-process.exit(1);
+
+for (const [, found] of seen) {
+  for (const one of found) {
+    fail(`${one.file}:${one.line} newly skipped: ${one.why}`);
+  }
+}
+
+if (failed) {
+  console.log(`\n${skipped.length} skipped, ${compiled} compiled`);
+  process.exit(1);
+}
+
+const allowed = SKIPPED.reduce((count, one) => count + one.count, 0);
+console.log(`  ok    ${compiled} compiled, ${allowed} skipped with a reason`);
