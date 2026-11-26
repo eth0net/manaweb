@@ -9,6 +9,7 @@ pub mod cards;
 pub mod catalog;
 mod db;
 mod error;
+pub mod products;
 
 pub use db::{connect, open, open_memory};
 pub use error::Error;
