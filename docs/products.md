@@ -5,15 +5,14 @@ Scryfall answers neither: a card object carries `booster: bool` and stops, and
 there is no product object at all.
 
 MTGJSON does, and it is the only feed that does. Figures below are measured
-against build `5.3.0+20261103` and the catalog of 2026-10-28, the booster ones
-against `5.3.0+20261119` and a cache synced from the Default Cards of
-2026-11-16.
+against build `5.3.0+20261126`, the booster ones against `5.3.0+20261119`, and
+both against a cache synced from the Default Cards of 2026-11-16.
 
 ## What it carries
 
 `SealedProduct` hangs off every set, and off every entry of `SetList` — so the
-whole catalog is one small file rather than a slice of a large one. 4,315
-products across 351 set codes, reaching back to the 1990s.
+whole catalog is one small file rather than a slice of a large one. ~4,400
+products across 353 set codes, reaching back to the 1990s.
 
 `contents` is a union of seven arrays, and
 **which one a product has decides
@@ -21,16 +20,22 @@ whether the answer is a fact or a probability**:
 
 | kind       | products | holds                               | answer |
 | ---------- | -------: | ----------------------------------- | ------ |
-| `deck`     |    2,183 | a named decklist in `setDecks`      | exact  |
-| `sealed`   |    2,004 | `count` of another product          | exact  |
-| `pack`     |    1,187 | a booster config name               | chance |
-| `other`    |      859 | a name only — spindowns, storage    | none   |
-| `card`     |      481 | a named printing, by set and number | exact  |
+| `deck`     |    2,228 | a named decklist in `setDecks`      | exact  |
+| `sealed`   |    2,012 | `count` of another product          | exact  |
+| `pack`     |    1,188 | a booster config name               | chance |
+| `other`    |      874 | a name only — spindowns, storage    | none   |
+| `card`     |      495 | a named printing, by set and number | exact  |
 | `variable` |       74 | configs that differ between copies  | chance |
 
+Only `sealed` carries a count. Everywhere else an entry is one of the thing,
+and a box of 36 packs is a `sealed` naming the pack product rather than 36
+rows.
+
 The seventh is `variable_config`, which appears only inside a config and
-carries its `weight`. Reading the configs without it makes a Welcome Deck
-weighted 330 look as likely as the one weighted 4.
+**holds nothing the list of configs does not**: no variable in the corpus
+weights its configs unevenly, and where a weight is written at all it is the
+number of configs, against a `chance` of 1. So a Welcome Deck's 330 configs are
+330 equal possibilities, and reading them as a plain list is right.
 
 A product may carry several. `sealed` recurses — a booster box is 36 of a pack
 — so it bottoms out in whichever kind the thing it names has. So does
@@ -51,9 +56,14 @@ the one thing to get right before any of this reaches a screen.
 
 **Exact card contents need nothing new.** `SealedProductCard` carries `set` and
 `number`, and the cache already has `cards_printing` unique over
-`(set_code, collector_number, lang)`. Measured: **590 of 590 entries resolve**,
-and 4,268 of the 4,315 products sit in sets the cache holds. The 47 that do not
-are Mystery Booster and a handful of older promo sets.
+`(set_code, collector_number, lang)`. Measured: **every entry resolves**, each
+to exactly one printing, and all but ~50 products sit in sets the cache holds.
+Those are Mystery Booster and a handful of older promo sets.
+
+**A set code arrives spelled two ways.** The tables carry it upper case and the
+JSON inside their columns carries it lower, so a product's contents joins
+neither the booster tables nor `setDecks` untouched. The cache spells it lower,
+which settles which way to fold.
 
 **Join on the pair and leave `lang` out of it.** The index invites pinning it
 to `en`, which silently drops a printing Default Cards holds in one other
@@ -63,13 +73,29 @@ Without it the pair is still unique, over all 119,509 in the cache.
 **Decklists need the uuid map, and that is where the volume is.** Every board
 keys by MTGJSON's own uuid and nothing else, so reaching them means
 `cardIdentifiers`, which is 16.2MB of the 19.4MB this subject costs. It buys
-**114,871 entries across 3,135 decklists**, against 590 from exact card
+**115,756 entries across 3,164 decklists**, against 639 from exact card
 contents — so the map is not a saving to defer, it is 99.5% of the feature.
+Every one of those entries resolves, 563 of them through `tokenIdentifiers` and
+the rest through `cardIdentifiers`.
 
-Seven boards, not one: `mainBoard` is 112,556 of those entries and the rest sit
+Seven boards, not one: `mainBoard` is 113,455 of those entries and the rest sit
 in `sideBoard`, `commander`, `displayCommander`, `tokens`, `planes` and
 `schemes`. Nor is a mainboard a given — five decklists are token sheets and
 have none.
+
+**A decklist is named, not coded.** `code` repeats, 268 lists sharing one with
+another, while `(setCode, name)` is unique over all 3,164 — and the name is
+what a product's `deck` contents gives, so the pair is the key either way. The
+reverse list, `sealedProductUuids`, names no product the contents does not: 268
+pairs run the other way alone, so the join is worth holding once, from the
+product's side.
+
+**A `tokens` board can name the same card twice**, forty times over and nowhere
+else, the two rows carrying counts of their own. Nothing says whether that is
+four cats or three, so the counts are summed and the merge is reported.
+
+690 of the entries sit on a printing the catalog exports no position for, which
+is the digital rule the pool already meets.
 
 A uuid names a **part**, not a printing, so the map is many-to-one and wants
 deduplicating on the Scryfall id rather than counted. Every printing on a
@@ -84,9 +110,11 @@ No sheet needs that table: every uuid in the pool is keyed in
 **Tokens are keyed in a table of their own.** `cardIdentifiers` has no row for
 one, so a `tokens` board resolves nowhere without `tokenIdentifiers` — and
 neither do 17 `mainBoard` entries, which are the Theros challenge decks, whose
-oversized cards MTGJSON files as tokens. 561 entries in all, closed by 924KB. A
-further 24 close against nothing, carrying `not_in_mtgjson` where an id
-belongs.
+oversized cards MTGJSON files as tokens. 563 entries in all, closed by 924KB.
+
+An entry can also carry `not_in_mtgjson` where an id belongs: 24 of them in the
+build of three weeks earlier and none in this one, so a reader takes it as
+absent rather than failing on it.
 
 ## What a pack can be shown as
 

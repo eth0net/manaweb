@@ -49,9 +49,9 @@ pub struct Deck {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Board {
-    /// `None` where MTGJSON wrote `not_in_mtgjson` instead of an id — 24
-    /// token entries, and nowhere else in either table. Any other value that
-    /// isn't an id still fails, rather than quietly becoming nothing.
+    /// `None` where MTGJSON writes `not_in_mtgjson` in place of an id, which
+    /// some builds do and some do not. Any other value that isn't an id still
+    /// fails, rather than quietly becoming nothing.
     #[serde(deserialize_with = "absent_or_uuid")]
     pub uuid: Option<Uuid>,
     pub count: u32,

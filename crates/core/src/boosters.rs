@@ -16,11 +16,8 @@ use crate::{Error, Result};
 /// name: `blb`'s `common` sheet is not `mh3`'s.
 type Sheets = HashMap<(String, String, String), i64>;
 
-/// A set code as the card cache spells it.
-///
-/// MTGJSON's tables carry it upper case and the JSON inside their columns
-/// carries it lower, so one of the two has to give and the cache already
-/// chose. Sheet names keep their own case, being camelCase to begin with.
+/// A set code as the card cache spells it, MTGJSON spelling it two ways —
+/// `docs/products.md`. Sheet names keep their own case, being camelCase.
 fn code(set_code: &str) -> String {
     set_code.to_lowercase()
 }
