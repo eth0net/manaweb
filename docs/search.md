@@ -9,7 +9,7 @@ the device, so the only limit is which parts of it someone chose to hold.
 Filtering was the wrong first instinct: almost everything is a real card
 someone can own. Only digital printings can't be, which makes them a category
 error rather than a preference, so they are excluded outright and no toggle
-reaches them.
+reaches them — reopened below.
 
 **Extras take Scryfall's line rather than one of our own** — `funny` sets,
 playtest cards and the handful they delist for their content. Theirs is the
@@ -399,6 +399,19 @@ disagreements are ours returning more, never less, and the extras are
 delisted for their content. Their search excludes all three unless asked; ours
 has no notion of it. That is a filter we do not have rather than data we lack,
 and it is the larger of the two gaps left.
+
+## Open questions
+
+**Digital printings may be worth carrying after all.** Excluding them above
+treats a printing nobody can own as a category error. ManaBox reads it as a
+preference instead and ships the filter on by default, which meets the same
+objection without deciding for the reader: someone playing Arena holds a
+collection, and it is simply not a paper one. The cache keeps these rows
+already — [`scryfall.md`](scryfall.md) — and it is the export that drops them,
+which [`products.md`](products.md) counts on the way past, a booster nobody can
+open being the clearest case of the same thing. Not work for now, and the shape
+it would take is a flag in the artifact and a default in the filter rather than
+anything structural.
 
 ## Where the choices live
 
