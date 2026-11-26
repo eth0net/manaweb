@@ -582,7 +582,8 @@ function Shot({
     if (!quad) return;
 
     paper.beginPath();
-    for (const [at, { x, y }] of quad.entries()) {
+    for (const [at, corner] of quad.entries()) {
+      const { x, y } = corner;
       if (at === 0) paper.moveTo(x, y);
       else paper.lineTo(x, y);
     }
@@ -776,7 +777,7 @@ function holding(printings: number, rest: unknown[]): string {
 function Named({
   card,
   print,
-  quiet = false,
+  quiet,
 }: {
   card: Card;
   print: Print;
