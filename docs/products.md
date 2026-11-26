@@ -95,7 +95,8 @@ else, the two rows carrying counts of their own. Nothing says whether that is
 four cats or three, so the counts are summed and the merge is reported.
 
 690 of the entries sit on a printing the catalog exports no position for, which
-is the digital rule the pool already meets.
+is the digital rule the pool already meets. No product's exact contents names
+one, so that count is a decklist's alone.
 
 A uuid names a **part**, not a printing, so the map is many-to-one and wants
 deduplicating on the Scryfall id rather than counted. Every printing on a
@@ -276,7 +277,11 @@ so it is no laundering step for anything Scryfall's terms already govern.
 - **Totality.** Three sets were checked card-for-card, not the whole corpus.
   Count before anything depends on every printing being present.
 - **The order a product's contents read in**, once one product recurses into
-  another and a decklist runs to a hundred cards.
+  another and a decklist runs to a hundred cards. The feed's own key order is
+  lost in parsing, so what is held is the order the arms are read in.
+- **Whether a token named twice is two of it.** Forty entries do, and the
+  counts are summed on the reading that each row is a count of cards. The other
+  reading is one token listed once per card that makes it.
 - **What a chance reads as**, as a sentence rather than as arithmetic. The
   numbers are settled above; what a reader does with 1 in 13,174 is not, and a
   balanced sheet makes it an approximation anyway.
