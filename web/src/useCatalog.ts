@@ -53,10 +53,12 @@ export function useCatalog(): Status {
   const loaded = useRef<Manifest | null>(null);
 
   const start = useCallback(() => {
-    pending ??= load((of) => {
-      step = of;
-      if (alive.current) setState({ status: "loading", step: of });
-    });
+    if (pending === null) {
+      pending = load((of) => {
+        step = of;
+        if (alive.current) setState({ status: "loading", step: of });
+      });
+    }
 
     const mine = pending;
     mine

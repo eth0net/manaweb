@@ -192,7 +192,7 @@ export function Scan({
     setExpanded(false);
     setLive(false);
     try {
-      paper.current ??= document.createElement("canvas");
+      paper.current = paper.current ?? document.createElement("canvas");
       const picture = frame(video.current, paper.current);
       const [held, artworks] = await Promise.all([engine(), index(manifest)]);
       if (!picture) {
