@@ -78,6 +78,9 @@ over `transform`, `modal_dfc`, `adventure`, `split`, `prepare`,
 `reversible_card` and `flip`, reaching five uuids for the five-part
 `Who // What // When // Where // Why`.
 
+No sheet needs that table: every uuid in the pool is keyed in
+`cardIdentifiers`, so a booster resolves whole without fetching it.
+
 **Tokens are keyed in a table of their own.** `cardIdentifiers` has no row for
 one, so a `tokens` board resolves nowhere without `tokenIdentifiers` — and
 neither do 17 `mainBoard` entries, which are the Theros challenge decks, whose
