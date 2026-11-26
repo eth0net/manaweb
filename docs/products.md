@@ -231,9 +231,15 @@ so it is no laundering step for anything Scryfall's terms already govern.
 
 - **Totality.** Three sets were checked card-for-card, not the whole corpus.
   Count before anything depends on every printing being present.
-- **Where it lands in the artifact.** Measure before deciding anything: a
-  client running to tens of MB is not worth an option, and only a measurement
-  saying otherwise earns one.
+- **Where it lands in the artifact.** Not tens of MB, so it need not be an
+  opt-in part the way oracle text is: grouped by sheet with positions
+  delta-coded, the pool comes to ~640KB gzipped against ~1.1MB written flat,
+  and the rate table to 6.4KB. Plain text beat a varint encoding of the same
+  rows, gzip making more of repeated digits than of dense bytes, so the
+  encoding the catalog already uses is also the small one. Taken with stand-in
+  positions and so an upper bound — a sheet draws mostly from one set and a set
+  is contiguous, so real deltas are shorter. Re-measure against a built catalog
+  before the shape is fixed.
 - **The order a product's contents read in**, once one product recurses into
   another and a decklist runs to a hundred cards.
 - **What a chance reads as**, as a sentence rather than as arithmetic. The
