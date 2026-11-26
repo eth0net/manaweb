@@ -125,7 +125,7 @@ async fn the_slot_line_comes_back_out_of_the_tables() {
                 ) THEN 0 ELSE min(l.picks) END,
                 max(l.picks)
          FROM booster_sheets s JOIN booster_slots l ON l.sheet_id = s.id
-         WHERE s.set_code = 'BLB' AND s.booster = 'play'
+         WHERE s.set_code = 'blb' AND s.booster = 'play'
          GROUP BY s.id ORDER BY s.name",
     )
     .fetch_all(&pool)
@@ -170,7 +170,7 @@ async fn a_printing_names_the_sheets_it_sits_on() {
     let (set, booster, sheet, weight) = &found[0];
     assert_eq!(
         (set.as_str(), booster.as_str(), sheet.as_str()),
-        ("BLB", "play", "rareMythicWithShowcase")
+        ("blb", "play", "rareMythicWithShowcase")
     );
     // Carried from the row rather than counted, a sheet being an uneven draw.
     assert!(*weight > 0);

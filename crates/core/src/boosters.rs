@@ -16,6 +16,15 @@ use crate::{Error, Result};
 /// name: `blb`'s `common` sheet is not `mh3`'s.
 type Sheets = HashMap<(String, String, String), i64>;
 
+/// A set code as the card cache spells it.
+///
+/// MTGJSON's tables carry it upper case and the JSON inside their columns
+/// carries it lower, so one of the two has to give and the cache already
+/// chose. Sheet names keep their own case, being camelCase to begin with.
+fn code(set_code: &str) -> String {
+    set_code.to_lowercase()
+}
+
 /// Pool rows allowed to reach no printing before the sync is refused.
 ///
 /// Every one measured was a printing the cache holds and does not export,
@@ -127,7 +136,7 @@ async fn write_sheets(
             "INSERT INTO booster_sheets (set_code, booster, name, foil, balanced, weight)
              VALUES (?, ?, ?, ?, ?, ?)",
         )
-        .bind(&sheet.set_code)
+        .bind(code(&sheet.set_code))
         .bind(&sheet.booster_name)
         .bind(&sheet.sheet_name)
         .bind(sheet.sheet_is_foil)
@@ -136,7 +145,10 @@ async fn write_sheets(
         .execute(&mut **tx)
         .await?
         .last_insert_rowid();
-        ids.insert((sheet.set_code, sheet.booster_name, sheet.sheet_name), id);
+        ids.insert(
+            (code(&sheet.set_code), sheet.booster_name, sheet.sheet_name),
+            id,
+        );
         report.sheets += 1;
     }
     Ok(ids)
@@ -152,7 +164,7 @@ async fn write_variants(
             "INSERT INTO booster_variants (set_code, booster, variant, weight)
              VALUES (?, ?, ?, ?)",
         )
-        .bind(&variant.set_code)
+        .bind(code(&variant.set_code))
         .bind(&variant.booster_name)
         .bind(variant.booster_index)
         .bind(held(variant.booster_weight))
@@ -170,7 +182,7 @@ async fn write_slots(
     report: &mut Report,
 ) -> Result<()> {
     while let Some(slot) = rows.try_next().await? {
-        let key = (slot.set_code, slot.booster_name, slot.sheet_name);
+        let key = (code(&slot.set_code), slot.booster_name, slot.sheet_name);
         let Some(&sheet_id) = ids.get(&key) else {
             report.missing += 1;
             continue;
@@ -198,7 +210,7 @@ async fn write_pool(
     let mut read = 0i64;
     while let Some(pull) = rows.try_next().await? {
         read += 1;
-        let key = (pull.set_code, pull.booster_name, pull.sheet_name);
+        let key = (code(&pull.set_code), pull.booster_name, pull.sheet_name);
         let (Some(&sheet_id), Some(&card)) = (ids.get(&key), printing.get(&pull.card_uuid)) else {
             report.missing += 1;
             continue;
