@@ -6,7 +6,8 @@ there is no product object at all.
 
 MTGJSON does, and it is the only feed that does. Figures below are measured
 against build `5.3.0+20261103` and the catalog of 2026-10-28, the booster ones
-against `5.3.0+20261119`.
+against `5.3.0+20261119` and a cache synced from the Default Cards of
+2026-11-16.
 
 ## What it carries
 
@@ -107,8 +108,10 @@ the land is foil or it is not. Neither statement needs a probability behind it.
 
 **The pulls are `setBoosterSheetCards`** — 300,657 rows naming 79,807 distinct
 cards over 4,583 sheets, for the 206 sets carrying booster data at all. Held as
-positions into the catalog it comes to a few MB before compression, so it is
-not the part deciding how large any of this gets.
+positions into the catalog, grouped by sheet with the positions delta-coded, it
+is 2.23MB and compresses to 550KB — small enough to go to every client rather
+than be a part they opt into. Plain text beat a varint encoding of the same
+rows, gzip making more of repeated digits than of packed bytes.
 
 **This side of the join is one-to-one**, which the decklist boards are not. All
 79,807 resolve, to exactly 79,807 printings, though 2,002 of them sit on a
@@ -116,6 +119,16 @@ printing that has several uuids: a sheet names the whole card where a board
 names a part. So the pool needs no deduplicating, and a second uuid arriving
 against a printing already placed is a change in the feed rather than the
 multi-part case.
+
+**What the catalog drops is digital, every row of it.** Each uuid in the pool
+reaches a printing, and ~7,500 of those rows reach one the cache exports no
+position for, which is what it does with a digital printing. Sixteen
+configurations lose their whole pool that way — `akr`, `pio`, `sir`, the
+Masters Editions, the rest of the MTGO and Arena sets — and two named `arena`
+inside paper sets lose nearly all of theirs. What remains is `mbc`'s draft
+config, three cards short of its 2,527. So the rule a refresh wants is not a
+share of the whole: drop a configuration with no paper in it, and refuse one
+that loses cards it cannot account for.
 
 **The weights do not fit 32 bits**, being scaled to a common denominator rather
 than counted. `mh3`'s wildcard sheet totals 1,509,042,889,200 and 1,750 pull
@@ -231,15 +244,6 @@ so it is no laundering step for anything Scryfall's terms already govern.
 
 - **Totality.** Three sets were checked card-for-card, not the whole corpus.
   Count before anything depends on every printing being present.
-- **Where it lands in the artifact.** Not tens of MB, so it need not be an
-  opt-in part the way oracle text is: grouped by sheet with positions
-  delta-coded, the pool comes to ~640KB gzipped against ~1.1MB written flat,
-  and the rate table to 6.4KB. Plain text beat a varint encoding of the same
-  rows, gzip making more of repeated digits than of dense bytes, so the
-  encoding the catalog already uses is also the small one. Taken with stand-in
-  positions and so an upper bound — a sheet draws mostly from one set and a set
-  is contiguous, so real deltas are shorter. Re-measure against a built catalog
-  before the shape is fixed.
 - **The order a product's contents read in**, once one product recurses into
   another and a decklist runs to a hundred cards.
 - **What a chance reads as**, as a sentence rather than as arithmetic. The
