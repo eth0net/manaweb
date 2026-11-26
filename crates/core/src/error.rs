@@ -26,11 +26,11 @@ pub enum Error {
     )]
     SkippedSync { skipped: i64, read: i64 },
 
-    /// A catalog this much smaller than the last is one to look at before
+    /// A cache this much smaller than the last is one to look at before
     /// publishing rather than after.
     #[error(
-        "the card stream held {written} printings against {before} last time, so nothing \
-         was replaced: sync again once the file is what it should be"
+        "the sync held {written} rows against {before} last time, so nothing was \
+         replaced: sync again once the feed is what it should be"
     )]
     ShrunkSync { written: i64, before: i64 },
 
@@ -45,10 +45,10 @@ pub enum Error {
     #[error("reading an mtgjson table failed: {0}")]
     Mtgjson(#[from] manaweb_mtgjson::Error),
 
-    /// A sheet naming printings the cache has never held, which is this sync
-    /// having run before the Scryfall one it resolves against.
+    /// Rows naming printings the cache has never held, which is an MTGJSON
+    /// sync having run before the Scryfall one it resolves against.
     #[error(
-        "{missing} of {read} booster cards reach no printing, so nothing was replaced: \
+        "{missing} of {read} rows reach no printing, so nothing was replaced: \
          sync Scryfall first, then this"
     )]
     MissingPrintings { missing: i64, read: i64 },
